@@ -66,39 +66,40 @@ async function parseHeroesFromFastidious(): Promise<ParsedHero[]> {
 
 async function translateBatch(names: string[]): Promise<Record<string, string>> {
   const key = process.env.LOVABLE_API_KEY;
-  if (!key || names.length === 0) {
-    return Object.fromEntries(names.map((n) => [n, n]));
+  const result: Record<string, string> = Object.fromEntries(names.map((n) => [n, n]));
+  if (!key || names.length === 0) return result;
+  const CHUNK = 40;
+  for (let i = 0; i < names.length; i += CHUNK) {
+    const chunk = names.slice(i, i + CHUNK);
+    const prompt = `Translate these Watcher of Realms hero names from English to Russian. Use commonly accepted Russian localization if known, otherwise transliterate. Return JSON only: {"map": {"English": "Русский", ...}}. Names:\n${chunk.map((n) => `- ${n}`).join("\n")}`;
+    try {
+      const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-lite",
+          messages: [
+            { role: "system", content: "You translate game hero names to Russian. Respond with strict JSON only." },
+            { role: "user", content: prompt },
+          ],
+          response_format: { type: "json_object" },
+        }),
+      });
+      const data = (await r.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      const text = data.choices?.[0]?.message?.content ?? "{}";
+      const parsed = JSON.parse(text) as { map?: Record<string, string> };
+      const map = parsed.map ?? {};
+      for (const n of chunk) if (map[n]) result[n] = map[n];
+    } catch (e) {
+      console.error("translate error", e);
+    }
   }
-  const prompt = `Translate these Watcher of Realms hero names from English to Russian. Use commonly accepted Russian localization if known, otherwise transliterate. Return JSON only: {"map": {"English": "Русский", ...}}. Names:\n${names.map((n) => `- ${n}`).join("\n")}`;
-  try {
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: "You translate game hero names to Russian. Respond with strict JSON only." },
-          { role: "user", content: prompt },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
-    const data = (await r.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const text = data.choices?.[0]?.message?.content ?? "{}";
-    const parsed = JSON.parse(text) as { map?: Record<string, string> };
-    const map = parsed.map ?? {};
-    const result: Record<string, string> = {};
-    for (const n of names) result[n] = map[n] || n;
-    return result;
-  } catch (e) {
-    console.error("translate error", e);
-    return Object.fromEntries(names.map((n) => [n, n]));
-  }
+  return result;
 }
 
 export const syncHeroes = createServerFn({ method: "POST" }).handler(async () => {
