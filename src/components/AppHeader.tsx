@@ -14,17 +14,14 @@ export function AppHeader() {
           </div>
         </Link>
 
-        <button
+        <Link
+          to="/defenses"
           className="flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
-          onClick={() => {
-            // Decorative CTA: scroll to the grid
-            document.querySelector("main")?.scrollIntoView({ behavior: "smooth" });
-          }}
         >
-          <span className="text-base leading-none">+</span>
-          <span className="hidden sm:inline">Додати запис</span>
-          <span className="sm:hidden">Додати</span>
-        </button>
+          <span className="text-base leading-none">🛡</span>
+          <span className="hidden sm:inline">База захистів</span>
+          <span className="sm:hidden">База</span>
+        </Link>
       </div>
     </header>
   );
