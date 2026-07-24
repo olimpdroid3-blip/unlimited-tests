@@ -26,7 +26,13 @@ type Tower = {
   notes: string | null;
 };
 
-const COLUMNS = [1, 2, 3, 4] as const;
+const COLUMNS = [
+  { num: 1, label: "I", color: "text-col-i" },
+  { num: 2, label: "II", color: "text-col-ii" },
+  { num: 3, label: "III", color: "text-col-iii" },
+  { num: 4, label: "IV", color: "text-col-iv" },
+] as const;
+
 const ROWS: Array<[number, number]> = [
   [1, 1], [1, 2],
   [2, 1], [2, 2],
@@ -89,32 +95,42 @@ function HomePage() {
       <Toaster theme="dark" position="top-center" richColors />
       <AppHeader />
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-3 pb-6 pt-4 sm:px-4">
-        <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-3 pb-6 pt-4 sm:px-4">
+        {/* 4-column grid of towers */}
+        <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-2">
           {COLUMNS.map((col) => (
-            <div
-              key={col}
-              className="rounded-xl border border-border bg-card/40 p-3 sm:p-4"
-            >
-              <div className="mb-2 text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                Стовпчик {col}
+            <div key={col.num} className="flex flex-col gap-2">
+              <div
+                className={[
+                  "text-center text-lg font-bold tracking-widest",
+                  col.color,
+                ].join(" ")}
+              >
+                {col.label}
               </div>
-              <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+              <div className="flex flex-1 flex-col gap-1.5">
                 {ROWS.map(([r, s]) => {
-                  const id = `${col}.${r}.${s}`;
+                  const id = `${col.num}.${r}.${s}`;
                   const active = map.has(id);
                   return (
                     <button
                       key={id}
                       onClick={() => openTower(id)}
                       className={[
-                        "rounded-md px-2 py-2 text-[11px] font-semibold transition-colors duration-300 active:scale-95 sm:text-sm",
+                        "relative flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition-all duration-200 active:scale-95",
+                        "border",
                         active
-                          ? "bg-tower-active text-tower-active-foreground shadow-[0_0_16px_-8px_var(--tower-active)]"
-                          : "bg-tower-idle text-muted-foreground hover:text-foreground",
+                          ? "border-tower-active/40 bg-tower-active text-tower-active-foreground shadow-[0_0_14px_-6px_var(--tower-active)]"
+                          : "border-border bg-tower-idle text-tower-idle-text hover:text-foreground",
                       ].join(" ")}
                     >
-                      🏰 {id}
+                      <span
+                        className={[
+                          "h-2.5 w-2.5 shrink-0 rounded-full",
+                          active ? "bg-tower-active-foreground" : "bg-muted-foreground/60",
+                        ].join(" ")}
+                      />
+                      <span className="font-mono tracking-wide">{id}</span>
                     </button>
                   );
                 })}
@@ -123,20 +139,28 @@ function HomePage() {
           ))}
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        {/* Bottom actions */}
+        <div className="mt-4 flex flex-col gap-2">
           <Link
             to="/archive"
-            className="block w-full rounded-xl border border-border bg-card px-4 py-3 text-center text-sm font-semibold text-foreground transition hover:border-primary/40 hover:bg-accent"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-card/50 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/10"
           >
-            📦 Архів
+            <span>🗄</span>
+            <span>Архів</span>
           </Link>
 
           <button
             onClick={() => setClearOpen(true)}
-            className="w-full rounded-xl border border-destructive/50 bg-destructive/20 px-4 py-3 text-center text-sm font-semibold text-destructive-foreground transition hover:bg-destructive/30"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-destructive/50 bg-destructive/15 px-4 py-3 text-sm font-semibold text-destructive transition hover:bg-destructive/25"
           >
-            🗑 Видалити всі записи
+            <span>🗑</span>
+            <span>Видалити всі записи</span>
           </button>
+
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-card/40 px-4 py-2.5 text-xs text-muted-foreground">
+            <span className="text-base text-primary">ℹ</span>
+            <span>Максимум 12 записів у кожному стовпчику</span>
+          </div>
         </div>
       </main>
 
