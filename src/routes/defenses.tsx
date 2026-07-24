@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast, Toaster } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
@@ -9,18 +9,54 @@ import { syncHeroes } from "@/lib/heroes.functions";
 
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
+async function compressImage(file: File, maxSide = 1280, quality = 0.8): Promise<File> {
+  if (!file.type.startsWith("image/")) return file;
+  try {
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = reject;
+      im.src = dataUrl;
+    });
+    const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+    const w = Math.round(img.width * scale);
+    const h = Math.round(img.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, w, h);
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/jpeg", quality),
+    );
+    if (!blob) return file;
+    const base = file.name.replace(/\.[^.]+$/, "") || "image";
+    return new File([blob], `${base}.jpg`, { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
+
 async function uploadToBucket(
   bucket: string,
   file: File,
   prefix: string,
 ): Promise<string | null> {
-  const extMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
-  const ext = (extMatch?.[1] ?? file.type.split("/")[1] ?? "bin")
+  const compressed = await compressImage(file);
+  const extMatch = compressed.name.match(/\.([a-zA-Z0-9]+)$/);
+  const ext = (extMatch?.[1] ?? compressed.type.split("/")[1] ?? "bin")
     .toLowerCase()
     .replace("jpeg", "jpg");
   const path = `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await supabase.storage.from(bucket).upload(path, file, {
-    contentType: file.type || undefined,
+  const { error } = await supabase.storage.from(bucket).upload(path, compressed, {
+    contentType: compressed.type || undefined,
     upsert: true,
   });
   if (error) throw error;
@@ -273,28 +309,39 @@ function SearchTab({ heroes }: { heroes: HeroOption[] }) {
   const qc = useQueryClient();
   const [slots, setSlots] = useState<Array<string | null>>([null, null, null, null, null]);
   const chosen = slots.filter((v): v is string => !!v);
+  const [searchIds, setSearchIds] = useState<string[] | null>(null);
 
-  const { data: allDefenses = [], isFetching } = useQuery({
-    queryKey: ["defenses"],
+  const { data: results = [], isFetching } = useQuery({
+    queryKey: ["defenses", searchIds],
+    enabled: searchIds !== null && searchIds.length > 0,
     queryFn: async (): Promise<DefenseRow[]> => {
+      const ids = searchIds ?? [];
+      const { data: matches, error: mErr } = await supabase
+        .from("defense_heroes")
+        .select("defense_id, hero_id")
+        .in("hero_id", ids);
+      if (mErr) throw mErr;
+      const counts = new Map<string, Set<string>>();
+      for (const r of matches ?? []) {
+        const s = counts.get(r.defense_id) ?? new Set<string>();
+        s.add(r.hero_id);
+        counts.set(r.defense_id, s);
+      }
+      const defenseIds = [...counts.entries()]
+        .filter(([, set]) => ids.every((id) => set.has(id)))
+        .map(([id]) => id);
+      if (defenseIds.length === 0) return [];
       const { data, error } = await supabase
         .from("defenses")
         .select(
           "id, screenshot_url, run_code, created_at, defense_heroes(position, hero_id, heroes(id, name_ru, name_en, icon_url))",
         )
+        .in("id", defenseIds)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as DefenseRow[];
     },
   });
-
-  const results = useMemo(() => {
-    if (chosen.length === 0) return allDefenses;
-    return allDefenses.filter((d) => {
-      const ids = new Set(d.defense_heroes.map((r) => r.hero_id));
-      return chosen.every((id) => ids.has(id));
-    });
-  }, [allDefenses, chosen]);
 
   const onDelete = async (id: string) => {
     if (!confirm("Видалити цей захист?")) return;
@@ -306,6 +353,8 @@ function SearchTab({ heroes }: { heroes: HeroOption[] }) {
     toast.success("Видалено");
     qc.invalidateQueries({ queryKey: ["defenses"] });
   };
+
+  const canSearch = chosen.length >= 1;
 
   return (
     <div className="flex flex-col gap-4">
@@ -327,29 +376,43 @@ function SearchTab({ heroes }: { heroes: HeroOption[] }) {
             placeholder={`Герой ${i + 1}`}
           />
         ))}
-        {chosen.length > 0 && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setSlots([null, null, null, null, null])}
-            className="self-start text-xs text-muted-foreground hover:text-destructive"
+            disabled={!canSearch}
+            onClick={() => setSearchIds(chosen)}
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
           >
-            Очистити фільтр
+            🔍 Пошук
           </button>
-        )}
+          {chosen.length > 0 && (
+            <button
+              onClick={() => {
+                setSlots([null, null, null, null, null]);
+                setSearchIds(null);
+              }}
+              className="text-xs text-muted-foreground hover:text-destructive"
+            >
+              Очистити фільтр
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <div className="text-xs text-muted-foreground">
-          {isFetching ? "Пошук…" : `Знайдено: ${results.length}`}
-        </div>
-        {results.map((d) => (
-          <DefenseCard key={d.id} defense={d} onDelete={() => onDelete(d.id)} />
-        ))}
-        {!isFetching && results.length === 0 && (
-          <div className="rounded-xl border border-dashed border-border bg-card/30 p-6 text-center text-sm text-muted-foreground">
-            Немає результатів
+      {searchIds !== null && (
+        <div className="flex flex-col gap-3">
+          <div className="text-xs text-muted-foreground">
+            {isFetching ? "Пошук…" : `Знайдено: ${results.length}`}
           </div>
-        )}
-      </div>
+          {results.map((d) => (
+            <DefenseCard key={d.id} defense={d} onDelete={() => onDelete(d.id)} />
+          ))}
+          {!isFetching && results.length === 0 && (
+            <div className="rounded-xl border border-dashed border-border bg-card/30 p-6 text-center text-sm text-muted-foreground">
+              Немає результатів
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
