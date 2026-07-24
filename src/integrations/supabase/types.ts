@@ -14,7 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      towers: {
+        Row: {
+          awakenings: string | null
+          nickname: string | null
+          notes: string | null
+          tower_id: string
+          updated_at: string
+        }
+        Insert: {
+          awakenings?: string | null
+          nickname?: string | null
+          notes?: string | null
+          tower_id: string
+          updated_at?: string
+        }
+        Update: {
+          awakenings?: string | null
+          nickname?: string | null
+          notes?: string | null
+          tower_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      towers_archive: {
+        Row: {
+          archived_at: string
+          awakenings: string | null
+          id: string
+          nickname: string | null
+          notes: string | null
+          original_updated_at: string | null
+          tower_id: string
+        }
+        Insert: {
+          archived_at?: string
+          awakenings?: string | null
+          id?: string
+          nickname?: string | null
+          notes?: string | null
+          original_updated_at?: string | null
+          tower_id: string
+        }
+        Update: {
+          archived_at?: string
+          awakenings?: string | null
+          id?: string
+          nickname?: string | null
+          notes?: string | null
+          original_updated_at?: string | null
+          tower_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
