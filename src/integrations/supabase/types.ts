@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      defense_heroes: {
+        Row: {
+          created_at: string
+          defense_id: string
+          hero_id: string
+          id: string
+          position: number | null
+        }
+        Insert: {
+          created_at?: string
+          defense_id: string
+          hero_id: string
+          id?: string
+          position?: number | null
+        }
+        Update: {
+          created_at?: string
+          defense_id?: string
+          hero_id?: string
+          id?: string
+          position?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "defense_heroes_defense_id_fkey"
+            columns: ["defense_id"]
+            isOneToOne: false
+            referencedRelation: "defenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "defense_heroes_hero_id_fkey"
+            columns: ["hero_id"]
+            isOneToOne: false
+            referencedRelation: "heroes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      defenses: {
+        Row: {
+          created_at: string
+          id: string
+          run_code: string | null
+          screenshot_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          run_code?: string | null
+          screenshot_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          run_code?: string | null
+          screenshot_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      heroes: {
+        Row: {
+          created_at: string
+          icon_url: string | null
+          id: string
+          name_en: string
+          name_ru: string
+          source_icon_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          name_en: string
+          name_ru: string
+          source_icon_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          name_en?: string
+          name_ru?: string
+          source_icon_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       towers: {
         Row: {
           awakenings: string | null
