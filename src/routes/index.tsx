@@ -102,7 +102,7 @@ function HomePage() {
             <div key={col.num} className="flex flex-col gap-2">
               <div
                 className={[
-                  "text-center text-lg font-bold tracking-widest",
+                  "text-center text-base font-bold tracking-widest sm:text-lg",
                   col.color,
                 ].join(" ")}
               >
