@@ -97,7 +97,7 @@ function HomePage() {
 
       <main className="mx-auto w-full max-w-5xl px-3 pb-6 pt-4 sm:px-4">
         {/* 4-column grid of towers */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-2">
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
           {COLUMNS.map((col) => (
             <div key={col.num} className="flex flex-col gap-2">
               <div
