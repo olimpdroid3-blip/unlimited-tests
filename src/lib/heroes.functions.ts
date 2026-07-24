@@ -33,14 +33,33 @@ async function parseHeroesFromFastidious(): Promise<ParsedHero[]> {
     headers: { "user-agent": "Mozilla/5.0 (compatible; LovableBot/1.0)" },
   });
   const html = await res.text();
-  const rx = /<img[^>]*src="(https:\/\/fastidious\.gg\/storage\/heroes\/[^"]+)"[^>]*alt="([^"]+)"/g;
+  const m = html.match(/<div id="app" data-page="([^"]+)"/);
+  if (!m) return [];
+  const raw = decodeHtml(m[1]);
+  let data: {
+    props?: {
+      storageUrl?: string;
+      storageVersion?: string;
+      heroes?: Array<{ name?: string; image_card?: string }>;
+    };
+  };
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  const storage = data.props?.storageUrl ?? "https://fastidious.gg/storage/";
+  const version = data.props?.storageVersion;
+  const heroes = data.props?.heroes ?? [];
   const seen = new Set<string>();
   const out: ParsedHero[] = [];
-  for (const m of html.matchAll(rx)) {
-    const name = decodeHtml(m[2]).trim();
-    if (!name || seen.has(name)) continue;
+  for (const h of heroes) {
+    const name = (h.name ?? "").trim();
+    const img = h.image_card ?? "";
+    if (!name || !img || seen.has(name)) continue;
     seen.add(name);
-    out.push({ name_en: name, source_icon_url: m[1] });
+    const url = `${storage}heroes/${img}${version ? `?v=${version}` : ""}`;
+    out.push({ name_en: name, source_icon_url: url });
   }
   return out;
 }
