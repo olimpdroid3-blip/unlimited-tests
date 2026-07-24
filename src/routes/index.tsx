@@ -117,7 +117,7 @@ function HomePage() {
                       key={id}
                       onClick={() => openTower(id)}
                       className={[
-                        "relative flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition-all duration-200 active:scale-95",
+                        "relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-semibold transition-all duration-200 active:scale-95 sm:gap-2 sm:rounded-lg sm:px-3 sm:py-1.5 sm:text-sm",
                         "border",
                         active
                           ? "border-tower-active/40 bg-tower-active text-tower-active-foreground shadow-[0_0_14px_-6px_var(--tower-active)]"
