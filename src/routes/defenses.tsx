@@ -420,10 +420,19 @@ function EditorTab({ heroes }: { heroes: HeroOption[] }) {
 
   const onSync = async () => {
     setSyncing(true);
+    let totalAdded = 0;
     try {
-      const r = await syncHeroes();
-      toast.success(`Синхронізовано: додано ${r.added} з ${r.total}`);
-      qc.invalidateQueries({ queryKey: ["heroes"] });
+      for (let i = 0; i < 20; i++) {
+        const r = await syncHeroes({ data: { limit: 60 } });
+        totalAdded += r.added;
+        qc.invalidateQueries({ queryKey: ["heroes"] });
+        if (r.remaining === 0 || r.added === 0) {
+          toast.success(`Синхронізовано: додано ${totalAdded} з ${r.total}`);
+          return;
+        }
+        toast.message(`Додано ${totalAdded}, залишилось ${r.remaining}…`);
+      }
+      toast.success(`Додано ${totalAdded}. Натисніть ще раз, якщо не всі.`);
     } catch (e) {
       console.error(e);
       toast.error("Помилка синхронізації");
