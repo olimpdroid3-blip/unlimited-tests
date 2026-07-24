@@ -126,7 +126,7 @@ function HomePage() {
                     >
                       <span
                         className={[
-                          "h-2.5 w-2.5 shrink-0 rounded-full",
+                          "h-2 w-2 shrink-0 rounded-full sm:h-2.5 sm:w-2.5",
                           active ? "bg-tower-active-foreground" : "bg-muted-foreground/60",
                         ].join(" ")}
                       />
