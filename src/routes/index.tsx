@@ -95,7 +95,7 @@ function HomePage() {
       <Toaster theme="dark" position="top-center" richColors />
       <AppHeader />
 
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-3 pb-6 pt-4 sm:px-4">
+      <main className="mx-auto w-full max-w-5xl px-3 pb-6 pt-4 sm:px-4">
         {/* 4-column grid of towers */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-2">
           {COLUMNS.map((col) => (
