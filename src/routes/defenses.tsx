@@ -5,11 +5,31 @@ import { toast, Toaster } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
 import { HeroPicker, type HeroOption } from "@/components/HeroPicker";
-import {
-  syncHeroes,
-  uploadDefenseScreenshot,
-  uploadHeroIcon,
-} from "@/lib/heroes.functions";
+import { syncHeroes } from "@/lib/heroes.functions";
+
+const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
+
+async function uploadToBucket(
+  bucket: string,
+  file: File,
+  prefix: string,
+): Promise<string | null> {
+  const extMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
+  const ext = (extMatch?.[1] ?? file.type.split("/")[1] ?? "bin")
+    .toLowerCase()
+    .replace("jpeg", "jpg");
+  const path = `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage.from(bucket).upload(path, file, {
+    contentType: file.type || undefined,
+    upsert: true,
+  });
+  if (error) throw error;
+  const { data: signed, error: sErr } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(path, SIGNED_URL_TTL);
+  if (sErr) throw sErr;
+  return signed?.signedUrl ?? null;
+}
 
 export const Route = createFileRoute("/defenses")({
   head: () => ({
@@ -137,9 +157,7 @@ function AddTab({ heroes }: { heroes: HeroOption[] }) {
     try {
       let screenshot_url: string | null = null;
       if (screenshotFile) {
-        const dataUrl = await fileToDataUrl(screenshotFile);
-        const r = await uploadDefenseScreenshot({ data: { dataUrl } });
-        screenshot_url = r.screenshot_url;
+        screenshot_url = await uploadToBucket("defense-screenshots", screenshotFile, "def");
       }
       const { data: def, error } = await supabase
         .from("defenses")
@@ -566,9 +584,7 @@ function HeroForm({
       let icon = iconUrl;
       const file = fileRef.current?.files?.[0];
       if (file) {
-        const dataUrl = await fileToDataUrl(file);
-        const r = await uploadHeroIcon({ data: { name_en: nameEn.trim(), dataUrl } });
-        icon = r.icon_url;
+        icon = await uploadToBucket("hero-icons", file, nameEn.trim() || "hero");
       }
       if (hero) {
         const { error } = await supabase
