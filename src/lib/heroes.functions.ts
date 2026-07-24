@@ -33,115 +33,142 @@ async function parseHeroesFromFastidious(): Promise<ParsedHero[]> {
     headers: { "user-agent": "Mozilla/5.0 (compatible; LovableBot/1.0)" },
   });
   const html = await res.text();
-  const rx = /<img[^>]*src="(https:\/\/fastidious\.gg\/storage\/heroes\/[^"]+)"[^>]*alt="([^"]+)"/g;
+  const m = html.match(/<div id="app" data-page="([^"]+)"/);
+  if (!m) return [];
+  const raw = decodeHtml(m[1]);
+  let data: {
+    props?: {
+      storageUrl?: string;
+      storageVersion?: string;
+      heroes?: Array<{ name?: string; image_card?: string }>;
+    };
+  };
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  const storage = data.props?.storageUrl ?? "https://fastidious.gg/storage/";
+  const version = data.props?.storageVersion;
+  const heroes = data.props?.heroes ?? [];
   const seen = new Set<string>();
   const out: ParsedHero[] = [];
-  for (const m of html.matchAll(rx)) {
-    const name = decodeHtml(m[2]).trim();
-    if (!name || seen.has(name)) continue;
+  for (const h of heroes) {
+    const name = (h.name ?? "").trim();
+    const img = h.image_card ?? "";
+    if (!name || !img || seen.has(name)) continue;
     seen.add(name);
-    out.push({ name_en: name, source_icon_url: m[1] });
+    const url = `${storage}heroes/${img}${version ? `?v=${version}` : ""}`;
+    out.push({ name_en: name, source_icon_url: url });
   }
   return out;
 }
 
 async function translateBatch(names: string[]): Promise<Record<string, string>> {
   const key = process.env.LOVABLE_API_KEY;
-  if (!key || names.length === 0) {
-    return Object.fromEntries(names.map((n) => [n, n]));
-  }
-  const prompt = `Translate these Watcher of Realms hero names from English to Russian. Use commonly accepted Russian localization if known, otherwise transliterate. Return JSON only: {"map": {"English": "Русский", ...}}. Names:\n${names.map((n) => `- ${n}`).join("\n")}`;
-  try {
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: "You translate game hero names to Russian. Respond with strict JSON only." },
-          { role: "user", content: prompt },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
-    const data = (await r.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const text = data.choices?.[0]?.message?.content ?? "{}";
-    const parsed = JSON.parse(text) as { map?: Record<string, string> };
-    const map = parsed.map ?? {};
-    const result: Record<string, string> = {};
-    for (const n of names) result[n] = map[n] || n;
-    return result;
-  } catch (e) {
-    console.error("translate error", e);
-    return Object.fromEntries(names.map((n) => [n, n]));
-  }
-}
-
-export const syncHeroes = createServerFn({ method: "POST" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-  const parsed = await parseHeroesFromFastidious();
-  if (parsed.length === 0) {
-    return { added: 0, skipped: 0, total: 0, message: "Не вдалося отримати список" };
-  }
-
-  const { data: existing, error: exErr } = await supabaseAdmin
-    .from("heroes")
-    .select("name_en");
-  if (exErr) throw exErr;
-  const have = new Set((existing ?? []).map((h) => h.name_en));
-  const toAdd = parsed.filter((h) => !have.has(h.name_en));
-
-  if (toAdd.length === 0) {
-    return { added: 0, skipped: parsed.length, total: parsed.length };
-  }
-
-  const translations = await translateBatch(toAdd.map((h) => h.name_en));
-  let added = 0;
-
-  for (const hero of toAdd) {
+  const result: Record<string, string> = Object.fromEntries(names.map((n) => [n, n]));
+  if (!key || names.length === 0) return result;
+  const CHUNK = 40;
+  for (let i = 0; i < names.length; i += CHUNK) {
+    const chunk = names.slice(i, i + CHUNK);
+    const prompt = `Translate these Watcher of Realms hero names from English to Russian. Use commonly accepted Russian localization if known, otherwise transliterate. Return JSON only: {"map": {"English": "Русский", ...}}. Names:\n${chunk.map((n) => `- ${n}`).join("\n")}`;
     try {
-      const imgRes = await fetch(hero.source_icon_url);
-      if (!imgRes.ok) continue;
-      const buf = new Uint8Array(await imgRes.arrayBuffer());
-      const ext = extFromUrl(hero.source_icon_url);
-      const path = `${slugify(hero.name_en)}-${Date.now()}.${ext}`;
-      const contentType = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : `image/${ext}`;
-      const { error: upErr } = await supabaseAdmin.storage
-        .from("hero-icons")
-        .upload(path, buf, { contentType, upsert: true });
-      if (upErr) {
-        console.error("upload err", hero.name_en, upErr);
-        continue;
-      }
-      const { data: signed } = await supabaseAdmin.storage
-        .from("hero-icons")
-        .createSignedUrl(path, SIGNED_URL_TTL);
-      const icon_url = signed?.signedUrl ?? null;
-
-      const { error: insErr } = await supabaseAdmin.from("heroes").insert({
-        name_en: hero.name_en,
-        name_ru: translations[hero.name_en] || hero.name_en,
-        icon_url,
-        source_icon_url: hero.source_icon_url,
+      const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-lite",
+          messages: [
+            { role: "system", content: "You translate game hero names to Russian. Respond with strict JSON only." },
+            { role: "user", content: prompt },
+          ],
+          response_format: { type: "json_object" },
+        }),
       });
-      if (insErr) {
-        console.error("insert err", hero.name_en, insErr);
-        continue;
-      }
-      added++;
+      const data = (await r.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      const text = data.choices?.[0]?.message?.content ?? "{}";
+      const parsed = JSON.parse(text) as { map?: Record<string, string> };
+      const map = parsed.map ?? {};
+      for (const n of chunk) if (map[n]) result[n] = map[n];
     } catch (e) {
-      console.error("hero err", hero.name_en, e);
+      console.error("translate error", e);
     }
   }
+  return result;
+}
 
-  return { added, skipped: parsed.length - toAdd.length, total: parsed.length };
-});
+export const syncHeroes = createServerFn({ method: "POST" })
+  .inputValidator((input: { limit?: number } | undefined) => input ?? {})
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const limit = Math.max(1, Math.min(data.limit ?? 80, 300));
+
+    const parsed = await parseHeroesFromFastidious();
+    if (parsed.length === 0) {
+      return { added: 0, skipped: 0, remaining: 0, total: 0, message: "Не вдалося отримати список" };
+    }
+
+    const { data: existing, error: exErr } = await supabaseAdmin
+      .from("heroes")
+      .select("name_en");
+    if (exErr) throw exErr;
+    const have = new Set((existing ?? []).map((h) => h.name_en));
+    const missing = parsed.filter((h) => !have.has(h.name_en));
+
+    if (missing.length === 0) {
+      return { added: 0, skipped: parsed.length, remaining: 0, total: parsed.length };
+    }
+
+    const toAdd = missing.slice(0, limit);
+    const translations = await translateBatch(toAdd.map((h) => h.name_en));
+
+    const CONCURRENCY = 6;
+    let added = 0;
+    for (let i = 0; i < toAdd.length; i += CONCURRENCY) {
+      const chunk = toAdd.slice(i, i + CONCURRENCY);
+      const results = await Promise.allSettled(
+        chunk.map(async (hero) => {
+          const imgRes = await fetch(hero.source_icon_url);
+          if (!imgRes.ok) throw new Error(`fetch ${imgRes.status}`);
+          const buf = new Uint8Array(await imgRes.arrayBuffer());
+          const ext = extFromUrl(hero.source_icon_url);
+          const path = `${slugify(hero.name_en)}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+          const contentType = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : `image/${ext}`;
+          const { error: upErr } = await supabaseAdmin.storage
+            .from("hero-icons")
+            .upload(path, buf, { contentType, upsert: true });
+          if (upErr) throw upErr;
+          const { data: signed } = await supabaseAdmin.storage
+            .from("hero-icons")
+            .createSignedUrl(path, SIGNED_URL_TTL);
+          const { error: insErr } = await supabaseAdmin.from("heroes").insert({
+            name_en: hero.name_en,
+            name_ru: translations[hero.name_en] || hero.name_en,
+            icon_url: signed?.signedUrl ?? null,
+            source_icon_url: hero.source_icon_url,
+          });
+          if (insErr) throw insErr;
+        }),
+      );
+      for (const r of results) {
+        if (r.status === "fulfilled") added++;
+        else console.error("hero sync err", r.reason);
+      }
+    }
+
+    const remaining = missing.length - added;
+    return {
+      added,
+      skipped: parsed.length - missing.length,
+      remaining,
+      total: parsed.length,
+    };
+  });
 
 export const uploadHeroIcon = createServerFn({ method: "POST" })
   .inputValidator((input: { name_en: string; dataUrl: string }) => input)
