@@ -108,7 +108,7 @@ function HomePage() {
               >
                 {col.label}
               </div>
-              <div className="flex flex-1 flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5">
                 {ROWS.map(([r, s]) => {
                   const id = `${col.num}.${r}.${s}`;
                   const active = map.has(id);
