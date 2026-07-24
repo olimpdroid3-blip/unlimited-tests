@@ -584,9 +584,7 @@ function HeroForm({
       let icon = iconUrl;
       const file = fileRef.current?.files?.[0];
       if (file) {
-        const dataUrl = await fileToDataUrl(file);
-        const r = await uploadHeroIcon({ data: { name_en: nameEn.trim(), dataUrl } });
-        icon = r.icon_url;
+        icon = await uploadToBucket("hero-icons", file, nameEn.trim() || "hero");
       }
       if (hero) {
         const { error } = await supabase
