@@ -102,66 +102,73 @@ async function translateBatch(names: string[]): Promise<Record<string, string>> 
   return result;
 }
 
-export const syncHeroes = createServerFn({ method: "POST" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+export const syncHeroes = createServerFn({ method: "POST" })
+  .inputValidator((input: { limit?: number } | undefined) => input ?? {})
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const limit = Math.max(1, Math.min(data.limit ?? 80, 300));
 
-  const parsed = await parseHeroesFromFastidious();
-  if (parsed.length === 0) {
-    return { added: 0, skipped: 0, total: 0, message: "Не вдалося отримати список" };
-  }
-
-  const { data: existing, error: exErr } = await supabaseAdmin
-    .from("heroes")
-    .select("name_en");
-  if (exErr) throw exErr;
-  const have = new Set((existing ?? []).map((h) => h.name_en));
-  const toAdd = parsed.filter((h) => !have.has(h.name_en));
-
-  if (toAdd.length === 0) {
-    return { added: 0, skipped: parsed.length, total: parsed.length };
-  }
-
-  const translations = await translateBatch(toAdd.map((h) => h.name_en));
-  let added = 0;
-
-  for (const hero of toAdd) {
-    try {
-      const imgRes = await fetch(hero.source_icon_url);
-      if (!imgRes.ok) continue;
-      const buf = new Uint8Array(await imgRes.arrayBuffer());
-      const ext = extFromUrl(hero.source_icon_url);
-      const path = `${slugify(hero.name_en)}-${Date.now()}.${ext}`;
-      const contentType = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : `image/${ext}`;
-      const { error: upErr } = await supabaseAdmin.storage
-        .from("hero-icons")
-        .upload(path, buf, { contentType, upsert: true });
-      if (upErr) {
-        console.error("upload err", hero.name_en, upErr);
-        continue;
-      }
-      const { data: signed } = await supabaseAdmin.storage
-        .from("hero-icons")
-        .createSignedUrl(path, SIGNED_URL_TTL);
-      const icon_url = signed?.signedUrl ?? null;
-
-      const { error: insErr } = await supabaseAdmin.from("heroes").insert({
-        name_en: hero.name_en,
-        name_ru: translations[hero.name_en] || hero.name_en,
-        icon_url,
-        source_icon_url: hero.source_icon_url,
-      });
-      if (insErr) {
-        console.error("insert err", hero.name_en, insErr);
-        continue;
-      }
-      added++;
-    } catch (e) {
-      console.error("hero err", hero.name_en, e);
+    const parsed = await parseHeroesFromFastidious();
+    if (parsed.length === 0) {
+      return { added: 0, skipped: 0, remaining: 0, total: 0, message: "Не вдалося отримати список" };
     }
-  }
 
-  return { added, skipped: parsed.length - toAdd.length, total: parsed.length };
-});
+    const { data: existing, error: exErr } = await supabaseAdmin
+      .from("heroes")
+      .select("name_en");
+    if (exErr) throw exErr;
+    const have = new Set((existing ?? []).map((h) => h.name_en));
+    const missing = parsed.filter((h) => !have.has(h.name_en));
+
+    if (missing.length === 0) {
+      return { added: 0, skipped: parsed.length, remaining: 0, total: parsed.length };
+    }
+
+    const toAdd = missing.slice(0, limit);
+    const translations = await translateBatch(toAdd.map((h) => h.name_en));
+
+    const CONCURRENCY = 6;
+    let added = 0;
+    for (let i = 0; i < toAdd.length; i += CONCURRENCY) {
+      const chunk = toAdd.slice(i, i + CONCURRENCY);
+      const results = await Promise.allSettled(
+        chunk.map(async (hero) => {
+          const imgRes = await fetch(hero.source_icon_url);
+          if (!imgRes.ok) throw new Error(`fetch ${imgRes.status}`);
+          const buf = new Uint8Array(await imgRes.arrayBuffer());
+          const ext = extFromUrl(hero.source_icon_url);
+          const path = `${slugify(hero.name_en)}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+          const contentType = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : `image/${ext}`;
+          const { error: upErr } = await supabaseAdmin.storage
+            .from("hero-icons")
+            .upload(path, buf, { contentType, upsert: true });
+          if (upErr) throw upErr;
+          const { data: signed } = await supabaseAdmin.storage
+            .from("hero-icons")
+            .createSignedUrl(path, SIGNED_URL_TTL);
+          const { error: insErr } = await supabaseAdmin.from("heroes").insert({
+            name_en: hero.name_en,
+            name_ru: translations[hero.name_en] || hero.name_en,
+            icon_url: signed?.signedUrl ?? null,
+            source_icon_url: hero.source_icon_url,
+          });
+          if (insErr) throw insErr;
+        }),
+      );
+      for (const r of results) {
+        if (r.status === "fulfilled") added++;
+        else console.error("hero sync err", r.reason);
+      }
+    }
+
+    const remaining = missing.length - added;
+    return {
+      added,
+      skipped: parsed.length - missing.length,
+      remaining,
+      total: parsed.length,
+    };
+  });
 
 export const uploadHeroIcon = createServerFn({ method: "POST" })
   .inputValidator((input: { name_en: string; dataUrl: string }) => input)
