@@ -157,9 +157,7 @@ function AddTab({ heroes }: { heroes: HeroOption[] }) {
     try {
       let screenshot_url: string | null = null;
       if (screenshotFile) {
-        const dataUrl = await fileToDataUrl(screenshotFile);
-        const r = await uploadDefenseScreenshot({ data: { dataUrl } });
-        screenshot_url = r.screenshot_url;
+        screenshot_url = await uploadToBucket("defense-screenshots", screenshotFile, "def");
       }
       const { data: def, error } = await supabase
         .from("defenses")
