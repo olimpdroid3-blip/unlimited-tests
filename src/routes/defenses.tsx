@@ -98,7 +98,7 @@ function DefensesPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <Toaster theme="dark" position="top-center" richColors />
+      <Toaster theme="light" position="top-center" richColors />
       <AppHeader />
 
       <main className="mx-auto w-full max-w-3xl px-3 pb-10 pt-4 sm:px-4">
