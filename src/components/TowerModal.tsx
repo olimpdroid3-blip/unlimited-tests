@@ -2,6 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getNickCookie } from "@/lib/nickname";
 
 type Tower = {
   tower_id: string;
@@ -28,10 +29,13 @@ export function TowerModal({
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [cookieNick, setCookieNick] = useState("");
 
   useEffect(() => {
     if (open) {
-      setNickname(existing?.nickname ?? "");
+      const ck = getNickCookie();
+      setCookieNick(ck);
+      setNickname(existing?.nickname ?? ck ?? "");
       setAwakenings(existing?.awakenings ?? "");
       setNotes(existing?.notes ?? "");
       setConfirmDelete(false);
@@ -81,7 +85,8 @@ export function TowerModal({
               <input
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                className="w-full rounded-lg border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary"
+                disabled={!!cookieNick}
+                className="w-full rounded-lg border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-80"
                 placeholder="Ім'я гравця"
               />
             </Field>

@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppHeader } from "@/components/AppHeader";
+import { NicknameInput } from "@/components/NicknameInput";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -56,6 +57,8 @@ function LandingPage() {
             Watcher of Realms · база інструментів та ресурсів
           </p>
         </div>
+
+        <NicknameInput />
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
           {SECTIONS.map((s) => (
