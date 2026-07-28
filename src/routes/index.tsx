@@ -49,14 +49,10 @@ function LandingPage() {
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-10 pt-8 sm:pt-12">
         <div className="mb-8 text-center sm:mb-12">
-          <h1 className="flex items-center justify-center gap-3 text-3xl font-bold tracking-tight sm:text-4xl">
-            <span aria-hidden>🏰</span>
-            <span>Ukraine Unlimited</span>
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
             База ресурсів
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground/80">
+          </h1>
+          <p className="mt-2 text-xs text-muted-foreground sm:text-sm">
             Watcher of Realms · база інструментів та ресурсів
           </p>
         </div>
