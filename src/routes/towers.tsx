@@ -92,7 +92,7 @@ function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <Toaster theme="dark" position="top-center" richColors />
+      <Toaster theme="light" position="top-center" richColors />
       <AppHeader />
 
       <main className="mx-auto w-full max-w-5xl px-3 pb-6 pt-4 sm:px-4">

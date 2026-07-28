@@ -98,7 +98,7 @@ function DefensesPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <Toaster theme="dark" position="top-center" richColors />
+      <Toaster theme="light" position="top-center" richColors />
       <AppHeader />
 
       <main className="mx-auto w-full max-w-3xl px-3 pb-10 pt-4 sm:px-4">
@@ -457,24 +457,15 @@ function DefenseCard({
           </button>
         </div>
       )}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {heroes.map((r) =>
           r.heroes ? (
-            <div
+            <span
               key={r.hero_id}
-              className="flex items-center gap-1.5 rounded-lg border border-border bg-secondary/60 px-2 py-1"
+              className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-foreground"
             >
-              {r.heroes.icon_url ? (
-                <img
-                  src={r.heroes.icon_url}
-                  alt=""
-                  className="h-8 w-8 rounded object-cover"
-                />
-              ) : (
-                <div className="h-8 w-8 rounded bg-muted" />
-              )}
-              <span className="text-xs text-foreground">{r.heroes.name_ru}</span>
-            </div>
+              {r.heroes.name_ru}
+            </span>
           ) : null,
         )}
       </div>
@@ -582,17 +573,8 @@ function EditorTab({ heroes }: { heroes: HeroOption[] }) {
           ) : (
             <div
               key={h.id}
-              className="flex items-center gap-2 rounded-lg border border-border bg-card/50 p-2"
+              className="flex items-center gap-2 rounded-lg border border-border bg-card p-2"
             >
-              {h.icon_url ? (
-                <img
-                  src={h.icon_url}
-                  alt=""
-                  className="h-10 w-10 rounded object-cover"
-                />
-              ) : (
-                <div className="h-10 w-10 rounded bg-muted" />
-              )}
               <div className="flex flex-1 flex-col leading-tight">
                 <span className="text-sm text-foreground">{h.name_ru}</span>
                 <span className="text-[11px] text-muted-foreground">{h.name_en}</span>

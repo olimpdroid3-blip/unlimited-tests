@@ -61,15 +61,6 @@ export function HeroPicker({
       >
         {selected ? (
           <>
-            {selected.icon_url ? (
-              <img
-                src={selected.icon_url}
-                alt=""
-                className="h-7 w-7 rounded object-cover"
-              />
-            ) : (
-              <div className="h-7 w-7 rounded bg-muted" />
-            )}
             <div className="flex flex-1 flex-col leading-tight">
               <span className="text-sm text-foreground">{selected.name_ru}</span>
               <span className="text-[11px] text-muted-foreground">{selected.name_en}</span>
@@ -117,23 +108,12 @@ export function HeroPicker({
                     setOpen(false);
                     setQuery("");
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-accent"
+                  className="flex w-full flex-col px-3 py-2 text-left text-sm leading-tight transition hover:bg-accent"
                 >
-                  {h.icon_url ? (
-                    <img
-                      src={h.icon_url}
-                      alt=""
-                      className="h-8 w-8 rounded object-cover"
-                    />
-                  ) : (
-                    <div className="h-8 w-8 rounded bg-muted" />
-                  )}
-                  <div className="flex flex-col leading-tight">
-                    <span className="text-foreground">{h.name_ru}</span>
-                    <span className="text-[11px] text-muted-foreground">
-                      {h.name_en}
-                    </span>
-                  </div>
+                  <span className="text-foreground">{h.name_ru}</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {h.name_en}
+                  </span>
                 </button>
               ))
             )}
