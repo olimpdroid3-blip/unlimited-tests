@@ -7,20 +7,19 @@ export function AppHeader() {
         <Link to="/" className="flex items-center gap-3 text-foreground">
           <span className="text-3xl">🏰</span>
           <div className="leading-tight">
-            <div className="text-lg font-bold tracking-wide">GvG Вежі</div>
+            <div className="text-lg font-bold tracking-wide">Ukraine Unlimited</div>
             <div className="text-[11px] text-muted-foreground">
-              Watcher of Realms · керування вежами
+              База ресурсів
             </div>
           </div>
         </Link>
 
         <Link
-          to="/defenses"
+          to="/"
           className="flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
         >
-          <span className="text-base leading-none">🛡</span>
-          <span className="hidden sm:inline">База захистів</span>
-          <span className="sm:hidden">База</span>
+          <span className="text-base leading-none">🏠</span>
+          <span>Головна</span>
         </Link>
       </div>
     </header>

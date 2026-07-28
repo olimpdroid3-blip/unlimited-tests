@@ -53,7 +53,7 @@ function ArchivePage() {
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-lg font-semibold">📦 Архів</h1>
           <Link
-            to="/"
+            to="/towers"
             className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs text-secondary-foreground transition hover:bg-accent"
           >
             ← Назад
