@@ -52,7 +52,7 @@ const fmt = (v: number | null) => {
   if (v === null || v === undefined) return "—";
   const n = Number(v);
   if (Number.isNaN(n)) return "—";
-  return n.toFixed(2).replace(/\.?0+$/, "");
+  return Number(n.toFixed(1)).toString();
 };
 
 function BattlePowerPage() {
