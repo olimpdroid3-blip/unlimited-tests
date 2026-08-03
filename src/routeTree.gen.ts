@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TowersRouteImport } from './routes/towers'
 import { Route as DefensesRouteImport } from './routes/defenses'
+import { Route as BattlePowerRouteImport } from './routes/battle-power'
 import { Route as ArchiveRouteImport } from './routes/archive'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -22,6 +23,11 @@ const TowersRoute = TowersRouteImport.update({
 const DefensesRoute = DefensesRouteImport.update({
   id: '/defenses',
   path: '/defenses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BattlePowerRoute = BattlePowerRouteImport.update({
+  id: '/battle-power',
+  path: '/battle-power',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArchiveRoute = ArchiveRouteImport.update({
@@ -38,12 +44,14 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
+  '/battle-power': typeof BattlePowerRoute
   '/defenses': typeof DefensesRoute
   '/towers': typeof TowersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
+  '/battle-power': typeof BattlePowerRoute
   '/defenses': typeof DefensesRoute
   '/towers': typeof TowersRoute
 }
@@ -51,20 +59,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
+  '/battle-power': typeof BattlePowerRoute
   '/defenses': typeof DefensesRoute
   '/towers': typeof TowersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/archive' | '/defenses' | '/towers'
+  fullPaths: '/' | '/archive' | '/battle-power' | '/defenses' | '/towers'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/archive' | '/defenses' | '/towers'
-  id: '__root__' | '/' | '/archive' | '/defenses' | '/towers'
+  to: '/' | '/archive' | '/battle-power' | '/defenses' | '/towers'
+  id: '__root__' | '/' | '/archive' | '/battle-power' | '/defenses' | '/towers'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArchiveRoute: typeof ArchiveRoute
+  BattlePowerRoute: typeof BattlePowerRoute
   DefensesRoute: typeof DefensesRoute
   TowersRoute: typeof TowersRoute
 }
@@ -83,6 +93,13 @@ declare module '@tanstack/react-router' {
       path: '/defenses'
       fullPath: '/defenses'
       preLoaderRoute: typeof DefensesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/battle-power': {
+      id: '/battle-power'
+      path: '/battle-power'
+      fullPath: '/battle-power'
+      preLoaderRoute: typeof BattlePowerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/archive': {
@@ -105,19 +122,10 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArchiveRoute: ArchiveRoute,
+  BattlePowerRoute: BattlePowerRoute,
   DefensesRoute: DefensesRoute,
   TowersRoute: TowersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
