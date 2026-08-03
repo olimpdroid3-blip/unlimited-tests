@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      battle_power: {
+        Row: {
+          created_at: string
+          id: string
+          nickname: string
+          power1: number | null
+          power2: number | null
+          power3: number | null
+          power4: number | null
+          power5: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nickname: string
+          power1?: number | null
+          power2?: number | null
+          power3?: number | null
+          power4?: number | null
+          power5?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nickname?: string
+          power1?: number | null
+          power2?: number | null
+          power3?: number | null
+          power4?: number | null
+          power5?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       defense_heroes: {
         Row: {
           created_at: string

@@ -22,7 +22,7 @@ export const Route = createFileRoute("/")({
 });
 
 type SectionCard = {
-  to: "/towers" | "/defenses";
+  to: "/towers" | "/defenses" | "/battle-power";
   icon: string;
   title: string;
   subtitle: string;
@@ -41,7 +41,14 @@ const SECTIONS: SectionCard[] = [
     title: "База захистів",
     subtitle: "Скріншоти · коди проходок · пошук по героях",
   },
+  {
+    to: "/battle-power",
+    icon: "💪",
+    title: "Бойова Сила",
+    subtitle: "Збереження бойової сили учасників",
+  },
 ];
+
 
 function LandingPage() {
   return (
