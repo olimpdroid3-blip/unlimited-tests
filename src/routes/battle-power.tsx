@@ -58,6 +58,7 @@ function BattlePowerPage() {
   const [powers, setPowers] = useState<string[]>(["", "", "", "", ""]);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     setNick(getNickCookie());
@@ -77,6 +78,20 @@ function BattlePowerPage() {
   const openForm = () => {
     setNick(getNickCookie());
     setPowers(["", "", "", "", ""]);
+    setEditingId(null);
+    setOpen(true);
+  };
+
+  const openEdit = (r: Row) => {
+    setNick(r.nickname);
+    setPowers([
+      r.power1?.toString() ?? "",
+      r.power2?.toString() ?? "",
+      r.power3?.toString() ?? "",
+      r.power4?.toString() ?? "",
+      r.power5?.toString() ?? "",
+    ]);
+    setEditingId(r.id);
     setOpen(true);
   };
 
@@ -94,22 +109,37 @@ function BattlePowerPage() {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("battle_power").insert({
+    const payload = {
       nickname: n,
       power1: num(powers[0]),
       power2: num(powers[1]),
       power3: num(powers[2]),
       power4: num(powers[3]),
       power5: num(powers[4]),
-    });
-    setSaving(false);
-    if (error) {
-      toast.error("Не вдалося зберегти");
-      return;
+    };
+    if (editingId) {
+      const { error } = await supabase
+        .from("battle_power")
+        .update(payload)
+        .eq("id", editingId);
+      setSaving(false);
+      if (error) {
+        toast.error("Не вдалося оновити");
+        return;
+      }
+      toast.success("Оновлено");
+    } else {
+      const { error } = await supabase.from("battle_power").insert(payload);
+      setSaving(false);
+      if (error) {
+        toast.error("Не вдалося зберегти");
+        return;
+      }
+      toast.success("Збережено");
     }
-    toast.success("Збережено");
     setOpen(false);
     setPowers(["", "", "", "", ""]);
+    setEditingId(null);
     qc.invalidateQueries({ queryKey: ["battle_power"] });
   };
 
