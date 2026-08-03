@@ -48,8 +48,12 @@ function sortRows(rows: Row[]) {
   });
 }
 
-const fmt = (v: number | null) =>
-  v === null || v === undefined ? "—" : Number(v).toFixed(2);
+const fmt = (v: number | null) => {
+  if (v === null || v === undefined) return "—";
+  const n = Number(v);
+  if (Number.isNaN(n)) return "—";
+  return n.toFixed(2).replace(/\.?0+$/, "");
+};
 
 function BattlePowerPage() {
   const qc = useQueryClient();
@@ -235,19 +239,17 @@ function BattlePowerPage() {
           {data.map((r) => (
             <div
               key={r.id}
-              className="flex flex-col gap-1 px-2 py-2 text-[11px] sm:text-xs"
+              className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1 px-2 py-2 text-[11px] sm:text-xs"
             >
-              <div className="flex items-center gap-2">
-                <span className="w-20 shrink-0 truncate font-bold sm:w-28">
-                  {r.nickname}
-                </span>
-                <span className="flex-1 whitespace-nowrap font-mono text-[11px] font-semibold tabular-nums text-muted-foreground sm:text-xs">
-                  {[r.power1, r.power2, r.power3, r.power4, r.power5]
-                    .map(fmt)
-                    .join(" • ")}
-                </span>
+              <div className="col-span-2 truncate font-bold">
+                {r.nickname}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="min-w-0 break-words font-mono text-[11px] font-semibold tabular-nums text-muted-foreground sm:text-xs">
+                {[r.power1, r.power2, r.power3, r.power4, r.power5]
+                  .map(fmt)
+                  .join(" • ")}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
                 <button
                   onClick={() => openEdit(r)}
                   aria-label="Редагувати"
