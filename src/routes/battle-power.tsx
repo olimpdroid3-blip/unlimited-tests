@@ -48,8 +48,12 @@ function sortRows(rows: Row[]) {
   });
 }
 
-const fmt = (v: number | null) =>
-  v === null || v === undefined ? "—" : Number(v).toFixed(2);
+const fmt = (v: number | null) => {
+  if (v === null || v === undefined) return "—";
+  const n = Number(v);
+  if (Number.isNaN(n)) return "—";
+  return n.toFixed(2).replace(/\.?0+$/, "");
+};
 
 function BattlePowerPage() {
   const qc = useQueryClient();
