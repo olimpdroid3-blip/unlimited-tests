@@ -242,30 +242,33 @@ function BattlePowerPage() {
               className="flex flex-wrap items-center gap-x-1 gap-y-0.5 px-2 py-2 text-[11px] sm:text-xs"
             >
               <span className="font-bold">{r.nickname}</span>
-              {[r.power1, r.power2, r.power3, r.power4, r.power5].map(
-                (p, i) => (
-                  <span
-                    key={i}
-                    className="font-mono font-semibold tabular-nums text-muted-foreground"
-                  >
-                    {fmt(p)}
-                  </span>
-                )
-              )}
-              <button
-                onClick={() => openEdit(r)}
-                aria-label="Редагувати"
-                className="shrink-0 rounded-md px-1 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
-              >
-                ✏️
-              </button>
-              <button
-                onClick={() => setDeleteId(r.id)}
-                aria-label="Видалити"
-                className="shrink-0 rounded-md px-1 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-              >
-                🗑️
-              </button>
+              {[r.power1, r.power2, r.power3, r.power4].map((p, i) => (
+                <span
+                  key={i}
+                  className="font-mono font-semibold tabular-nums text-muted-foreground"
+                >
+                  {fmt(p)}
+                </span>
+              ))}
+              <span className="inline-flex items-center gap-x-1">
+                <span className="font-mono font-semibold tabular-nums text-muted-foreground">
+                  {fmt(r.power5)}
+                </span>
+                <button
+                  onClick={() => openEdit(r)}
+                  aria-label="Редагувати"
+                  className="shrink-0 rounded-md px-1 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
+                >
+                  ✏️
+                </button>
+                <button
+                  onClick={() => setDeleteId(r.id)}
+                  aria-label="Видалити"
+                  className="shrink-0 rounded-md px-1 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                >
+                  🗑️
+                </button>
+              </span>
             </div>
           ))}
         </div>
