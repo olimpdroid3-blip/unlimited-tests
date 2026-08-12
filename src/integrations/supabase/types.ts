@@ -143,6 +143,75 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_sources: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          telegram_chat_id: number
+          telegram_thread_id: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          telegram_chat_id: number
+          telegram_thread_id?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          telegram_chat_id?: number
+          telegram_thread_id?: number
+        }
+        Relationships: []
+      }
+      telegram_video_messages: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          message_date: string | null
+          message_type: string
+          telegram_chat_id: number
+          telegram_message_id: number
+          telegram_message_link: string | null
+          telegram_thread_id: number | null
+          telegram_user_id: number | null
+          telegram_username: string | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          message_date?: string | null
+          message_type?: string
+          telegram_chat_id: number
+          telegram_message_id: number
+          telegram_message_link?: string | null
+          telegram_thread_id?: number | null
+          telegram_user_id?: number | null
+          telegram_username?: string | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          message_date?: string | null
+          message_type?: string
+          telegram_chat_id?: number
+          telegram_message_id?: number
+          telegram_message_link?: string | null
+          telegram_thread_id?: number | null
+          telegram_user_id?: number | null
+          telegram_username?: string | null
+        }
+        Relationships: []
+      }
       towers: {
         Row: {
           awakenings: string | null
