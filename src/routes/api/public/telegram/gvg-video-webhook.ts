@@ -89,6 +89,9 @@ export const Route = createFileRoute('/api/public/telegram/gvg-video-webhook')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // TEMPORARY DIAGNOSTIC MODE — remove after the test source is confirmed.
+        console.log('[gvg-video-webhook][DIAG] request received');
+
         const botToken = process.env['TELEGRAM_GVG_VIDEO_BOT_TOKEN'];
         if (!botToken) {
           console.error('[gvg-video-webhook] TELEGRAM_GVG_VIDEO_BOT_TOKEN is not configured');
@@ -97,7 +100,7 @@ export const Route = createFileRoute('/api/public/telegram/gvg-video-webhook')({
 
         const provided = request.headers.get('X-Telegram-Bot-Api-Secret-Token') ?? '';
         if (!safeEqual(provided, deriveWebhookSecret(botToken))) {
-          console.error('[gvg-video-webhook] invalid secret token');
+          console.error('[gvg-video-webhook] invalid secret token (header present:', provided.length > 0, ')');
           return new Response('Unauthorized', { status: 401 });
         }
 
@@ -107,6 +110,27 @@ export const Route = createFileRoute('/api/public/telegram/gvg-video-webhook')({
         } catch (error) {
           console.error('[gvg-video-webhook] invalid JSON body', error);
           return Response.json({ ok: true, ignored: 'invalid-json' });
+        }
+
+        // TEMPORARY DIAGNOSTIC MODE — technical metadata only, no message content.
+        {
+          const topLevel = ['message', 'edited_message', 'channel_post', 'edited_channel_post']
+            .filter((k) => update[k] !== undefined)
+            .join(',');
+          const m = pickMessage(update);
+          const chat = (m?.chat ?? {}) as { id?: number; type?: string; title?: string; username?: string };
+          console.log(
+            `[gvg-video-webhook][DIAG] update_id=${String(update['update_id'] ?? 'null')} ` +
+              `top_level_fields=[${topLevel || 'none'}] all_keys=[${Object.keys(update).join(',')}] ` +
+              `chat_id=${chat.id ?? 'null'} chat_type=${chat.type ?? 'null'} ` +
+              `chat_title=${chat.title ?? chat.username ?? 'null'} ` +
+              `message_id=${m?.message_id ?? 'null'} ` +
+              `message_thread_id=${m?.message_thread_id ?? 'null'} ` +
+              `is_topic_message=${m?.is_topic_message ?? 'null'} ` +
+              `reply_to_message_id=${m?.reply_to_message?.message_id ?? 'null'} ` +
+              `reply_to_thread_id=${m?.reply_to_message?.message_thread_id ?? 'null'} ` +
+              `resolved_thread_id=${m ? (resolveThreadId(m) ?? 'null') : 'null'}`,
+          );
         }
 
         const message = pickMessage(update);

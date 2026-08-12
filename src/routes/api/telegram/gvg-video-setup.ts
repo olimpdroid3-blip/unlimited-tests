@@ -7,6 +7,26 @@ const WEBHOOK_URL =
 export const Route = createFileRoute('/api/telegram/gvg-video-setup')({
   server: {
     handlers: {
+      GET: async () => {
+        const botToken = process.env['TELEGRAM_GVG_VIDEO_BOT_TOKEN'];
+        if (!botToken) return new Response('Not configured', { status: 500 });
+        const api = `https://api.telegram.org/bot${botToken}`;
+        const [meRes, infoRes] = await Promise.all([
+          fetch(`${api}/getMe`),
+          fetch(`${api}/getWebhookInfo`),
+        ]);
+        const me = ((await meRes.json()) as { result?: Record<string, unknown> }).result ?? {};
+        const info = ((await infoRes.json()) as { result?: Record<string, unknown> }).result ?? {};
+        return Response.json({
+          bot_username: me['username'] ?? null,
+          can_read_all_group_messages: me['can_read_all_group_messages'] ?? null,
+          url: info['url'] ?? null,
+          pending_update_count: info['pending_update_count'] ?? null,
+          allowed_updates: info['allowed_updates'] ?? null,
+          last_error_message: info['last_error_message'] ?? null,
+          last_error_date: info['last_error_date'] ?? null,
+        });
+      },
       POST: async () => {
         const botToken = process.env['TELEGRAM_GVG_VIDEO_BOT_TOKEN'];
         if (!botToken) return new Response('Not configured', { status: 500 });
