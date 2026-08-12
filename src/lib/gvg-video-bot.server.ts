@@ -183,19 +183,22 @@ async function loadActivePending(chatId: number, userId: number): Promise<Pendin
 }
 
 async function loadPendingByPrefix(prefix: string): Promise<PendingRow | null> {
+  // NOTE: `id` is uuid — PostgREST cannot run LIKE on it, so filter in JS.
   const { data, error } = await supabaseAdmin
     .from('telegram_video_pending_heroes')
     .select('*')
-    .like('id', `${prefix}%`)
     .in('status', ['waiting_for_heroes', 'waiting_for_notes'])
-    .limit(1)
-    .maybeSingle();
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false })
+    .limit(200);
   if (error) {
     console.error('[gvg-video-bot] pending prefix lookup failed', error.message);
     return null;
   }
-  return (data as PendingRow | null) ?? null;
+  const rows = (data ?? []) as PendingRow[];
+  return rows.find((r) => r.id.startsWith(prefix)) ?? null;
 }
+
 
 async function loadHeroes(): Promise<HeroRow[]> {
   const { data, error } = await supabaseAdmin.from('heroes').select('id, name_en, name_ru');
