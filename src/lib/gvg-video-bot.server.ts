@@ -16,6 +16,7 @@ type PendingRow = {
   confirmed_hero_ids: string[];
   unresolved_token: string | null;
   suggestion_hero_ids: string[];
+  bot_message_ids?: number[] | null;
 };
 
 /* ---------------- Telegram API ---------------- */
@@ -31,7 +32,7 @@ export async function tgSend(
   threadId: number | null,
   text: string,
   keyboard?: { text: string; callback_data: string }[][],
-): Promise<void> {
+): Promise<number | null> {
   const body: Record<string, unknown> = {
     chat_id: chatId,
     text,
@@ -46,10 +47,95 @@ export async function tgSend(
   });
   if (!res.ok) {
     console.error(`[gvg-video-bot] sendMessage failed [${res.status}] ${await res.text()}`);
+    return null;
+  }
+  const json = (await res.json()) as {
+    ok?: boolean;
+    description?: string;
+    result?: { message_id?: number };
+  };
+  if (!json.ok) {
+    console.error(`[gvg-video-bot] sendMessage rejected: ${json.description ?? 'unknown'}`);
+    return null;
+  }
+  return json.result?.message_id ?? null;
+}
+
+/* --- intermediate bot messages: track then clean up --- */
+
+async function trackBotMessage(pendingId: string, messageId: number | null): Promise<void> {
+  if (!messageId) return;
+  const { data, error } = await supabaseAdmin
+    .from('telegram_video_pending_heroes')
+    .select('bot_message_ids')
+    .eq('id', pendingId)
+    .maybeSingle();
+  if (error) {
+    console.error('[gvg-video-bot] track read failed', error.message);
     return;
   }
-  const json = (await res.json()) as { ok?: boolean; description?: string };
-  if (!json.ok) console.error(`[gvg-video-bot] sendMessage rejected: ${json.description ?? 'unknown'}`);
+  const ids = ((data?.bot_message_ids as number[] | null) ?? []).slice();
+  if (ids.includes(messageId)) return;
+  ids.push(messageId);
+  const { error: upErr } = await supabaseAdmin
+    .from('telegram_video_pending_heroes')
+    .update({ bot_message_ids: ids })
+    .eq('id', pendingId);
+  if (upErr) console.error('[gvg-video-bot] track write failed', upErr.message);
+}
+
+/** Send an intermediate bot message and remember it for later cleanup. */
+async function tgSendTracked(
+  p: PendingRow,
+  text: string,
+  keyboard?: { text: string; callback_data: string }[][],
+): Promise<void> {
+  const id = await tgSend(p.telegram_chat_id, p.telegram_thread_id, text, keyboard);
+  await trackBotMessage(p.id, id);
+}
+
+async function tgDelete(chatId: number, messageId: number): Promise<void> {
+  try {
+    const res = await fetch(api('deleteMessage'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, message_id: messageId }),
+    });
+    if (!res.ok) {
+      console.warn(`[gvg-video-bot] deleteMessage ${messageId} failed [${res.status}] ${await res.text()}`);
+    }
+  } catch (e) {
+    console.warn('[gvg-video-bot] deleteMessage error', e);
+  }
+}
+
+/** Remove all tracked intermediate bot messages of this workflow. */
+async function cleanupBotMessages(pendingId: string, chatId: number): Promise<void> {
+  const { data, error } = await supabaseAdmin
+    .from('telegram_video_pending_heroes')
+    .select('bot_message_ids')
+    .eq('id', pendingId)
+    .maybeSingle();
+  if (error) {
+    console.error('[gvg-video-bot] cleanup read failed', error.message);
+    return;
+  }
+  const ids = (data?.bot_message_ids as number[] | null) ?? [];
+  for (const id of ids) await tgDelete(chatId, id);
+  await supabaseAdmin
+    .from('telegram_video_pending_heroes')
+    .update({ bot_message_ids: [] })
+    .eq('id', pendingId);
+}
+
+/** Send the initial hero prompt for a freshly created pending row. */
+export async function sendHeroPrompt(
+  pendingId: string,
+  chatId: number,
+  threadId: number | null,
+): Promise<void> {
+  const id = await tgSend(chatId, threadId, HERO_PROMPT);
+  await trackBotMessage(pendingId, id);
 }
 
 async function tgAnswerCallback(callbackId: string, text?: string): Promise<void> {
@@ -144,9 +230,9 @@ export async function createPending(params: {
   userId: number;
   videoMessageId: number;
   videoRowId: string | null;
-}): Promise<void> {
+}): Promise<string | null> {
   const expires = new Date(Date.now() + PENDING_TTL_MIN * 60_000).toISOString();
-  const { error } = await supabaseAdmin.from('telegram_video_pending_heroes').upsert(
+  const { data, error } = await supabaseAdmin.from('telegram_video_pending_heroes').upsert(
     {
       telegram_chat_id: params.chatId,
       telegram_thread_id: params.threadId,
@@ -158,10 +244,17 @@ export async function createPending(params: {
       unresolved_token: null,
       suggestion_hero_ids: [],
       expires_at: expires,
+      bot_message_ids: [],
     },
     { onConflict: 'telegram_chat_id,telegram_user_id,video_message_id' },
-  );
-  if (error) console.error('[gvg-video-bot] pending upsert failed', error.message);
+  )
+    .select('id')
+    .maybeSingle();
+  if (error) {
+    console.error('[gvg-video-bot] pending upsert failed', error.message);
+    return null;
+  }
+  return (data?.id as string | undefined) ?? null;
 }
 
 async function loadActivePending(chatId: number, userId: number): Promise<PendingRow | null> {
@@ -225,7 +318,7 @@ const NOTES_PROMPT =
   '📝 Додайте примітки до проходки.\n\nНаприклад:\n• БС\n• таймінг\n• порядок дій\n• нюанси проходки\n• заміни героїв\n• інші важливі деталі\n\nПоле необовʼязкове.';
 
 async function askNotes(p: PendingRow): Promise<void> {
-  await tgSend(p.telegram_chat_id, p.telegram_thread_id, NOTES_PROMPT, [
+  await tgSendTracked(p, NOTES_PROMPT, [
     [{ text: 'Пропустити', callback_data: `sk|${p.id.slice(0, 8)}` }],
   ]);
 }
@@ -258,12 +351,13 @@ async function finish(p: PendingRow, notes: string | null): Promise<void> {
     names.join('\n') +
     `\n\n📝 Примітки:${notes ? `\n${notes}` : ' немає'}` +
     (link ? `\n\n🎥 Відкрити відео: ${link}` : '');
-  await tgSend(p.telegram_chat_id, p.telegram_thread_id, text);
+  const finalId = await tgSend(p.telegram_chat_id, p.telegram_thread_id, text);
+  if (finalId) await cleanupBotMessages(p.id, p.telegram_chat_id);
 }
 
 async function saveHeroesAndAskNotes(p: PendingRow, heroIds: string[]): Promise<void> {
   if (!p.video_row_id) {
-    await tgSend(p.telegram_chat_id, p.telegram_thread_id, '❌ Не вдалося знайти запис відео.');
+    await tgSendTracked(p, '❌ Не вдалося знайти запис відео.');
     return;
   }
   const rows = heroIds.map((hero_id) => ({ video_message_id: p.video_row_id!, hero_id }));
@@ -272,7 +366,7 @@ async function saveHeroesAndAskNotes(p: PendingRow, heroIds: string[]): Promise<
     .upsert(rows, { onConflict: 'video_message_id,hero_id', ignoreDuplicates: true });
   if (error) {
     console.error('[gvg-video-bot] video_heroes insert failed', error.message);
-    await tgSend(p.telegram_chat_id, p.telegram_thread_id, '❌ Помилка збереження героїв. Спробуйте ще раз.');
+    await tgSendTracked(p, '❌ Помилка збереження героїв. Спробуйте ще раз.');
     return;
   }
   const expires = new Date(Date.now() + PENDING_TTL_MIN * 60_000).toISOString();
@@ -294,15 +388,11 @@ async function saveHeroesAndAskNotes(p: PendingRow, heroIds: string[]): Promise<
 export async function handleHeroesInput(p: PendingRow, rawText: string): Promise<void> {
   const tokens = rawText.split(/[\s,]+/).map((t) => t.trim()).filter(Boolean);
   if (!tokens.length) {
-    await tgSend(p.telegram_chat_id, p.telegram_thread_id, '❌ Вкажіть від 1 до 5 героїв.');
+    await tgSendTracked(p, '❌ Вкажіть від 1 до 5 героїв.');
     return;
   }
   if (tokens.length > 5) {
-    await tgSend(
-      p.telegram_chat_id,
-      p.telegram_thread_id,
-      `❌ Забагато героїв (${tokens.length}). Вкажіть максимум 5.`,
-    );
+    await tgSendTracked(p, `❌ Забагато героїв (${tokens.length}). Вкажіть максимум 5.`);
     return;
   }
 
@@ -325,7 +415,7 @@ export async function handleHeroesInput(p: PendingRow, rawText: string): Promise
   }
 
   if (!unresolved) {
-    await tgSend(p.telegram_chat_id, p.telegram_thread_id, lines.join('\n'));
+    await tgSendTracked(p, lines.join('\n'));
     await saveHeroesAndAskNotes(p, resolved);
     return;
   }
@@ -349,9 +439,8 @@ export async function handleHeroesInput(p: PendingRow, rawText: string): Promise
     ? `\n\nМожливо, ви мали на увазі:\n${unresolved.suggestions.map((h, i) => `${i + 1}. ${h.name_ru}`).join('\n')}`
     : '\n\nСхожих варіантів не знайдено. Введіть героїв ще раз.';
 
-  await tgSend(
-    p.telegram_chat_id,
-    p.telegram_thread_id,
+  await tgSendTracked(
+    p,
     `${lines.join('\n')}\n\n❌ Не знайдено: ${unresolved.token}${suggestText}`,
     unresolved.suggestions.length ? keyboard : undefined,
   );
@@ -374,9 +463,8 @@ export async function handleTextMessage(
   if (pending.status === 'waiting_for_notes') {
     const notes = text.trim();
     if (notes.length > MAX_NOTES) {
-      await tgSend(
-        pending.telegram_chat_id,
-        pending.telegram_thread_id,
+      await tgSendTracked(
+        pending,
         `❌ Примітки задовгі (${notes.length} символів). Максимум ${MAX_NOTES}.`,
       );
       return true;
@@ -420,11 +508,7 @@ export async function handleCallbackQuery(cb: {
       .update({ unresolved_token: null, suggestion_hero_ids: [], confirmed_hero_ids: [] })
       .eq('id', pending.id);
     await tgAnswerCallback(cb.id);
-    await tgSend(
-      pending.telegram_chat_id,
-      pending.telegram_thread_id,
-      'Введіть героїв (до 5) через пробіл ще раз.',
-    );
+    await tgSendTracked(pending, 'Введіть героїв (до 5) через пробіл ще раз.');
     return;
   }
 
