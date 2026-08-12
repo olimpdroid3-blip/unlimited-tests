@@ -15,6 +15,7 @@ import { Route as BattlePowerRouteImport } from './routes/battle-power'
 import { Route as ArchiveRouteImport } from './routes/archive'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicTelegramGvgVideoWebhookRouteImport } from './routes/api/public/telegram/gvg-video-webhook'
+import { Route as ApiPublicTelegramGvgVideoSetupRouteImport } from './routes/api/public/telegram/gvg-video-setup'
 
 const TowersRoute = TowersRouteImport.update({
   id: '/towers',
@@ -47,6 +48,12 @@ const ApiPublicTelegramGvgVideoWebhookRoute =
     path: '/api/public/telegram/gvg-video-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicTelegramGvgVideoSetupRoute =
+  ApiPublicTelegramGvgVideoSetupRouteImport.update({
+    id: '/api/public/telegram/gvg-video-setup',
+    path: '/api/public/telegram/gvg-video-setup',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByFullPath {
   '/battle-power': typeof BattlePowerRoute
   '/defenses': typeof DefensesRoute
   '/towers': typeof TowersRoute
+  '/api/public/telegram/gvg-video-setup': typeof ApiPublicTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -62,6 +70,7 @@ export interface FileRoutesByTo {
   '/battle-power': typeof BattlePowerRoute
   '/defenses': typeof DefensesRoute
   '/towers': typeof TowersRoute
+  '/api/public/telegram/gvg-video-setup': typeof ApiPublicTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
 export interface FileRoutesById {
@@ -71,6 +80,7 @@ export interface FileRoutesById {
   '/battle-power': typeof BattlePowerRoute
   '/defenses': typeof DefensesRoute
   '/towers': typeof TowersRoute
+  '/api/public/telegram/gvg-video-setup': typeof ApiPublicTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
 export interface FileRouteTypes {
@@ -81,6 +91,7 @@ export interface FileRouteTypes {
     | '/battle-power'
     | '/defenses'
     | '/towers'
+    | '/api/public/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -89,6 +100,7 @@ export interface FileRouteTypes {
     | '/battle-power'
     | '/defenses'
     | '/towers'
+    | '/api/public/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   id:
     | '__root__'
@@ -97,6 +109,7 @@ export interface FileRouteTypes {
     | '/battle-power'
     | '/defenses'
     | '/towers'
+    | '/api/public/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   fileRoutesById: FileRoutesById
 }
@@ -106,6 +119,7 @@ export interface RootRouteChildren {
   BattlePowerRoute: typeof BattlePowerRoute
   DefensesRoute: typeof DefensesRoute
   TowersRoute: typeof TowersRoute
+  ApiPublicTelegramGvgVideoSetupRoute: typeof ApiPublicTelegramGvgVideoSetupRoute
   ApiPublicTelegramGvgVideoWebhookRoute: typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
 
@@ -153,6 +167,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTelegramGvgVideoWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/telegram/gvg-video-setup': {
+      id: '/api/public/telegram/gvg-video-setup'
+      path: '/api/public/telegram/gvg-video-setup'
+      fullPath: '/api/public/telegram/gvg-video-setup'
+      preLoaderRoute: typeof ApiPublicTelegramGvgVideoSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -162,6 +183,7 @@ const rootRouteChildren: RootRouteChildren = {
   BattlePowerRoute: BattlePowerRoute,
   DefensesRoute: DefensesRoute,
   TowersRoute: TowersRoute,
+  ApiPublicTelegramGvgVideoSetupRoute: ApiPublicTelegramGvgVideoSetupRoute,
   ApiPublicTelegramGvgVideoWebhookRoute: ApiPublicTelegramGvgVideoWebhookRoute,
 }
 export const routeTree = rootRouteImport
