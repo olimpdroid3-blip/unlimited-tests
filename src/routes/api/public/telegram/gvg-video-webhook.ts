@@ -15,7 +15,7 @@ type TgMessage = {
   message_id?: number;
   message_thread_id?: number;
   date?: number;
-  chat?: { id?: number; type?: string; username?: string };
+  chat?: { id?: number; type?: string; username?: string; title?: string };
   from?: { id?: number; username?: string; first_name?: string };
   text?: string;
   caption?: string;
@@ -145,6 +145,10 @@ export const Route = createFileRoute('/api/public/telegram/gvg-video-webhook')({
         }
 
         if (!source) {
+          // TEMP DIAGNOSTIC: remove after new source IDs are collected
+          console.log(
+            `[gvg-video-webhook][DIAG] unknown-source chat_id=${chatId} thread_id=${threadId ?? 'null'} title=${message.chat.title ?? 'null'} message_id=${message.message_id}`,
+          );
           return Response.json({ ok: true, ignored: 'source-not-allowed' });
         }
 
