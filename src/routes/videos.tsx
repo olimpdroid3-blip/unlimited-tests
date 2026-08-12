@@ -32,11 +32,12 @@ type VideoRow = {
   created_at: string;
   telegram_message_link: string | null;
   notes: string | null;
+  telegram_uploader_name: string | null;
   video_heroes: Array<{ heroes: { id: string; name_ru: string } | null }>;
 };
 
 const SELECT =
-  "id, message_date, created_at, telegram_message_link, notes, video_heroes(heroes(id, name_ru))";
+  "id, message_date, created_at, telegram_message_link, notes, telegram_uploader_name, video_heroes(heroes(id, name_ru))";
 
 function formatDate(v: string | null) {
   if (!v) return "—";
@@ -68,6 +69,24 @@ function VideosPage() {
       return (data ?? []) as HeroOption[];
     },
   });
+
+  const { data: bpRows = [] } = useQuery({
+    queryKey: ["battle-power-lite"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("battle_power")
+        .select("nickname, power1, power2, power3");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const bpMap = new Map<string, (number | null)[]>(
+    bpRows.map((r) => [
+      (r.nickname ?? "").trim().toLowerCase(),
+      [r.power1, r.power2, r.power3],
+    ]),
+  );
 
   const selected = picks.filter((p): p is string => !!p);
 
@@ -223,6 +242,7 @@ function VideosPage() {
                 key={r.id}
                 row={r}
                 canDelete={mode === "all"}
+                power={bpMap.get((r.telegram_uploader_name ?? "").trim().toLowerCase())}
                 onNotes={(n) => patchRow(r.id, n)}
                 onDeleted={() => dropRow(r.id)}
               />
@@ -251,16 +271,23 @@ function VideoCard({
   onNotes,
   onDeleted,
   canDelete,
+  power,
 }: {
   row: VideoRow;
   onNotes: (n: string) => void;
   onDeleted: () => void;
   canDelete: boolean;
+  power?: (number | null)[] | undefined;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(row.notes ?? "");
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const powerText = (power ?? [])
+    .filter((v): v is number => v !== null && v !== undefined)
+    .map((v) => Number(v).toFixed(1).replace(/\.0$/, ""))
+    .join(" | ");
 
   const heroNames = row.video_heroes
     .map((v) => v.heroes?.name_ru)
@@ -299,6 +326,15 @@ function VideoCard({
           📅 {formatDate(row.message_date ?? row.created_at)}
         </span>
       </div>
+
+      {row.telegram_uploader_name && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="text-sm font-medium">👤 {row.telegram_uploader_name}</span>
+          {powerText && (
+            <span className="text-sm text-muted-foreground">💪 {powerText}</span>
+          )}
+        </div>
+      )}
 
       {heroNames.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
