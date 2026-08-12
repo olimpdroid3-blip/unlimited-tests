@@ -109,6 +109,15 @@ export const Route = createFileRoute('/api/public/telegram/gvg-video-webhook')({
           return Response.json({ ok: true, ignored: 'invalid-json' });
         }
 
+        const callback = update['callback_query'] as
+          | { id: string; data?: string; from?: { id?: number } }
+          | undefined;
+        if (callback?.id) {
+          const { handleCallbackQuery } = await import('@/lib/gvg-video-bot.server');
+          await handleCallbackQuery(callback);
+          return Response.json({ ok: true, handled: 'callback' });
+        }
+
         const message = pickMessage(update);
         if (!message || !message.chat?.id || typeof message.message_id !== 'number') {
           return Response.json({ ok: true, ignored: 'no-message' });
@@ -140,10 +149,18 @@ export const Route = createFileRoute('/api/public/telegram/gvg-video-webhook')({
         }
 
         const messageType = resolveMessageType(message);
+        const bot = await import('@/lib/gvg-video-bot.server');
+
+        // A plain text message may be an answer to the bot's hero/notes prompt.
+        if (messageType === 'text' && message.from?.id) {
+          const handled = await bot.handleTextMessage(chatId, message.from.id, message.text ?? '');
+          if (handled) return Response.json({ ok: true, handled: 'pending-reply' });
+        }
+
         const link = buildMessageLink(chatId, message.message_id, threadId, message.chat.username);
         const messageDate = message.date ? new Date(message.date * 1000).toISOString() : null;
 
-        const { error: upsertError } = await supabaseAdmin
+        const { data: stored, error: upsertError } = await supabaseAdmin
           .from('telegram_video_messages')
           .upsert(
             {
@@ -158,7 +175,9 @@ export const Route = createFileRoute('/api/public/telegram/gvg-video-webhook')({
               telegram_message_link: link,
             },
             { onConflict: 'telegram_chat_id,telegram_message_id', ignoreDuplicates: false },
-          );
+          )
+          .select('id')
+          .maybeSingle();
 
         if (upsertError) {
           console.error('[gvg-video-webhook] upsert failed', upsertError.message);
@@ -168,6 +187,18 @@ export const Route = createFileRoute('/api/public/telegram/gvg-video-webhook')({
         console.log(
           `[gvg-video-webhook] indexed chat_id=${chatId} message_id=${message.message_id} thread_id=${threadId ?? 'null'} type=${messageType} user_id=${message.from?.id ?? 'null'} username=${message.from?.username ?? 'null'} date=${messageDate ?? 'null'}`,
         );
+
+        if (messageType === 'video' && message.from?.id) {
+          await bot.expireStalePendings();
+          await bot.createPending({
+            chatId,
+            threadId,
+            userId: message.from.id,
+            videoMessageId: message.message_id,
+            videoRowId: stored?.id ?? null,
+          });
+          await bot.tgSend(chatId, threadId, bot.HERO_PROMPT);
+        }
 
         return Response.json({ ok: true, indexed: true });
       },
