@@ -182,6 +182,9 @@ export type Database = {
           telegram_message_id: number
           telegram_message_link: string | null
           telegram_thread_id: number | null
+          telegram_uploader_custom_title: string | null
+          telegram_uploader_name: string | null
+          telegram_uploader_user_id: number | null
           telegram_user_id: number | null
           telegram_username: string | null
         }
@@ -196,6 +199,9 @@ export type Database = {
           telegram_message_id: number
           telegram_message_link?: string | null
           telegram_thread_id?: number | null
+          telegram_uploader_custom_title?: string | null
+          telegram_uploader_name?: string | null
+          telegram_uploader_user_id?: number | null
           telegram_user_id?: number | null
           telegram_username?: string | null
         }
@@ -210,6 +216,9 @@ export type Database = {
           telegram_message_id?: number
           telegram_message_link?: string | null
           telegram_thread_id?: number | null
+          telegram_uploader_custom_title?: string | null
+          telegram_uploader_name?: string | null
+          telegram_uploader_user_id?: number | null
           telegram_user_id?: number | null
           telegram_username?: string | null
         }
