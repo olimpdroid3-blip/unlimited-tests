@@ -160,6 +160,8 @@ export const Route = createFileRoute('/api/public/telegram/gvg-video-webhook')({
         const link = buildMessageLink(chatId, message.message_id, threadId, message.chat.username);
         const messageDate = message.date ? new Date(message.date * 1000).toISOString() : null;
 
+        const uploader = await bot.resolveUploader(chatId, message.from);
+
         const { data: stored, error: upsertError } = await supabaseAdmin
           .from('telegram_video_messages')
           .upsert(
@@ -169,6 +171,9 @@ export const Route = createFileRoute('/api/public/telegram/gvg-video-webhook')({
               telegram_thread_id: threadId,
               telegram_user_id: message.from?.id ?? null,
               telegram_username: message.from?.username ?? message.from?.first_name ?? null,
+              telegram_uploader_user_id: uploader.userId,
+              telegram_uploader_name: uploader.name,
+              telegram_uploader_custom_title: uploader.customTitle,
               message_date: messageDate,
               message_type: messageType,
               caption: message.caption ?? message.text ?? null,
