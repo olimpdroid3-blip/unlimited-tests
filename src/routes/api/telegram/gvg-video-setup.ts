@@ -38,7 +38,7 @@ export const Route = createFileRoute('/api/telegram/gvg-video-setup')({
           body: JSON.stringify({
             url: WEBHOOK_URL,
             secret_token: deriveWebhookSecret(botToken),
-            allowed_updates: ['message', 'edited_message', 'channel_post'],
+            allowed_updates: ['message', 'edited_message', 'channel_post', 'callback_query'],
           }),
         });
         const setBody = (await setRes.json()) as Record<string, unknown>;
