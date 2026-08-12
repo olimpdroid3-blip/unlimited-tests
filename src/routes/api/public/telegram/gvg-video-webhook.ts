@@ -190,14 +190,18 @@ export const Route = createFileRoute('/api/public/telegram/gvg-video-webhook')({
 
         if (messageType === 'video' && message.from?.id) {
           await bot.expireStalePendings();
-          await bot.createPending({
+          const pendingId = await bot.createPending({
             chatId,
             threadId,
             userId: message.from.id,
             videoMessageId: message.message_id,
             videoRowId: stored?.id ?? null,
           });
-          await bot.tgSend(chatId, threadId, bot.HERO_PROMPT);
+          if (pendingId) {
+            await bot.sendHeroPrompt(pendingId, chatId, threadId);
+          } else {
+            await bot.tgSend(chatId, threadId, bot.HERO_PROMPT);
+          }
         }
 
         return Response.json({ ok: true, indexed: true });
