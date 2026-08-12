@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VideosRouteImport } from './routes/videos'
 import { Route as TowersRouteImport } from './routes/towers'
 import { Route as DefensesRouteImport } from './routes/defenses'
 import { Route as BattlePowerRouteImport } from './routes/battle-power'
@@ -17,6 +18,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiTelegramGvgVideoSetupRouteImport } from './routes/api/telegram/gvg-video-setup'
 import { Route as ApiPublicTelegramGvgVideoWebhookRouteImport } from './routes/api/public/telegram/gvg-video-webhook'
 
+const VideosRoute = VideosRouteImport.update({
+  id: '/videos',
+  path: '/videos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TowersRoute = TowersRouteImport.update({
   id: '/towers',
   path: '/towers',
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/battle-power': typeof BattlePowerRoute
   '/defenses': typeof DefensesRoute
   '/towers': typeof TowersRoute
+  '/videos': typeof VideosRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/battle-power': typeof BattlePowerRoute
   '/defenses': typeof DefensesRoute
   '/towers': typeof TowersRoute
+  '/videos': typeof VideosRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/battle-power': typeof BattlePowerRoute
   '/defenses': typeof DefensesRoute
   '/towers': typeof TowersRoute
+  '/videos': typeof VideosRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/battle-power'
     | '/defenses'
     | '/towers'
+    | '/videos'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/battle-power'
     | '/defenses'
     | '/towers'
+    | '/videos'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   id:
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/battle-power'
     | '/defenses'
     | '/towers'
+    | '/videos'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   fileRoutesById: FileRoutesById
@@ -119,12 +131,20 @@ export interface RootRouteChildren {
   BattlePowerRoute: typeof BattlePowerRoute
   DefensesRoute: typeof DefensesRoute
   TowersRoute: typeof TowersRoute
+  VideosRoute: typeof VideosRoute
   ApiTelegramGvgVideoSetupRoute: typeof ApiTelegramGvgVideoSetupRoute
   ApiPublicTelegramGvgVideoWebhookRoute: typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/videos': {
+      id: '/videos'
+      path: '/videos'
+      fullPath: '/videos'
+      preLoaderRoute: typeof VideosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/towers': {
       id: '/towers'
       path: '/towers'
@@ -183,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   BattlePowerRoute: BattlePowerRoute,
   DefensesRoute: DefensesRoute,
   TowersRoute: TowersRoute,
+  VideosRoute: VideosRoute,
   ApiTelegramGvgVideoSetupRoute: ApiTelegramGvgVideoSetupRoute,
   ApiPublicTelegramGvgVideoWebhookRoute: ApiPublicTelegramGvgVideoWebhookRoute,
 }

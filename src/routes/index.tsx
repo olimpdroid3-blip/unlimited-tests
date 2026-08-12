@@ -22,7 +22,7 @@ export const Route = createFileRoute("/")({
 });
 
 type SectionCard = {
-  to: "/towers" | "/defenses" | "/battle-power";
+  to: "/towers" | "/defenses" | "/battle-power" | "/videos";
   icon: string;
   title: string;
   subtitle: string;
@@ -46,6 +46,12 @@ const SECTIONS: SectionCard[] = [
     icon: "💪",
     title: "Бойова Сила",
     subtitle: "Збереження бойової сили учасників",
+  },
+  {
+    to: "/videos",
+    icon: "🎥",
+    title: "Відео проходок",
+    subtitle: "Пошук відео з Telegram по героях",
   },
 ];
 
