@@ -145,10 +145,6 @@ export const Route = createFileRoute('/api/public/telegram/gvg-video-webhook')({
         }
 
         if (!source) {
-          // TEMP DIAGNOSTIC: remove after new source IDs are collected
-          console.log(
-            `[gvg-video-webhook][DIAG] unknown-source chat_id=${chatId} thread_id=${threadId ?? 'null'} title=${message.chat.title ?? 'null'} message_id=${message.message_id}`,
-          );
           return Response.json({ ok: true, ignored: 'source-not-allowed' });
         }
 
