@@ -222,6 +222,7 @@ function VideosPage() {
               <VideoCard
                 key={r.id}
                 row={r}
+                canDelete={mode === "all"}
                 onNotes={(n) => patchRow(r.id, n)}
                 onDeleted={() => dropRow(r.id)}
               />
@@ -249,10 +250,12 @@ function VideoCard({
   row,
   onNotes,
   onDeleted,
+  canDelete,
 }: {
   row: VideoRow;
   onNotes: (n: string) => void;
   onDeleted: () => void;
+  canDelete: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(row.notes ?? "");
@@ -369,16 +372,18 @@ function VideoCard({
             ✏️ Редагувати примітки
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => setConfirming(true)}
-          className="rounded-lg border border-destructive/40 px-3 py-1.5 text-sm text-destructive transition hover:bg-destructive/10"
-        >
-          🗑️ Видалити
-        </button>
+        {canDelete && (
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            className="rounded-lg border border-destructive/40 px-3 py-1.5 text-sm text-destructive transition hover:bg-destructive/10"
+          >
+            🗑️ Видалити
+          </button>
+        )}
       </div>
 
-      {confirming && (
+      {canDelete && confirming && (
         <div className="mt-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
           <p className="text-sm">Ви впевнені, що хочете видалити цей запис?</p>
           <p className="mt-1 text-xs text-muted-foreground">

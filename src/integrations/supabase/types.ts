@@ -217,6 +217,7 @@ export type Database = {
       }
       telegram_video_pending_heroes: {
         Row: {
+          bot_message_ids: number[]
           confirmed_hero_ids: string[]
           created_at: string
           expires_at: string
@@ -233,6 +234,7 @@ export type Database = {
           video_row_id: string | null
         }
         Insert: {
+          bot_message_ids?: number[]
           confirmed_hero_ids?: string[]
           created_at?: string
           expires_at?: string
@@ -249,6 +251,7 @@ export type Database = {
           video_row_id?: string | null
         }
         Update: {
+          bot_message_ids?: number[]
           confirmed_hero_ids?: string[]
           created_at?: string
           expires_at?: string
