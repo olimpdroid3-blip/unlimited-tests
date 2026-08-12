@@ -138,6 +138,39 @@ export async function sendHeroPrompt(
   await trackBotMessage(pendingId, id);
 }
 
+/** Resolve the uploader display name: admin custom_title wins, else username/first+last. */
+export async function resolveUploader(
+  chatId: number,
+  user: { id?: number; username?: string; first_name?: string; last_name?: string } | undefined,
+): Promise<{ userId: number | null; name: string | null; customTitle: string | null }> {
+  if (!user?.id) return { userId: null, name: null, customTitle: null };
+
+  let customTitle: string | null = null;
+  try {
+    const res = await fetch(api('getChatMember'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, user_id: user.id }),
+    });
+    if (res.ok) {
+      const json = (await res.json()) as { ok?: boolean; result?: { custom_title?: string } };
+      const t = json.ok ? json.result?.custom_title?.trim() : '';
+      if (t) customTitle = t;
+    } else {
+      console.warn(`[gvg-video-bot] getChatMember failed [${res.status}]`);
+    }
+  } catch (e) {
+    console.warn('[gvg-video-bot] getChatMember error', e);
+  }
+
+  const fallback =
+    user.username?.trim() ||
+    [user.first_name, user.last_name].filter(Boolean).join(' ').trim() ||
+    null;
+
+  return { userId: user.id, name: customTitle ?? fallback, customTitle };
+}
+
 async function tgAnswerCallback(callbackId: string, text?: string): Promise<void> {
   await fetch(api('answerCallbackQuery'), {
     method: 'POST',
