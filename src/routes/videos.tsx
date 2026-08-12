@@ -33,11 +33,12 @@ type VideoRow = {
   telegram_message_link: string | null;
   notes: string | null;
   telegram_uploader_name: string | null;
+  telegram_uploader_custom_title: string | null;
   video_heroes: Array<{ heroes: { id: string; name_ru: string } | null }>;
 };
 
 const SELECT =
-  "id, message_date, created_at, telegram_message_link, notes, telegram_uploader_name, video_heroes(heroes(id, name_ru))";
+  "id, message_date, created_at, telegram_message_link, notes, telegram_uploader_name, telegram_uploader_custom_title, video_heroes(heroes(id, name_ru))";
 
 function formatDate(v: string | null) {
   if (!v) return "—";
@@ -242,7 +243,7 @@ function VideosPage() {
                 key={r.id}
                 row={r}
                 canDelete={mode === "all"}
-                power={bpMap.get((r.telegram_uploader_name ?? "").trim().toLowerCase())}
+                power={bpMap.get(((r.telegram_uploader_custom_title ?? r.telegram_uploader_name) ?? "").trim().toLowerCase())}
                 onNotes={(n) => patchRow(r.id, n)}
                 onDeleted={() => dropRow(r.id)}
               />
@@ -327,9 +328,11 @@ function VideoCard({
         </span>
       </div>
 
-      {row.telegram_uploader_name && (
+      {(row.telegram_uploader_custom_title ?? row.telegram_uploader_name) && (
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="text-sm font-medium">👤 {row.telegram_uploader_name}</span>
+          <span className="text-sm font-medium">
+            👤 {row.telegram_uploader_custom_title ?? row.telegram_uploader_name}
+          </span>
           {powerText && (
             <span className="text-sm text-muted-foreground">💪 {powerText}</span>
           )}

@@ -163,12 +163,9 @@ export async function resolveUploader(
     console.warn('[gvg-video-bot] getChatMember error', e);
   }
 
-  const fallback =
-    user.username?.trim() ||
-    [user.first_name, user.last_name].filter(Boolean).join(' ').trim() ||
-    null;
-
-  return { userId: user.id, name: customTitle ?? fallback, customTitle };
+  // Only the Telegram admin custom_title may identify the uploader.
+  // Never fall back to username / first_name / last_name.
+  return { userId: user.id, name: customTitle ?? 'Невідомий автор', customTitle };
 }
 
 async function tgAnswerCallback(callbackId: string, text?: string): Promise<void> {
