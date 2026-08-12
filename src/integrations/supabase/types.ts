@@ -177,6 +177,7 @@ export type Database = {
           id: string
           message_date: string | null
           message_type: string
+          notes: string | null
           telegram_chat_id: number
           telegram_message_id: number
           telegram_message_link: string | null
@@ -190,6 +191,7 @@ export type Database = {
           id?: string
           message_date?: string | null
           message_type?: string
+          notes?: string | null
           telegram_chat_id: number
           telegram_message_id: number
           telegram_message_link?: string | null
@@ -203,6 +205,7 @@ export type Database = {
           id?: string
           message_date?: string | null
           message_type?: string
+          notes?: string | null
           telegram_chat_id?: number
           telegram_message_id?: number
           telegram_message_link?: string | null
@@ -211,6 +214,65 @@ export type Database = {
           telegram_username?: string | null
         }
         Relationships: []
+      }
+      telegram_video_pending_heroes: {
+        Row: {
+          confirmed_hero_ids: string[]
+          created_at: string
+          expires_at: string
+          id: string
+          prompt_message_id: number | null
+          status: string
+          suggestion_hero_ids: string[]
+          telegram_chat_id: number
+          telegram_thread_id: number | null
+          telegram_user_id: number
+          unresolved_token: string | null
+          updated_at: string
+          video_message_id: number
+          video_row_id: string | null
+        }
+        Insert: {
+          confirmed_hero_ids?: string[]
+          created_at?: string
+          expires_at?: string
+          id?: string
+          prompt_message_id?: number | null
+          status?: string
+          suggestion_hero_ids?: string[]
+          telegram_chat_id: number
+          telegram_thread_id?: number | null
+          telegram_user_id: number
+          unresolved_token?: string | null
+          updated_at?: string
+          video_message_id: number
+          video_row_id?: string | null
+        }
+        Update: {
+          confirmed_hero_ids?: string[]
+          created_at?: string
+          expires_at?: string
+          id?: string
+          prompt_message_id?: number | null
+          status?: string
+          suggestion_hero_ids?: string[]
+          telegram_chat_id?: number
+          telegram_thread_id?: number | null
+          telegram_user_id?: number
+          unresolved_token?: string | null
+          updated_at?: string
+          video_message_id?: number
+          video_row_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_video_pending_heroes_video_row_id_fkey"
+            columns: ["video_row_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_video_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       towers: {
         Row: {
@@ -265,6 +327,42 @@ export type Database = {
           tower_id?: string
         }
         Relationships: []
+      }
+      video_heroes: {
+        Row: {
+          created_at: string
+          hero_id: string
+          id: string
+          video_message_id: string
+        }
+        Insert: {
+          created_at?: string
+          hero_id: string
+          id?: string
+          video_message_id: string
+        }
+        Update: {
+          created_at?: string
+          hero_id?: string
+          id?: string
+          video_message_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_heroes_hero_id_fkey"
+            columns: ["hero_id"]
+            isOneToOne: false
+            referencedRelation: "heroes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_heroes_video_message_id_fkey"
+            columns: ["video_message_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_video_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
