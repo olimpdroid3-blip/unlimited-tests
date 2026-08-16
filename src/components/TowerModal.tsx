@@ -31,6 +31,7 @@ export function TowerModal({
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [cookieNick, setCookieNick] = useState("");
+  const [breached, setBreached] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -39,11 +40,30 @@ export function TowerModal({
       setNickname(existing?.nickname ?? ck ?? "");
       setAwakenings(existing?.awakenings ?? "");
       setNotes(existing?.notes ?? "");
+      setBreached(!!existing?.breached);
       setConfirmDelete(false);
     }
   }, [open, existing]);
 
   if (!towerId) return null;
+
+  const toggleBreached = async () => {
+    const next = !breached;
+    setBusy(true);
+    const { error } = await supabase.from("towers").upsert({
+      tower_id: towerId,
+      nickname: existing ? (existing.nickname ?? null) : nickname.trim() || null,
+      awakenings: existing ? (existing.awakenings ?? null) : awakenings.trim() || null,
+      notes: existing ? (existing.notes ?? null) : notes.trim() || null,
+      breached: next,
+      updated_at: new Date().toISOString(),
+    });
+    setBusy(false);
+    if (error) return toast.error("Помилка збереження");
+    setBreached(next);
+    toast.success(next ? "Позначено як пробито" : "Позначку знято");
+    onChanged();
+  };
 
   const handleSave = async () => {
     setBusy(true);
@@ -52,6 +72,7 @@ export function TowerModal({
       nickname: nickname.trim() || null,
       awakenings: awakenings.trim() || null,
       notes: notes.trim() || null,
+      breached,
       updated_at: new Date().toISOString(),
     });
     setBusy(false);
