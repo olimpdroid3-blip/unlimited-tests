@@ -61,6 +61,76 @@ test("returns an empty list for malformed stored JSON", async () => {
   assert.deepEqual(await repository.getByPlayer("player-1"), []);
 });
 
+test("returns seeded levels when local storage has no overrides", async () => {
+  const seed = [
+    {
+      playerId: "player-1",
+      mobId: "mob-1",
+      level: 7,
+      updatedAt: "2026-08-16T00:00:00.000Z",
+    },
+    {
+      playerId: "player-1",
+      mobId: "mob-2",
+      level: 9,
+      updatedAt: "2026-08-16T00:00:00.000Z",
+    },
+  ];
+  const repository = createLocalStorageMobLevelsRepository(createMemoryStorage(), seed);
+
+  assert.deepEqual(await repository.getByPlayer("player-1"), seed);
+});
+
+test("local values override seeded player and mob pairs", async () => {
+  const seed = [
+    {
+      playerId: "player-1",
+      mobId: "mob-1",
+      level: 7,
+      updatedAt: "2026-08-16T00:00:00.000Z",
+    },
+    {
+      playerId: "player-1",
+      mobId: "mob-2",
+      level: 9,
+      updatedAt: "2026-08-16T00:00:00.000Z",
+    },
+  ];
+  const repository = createLocalStorageMobLevelsRepository(createMemoryStorage(), seed);
+
+  await repository.upsertMany([{ playerId: "player-1", mobId: "mob-1", level: 12 }]);
+
+  assert.deepEqual(
+    (await repository.getByPlayer("player-1")).map(({ mobId, level }) => ({ mobId, level })),
+    [
+      { mobId: "mob-1", level: 12 },
+      { mobId: "mob-2", level: 9 },
+    ],
+  );
+});
+
+test("removing a seeded level persists a tombstone", async () => {
+  const storage = createMemoryStorage();
+  const seed = [
+    {
+      playerId: "player-1",
+      mobId: "mob-1",
+      level: 7,
+      updatedAt: "2026-08-16T00:00:00.000Z",
+    },
+  ];
+
+  await createLocalStorageMobLevelsRepository(storage, seed).remove("player-1", "mob-1");
+
+  assert.deepEqual(JSON.parse(storage.getItem("gvg.mob-level-removals.v1")!), [
+    "player-1\u0000mob-1",
+  ]);
+  assert.deepEqual(
+    await createLocalStorageMobLevelsRepository(storage, seed).getByPlayer("player-1"),
+    [],
+  );
+});
+
 test("filters malformed and out-of-range stored records", async () => {
   const repository = createLocalStorageMobLevelsRepository(
     createMemoryStorage(

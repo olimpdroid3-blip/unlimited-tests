@@ -1,4 +1,5 @@
 export const MOB_LEVELS_STORAGE_KEY = "gvg.mob-levels.v1";
+export const MOB_LEVEL_REMOVALS_STORAGE_KEY = "gvg.mob-level-removals.v1";
 export const MOB_NAME_OVERRIDES_STORAGE_KEY = "gvg.mob-name-overrides.v1";
 
 export type Mob = {
@@ -62,13 +63,16 @@ export function isValidMobName(value: unknown): value is string {
   return isNonEmptyString(value);
 }
 
-export function createLocalStorageMobLevelsRepository(storage?: StorageLike): MobLevelsRepository {
+export function createLocalStorageMobLevelsRepository(
+  storage?: StorageLike,
+  seedLevels: readonly PlayerMobLevel[] = [],
+): MobLevelsRepository {
   function getStorage(): StorageLike | null {
     if (storage) return storage;
     return typeof window === "undefined" ? null : window.localStorage;
   }
 
-  function readAll(): PlayerMobLevel[] {
+  function readStoredLevels(): PlayerMobLevel[] {
     const activeStorage = getStorage();
     if (!activeStorage) return [];
 
@@ -84,7 +88,34 @@ export function createLocalStorageMobLevelsRepository(storage?: StorageLike): Mo
     }
   }
 
-  function writeAll(levels: PlayerMobLevel[]): void {
+  function readRemovedLevelKeys(): Set<string> {
+    const rawValue = getStorage()?.getItem(MOB_LEVEL_REMOVALS_STORAGE_KEY);
+    if (!rawValue) return new Set();
+
+    try {
+      const parsedValue: unknown = JSON.parse(rawValue);
+      if (!Array.isArray(parsedValue)) return new Set();
+      return new Set(parsedValue.filter(isNonEmptyString));
+    } catch {
+      return new Set();
+    }
+  }
+
+  function readAll(): PlayerMobLevel[] {
+    const removedLevelKeys = readRemovedLevelKeys();
+    const recordsByKey = new Map(
+      seedLevels
+        .filter(isPlayerMobLevel)
+        .map((level) => [levelKey(level.playerId, level.mobId), level] as const),
+    );
+    readStoredLevels().forEach((level) => {
+      recordsByKey.set(levelKey(level.playerId, level.mobId), level);
+    });
+    removedLevelKeys.forEach((key) => recordsByKey.delete(key));
+    return [...recordsByKey.values()].sort(comparePlayerMobLevels);
+  }
+
+  function writeStoredLevels(levels: PlayerMobLevel[]): void {
     const activeStorage = getStorage();
     if (!activeStorage) {
       throw new Error("Локальне сховище недоступне на сервері");
@@ -93,6 +124,14 @@ export function createLocalStorageMobLevelsRepository(storage?: StorageLike): Mo
       MOB_LEVELS_STORAGE_KEY,
       JSON.stringify([...levels].sort(comparePlayerMobLevels)),
     );
+  }
+
+  function writeRemovedLevelKeys(keys: Set<string>): void {
+    const activeStorage = getStorage();
+    if (!activeStorage) {
+      throw new Error("Локальне сховище недоступне на сервері");
+    }
+    activeStorage.setItem(MOB_LEVEL_REMOVALS_STORAGE_KEY, JSON.stringify([...keys].sort()));
   }
 
   return {
@@ -107,17 +146,31 @@ export function createLocalStorageMobLevelsRepository(storage?: StorageLike): Mo
       const updatedAt = new Date().toISOString();
       const inputRecords = inputs.map((input) => ({ ...input, updatedAt }));
       const recordsByKey = new Map(
-        readAll().map((level) => [levelKey(level.playerId, level.mobId), level]),
+        readStoredLevels().map((level) => [levelKey(level.playerId, level.mobId), level]),
       );
+      const removedLevelKeys = readRemovedLevelKeys();
       inputRecords.forEach((level) => {
-        recordsByKey.set(levelKey(level.playerId, level.mobId), level);
+        const key = levelKey(level.playerId, level.mobId);
+        recordsByKey.set(key, level);
+        removedLevelKeys.delete(key);
       });
-      writeAll([...recordsByKey.values()]);
+      writeStoredLevels([...recordsByKey.values()]);
+      writeRemovedLevelKeys(removedLevelKeys);
       return inputRecords.sort(comparePlayerMobLevels);
     },
 
     async remove(playerId, mobId) {
-      writeAll(readAll().filter((level) => level.playerId !== playerId || level.mobId !== mobId));
+      const key = levelKey(playerId, mobId);
+      writeStoredLevels(
+        readStoredLevels().filter((level) => levelKey(level.playerId, level.mobId) !== key),
+      );
+      const removedLevelKeys = readRemovedLevelKeys();
+      if (seedLevels.some((level) => levelKey(level.playerId, level.mobId) === key)) {
+        removedLevelKeys.add(key);
+      } else {
+        removedLevelKeys.delete(key);
+      }
+      writeRemovedLevelKeys(removedLevelKeys);
     },
   };
 }
