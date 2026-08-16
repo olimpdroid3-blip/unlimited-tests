@@ -3,8 +3,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { toast, Toaster } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
+import type { BattlePowerRow } from "@/lib/battle-power";
+import { battlePowerRepository } from "@/lib/battle-power-ui";
 import { getNickCookie } from "@/lib/nickname";
 
 export const Route = createFileRoute("/battle-power")({
@@ -24,29 +25,6 @@ export const Route = createFileRoute("/battle-power")({
   }),
   component: BattlePowerPage,
 });
-
-type Row = {
-  id: string;
-  nickname: string;
-  power1: number | null;
-  power2: number | null;
-  power3: number | null;
-  power4: number | null;
-  power5: number | null;
-};
-
-const isLatin = (s: string) => /^[A-Za-z]/.test(s.trim());
-
-function sortRows(rows: Row[]) {
-  return [...rows].sort((a, b) => {
-    const la = isLatin(a.nickname);
-    const lb = isLatin(b.nickname);
-    if (la !== lb) return la ? -1 : 1;
-    return a.nickname.localeCompare(b.nickname, la ? "en" : "uk", {
-      sensitivity: "base",
-    });
-  });
-}
 
 const fmt = (v: number | null) => {
   if (v === null || v === undefined) return "—";
@@ -70,13 +48,7 @@ function BattlePowerPage() {
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["battle_power"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("battle_power")
-        .select("id,nickname,power1,power2,power3,power4,power5");
-      if (error) throw error;
-      return sortRows((data ?? []) as Row[]);
-    },
+    queryFn: () => battlePowerRepository.getAll(),
   });
 
   const openForm = () => {
@@ -86,7 +58,7 @@ function BattlePowerPage() {
     setOpen(true);
   };
 
-  const openEdit = (r: Row) => {
+  const openEdit = (r: BattlePowerRow) => {
     setNick(r.nickname);
     setPowers([
       r.power1?.toString() ?? "",
@@ -122,23 +94,24 @@ function BattlePowerPage() {
       power5: num(powers[4]),
     };
     if (editingId) {
-      const { error } = await supabase
-        .from("battle_power")
-        .update(payload)
-        .eq("id", editingId);
-      setSaving(false);
-      if (error) {
+      try {
+        await battlePowerRepository.update(editingId, payload);
+      } catch {
+        setSaving(false);
         toast.error("Не вдалося оновити");
         return;
       }
+      setSaving(false);
       toast.success("Оновлено");
     } else {
-      const { error } = await supabase.from("battle_power").insert(payload);
-      setSaving(false);
-      if (error) {
+      try {
+        await battlePowerRepository.create(payload);
+      } catch {
+        setSaving(false);
         toast.error("Не вдалося зберегти");
         return;
       }
+      setSaving(false);
       toast.success("Збережено");
     }
     setOpen(false);
@@ -149,15 +122,14 @@ function BattlePowerPage() {
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    const { error } = await supabase
-      .from("battle_power")
-      .delete()
-      .eq("id", deleteId);
-    setDeleteId(null);
-    if (error) {
+    try {
+      await battlePowerRepository.remove(deleteId);
+    } catch {
+      setDeleteId(null);
       toast.error("Не вдалося видалити");
       return;
     }
+    setDeleteId(null);
     toast.success("Видалено");
     qc.invalidateQueries({ queryKey: ["battle_power"] });
   };
@@ -168,9 +140,7 @@ function BattlePowerPage() {
       <Toaster position="top-center" />
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-3 pb-10 pt-6">
-        <h1 className="text-center text-xl font-bold tracking-tight sm:text-2xl">
-          💪 Бойова Сила
-        </h1>
+        <h1 className="text-center text-xl font-bold tracking-tight sm:text-2xl">💪 Бойова Сила</h1>
         <p className="mt-1 text-center text-xs text-muted-foreground">
           Збереження бойової сили учасників
         </p>
@@ -227,14 +197,10 @@ function BattlePowerPage() {
 
         <div className="mt-4 divide-y divide-border rounded-xl border border-border bg-card/60">
           {isLoading && (
-            <div className="p-4 text-center text-xs text-muted-foreground">
-              Завантаження…
-            </div>
+            <div className="p-4 text-center text-xs text-muted-foreground">Завантаження…</div>
           )}
           {!isLoading && data.length === 0 && (
-            <div className="p-4 text-center text-xs text-muted-foreground">
-              Записів поки немає
-            </div>
+            <div className="p-4 text-center text-xs text-muted-foreground">Записів поки немає</div>
           )}
           {data.map((r) => (
             <div
@@ -274,18 +240,13 @@ function BattlePowerPage() {
         </div>
       </main>
 
-      <Dialog.Root
-        open={!!deleteId}
-        onOpenChange={(o) => !o && setDeleteId(null)}
-      >
+      <Dialog.Root open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0" />
           <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=open]:zoom-in-95">
-            <Dialog.Title className="text-base font-semibold">
-              Видалити запис?
-            </Dialog.Title>
+            <Dialog.Title className="text-base font-semibold">Видалити запис?</Dialog.Title>
             <Dialog.Description className="mt-2 text-sm text-muted-foreground">
-              Запис буде повністю видалено з бази даних.
+              Запис буде видалено.
             </Dialog.Description>
             <div className="mt-5 grid grid-cols-2 gap-2">
               <button

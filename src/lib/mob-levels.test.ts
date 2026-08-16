@@ -13,6 +13,7 @@ import {
   haveSameMobLevelDraft,
   isValidMobName,
   isValidMobLevel,
+  mergePlayerOptions,
   resolvePlayerMobs,
   sortPlayerOptions,
   type Mob,
@@ -338,6 +339,26 @@ test("sorts Latin player nicknames before Cyrillic nicknames", () => {
       { id: "4", nickname: "Анна" },
     ]).map(({ nickname }) => nickname),
     ["alpha", "Bravo", "Анна", "Ярина"],
+  );
+});
+
+test("merges player options while preferring remote exact nickname matches", () => {
+  assert.deepEqual(
+    mergePlayerOptions(
+      [
+        { id: "live-alex", nickname: "alex" },
+        { id: "live-lucifer", nickname: "Люцифер" },
+      ],
+      [
+        { id: "test-alex", nickname: "Alex" },
+        { id: "test-lucifer", nickname: "Lucifer" },
+      ],
+    ),
+    [
+      { id: "live-alex", nickname: "alex" },
+      { id: "test-lucifer", nickname: "Lucifer" },
+      { id: "live-lucifer", nickname: "Люцифер" },
+    ],
   );
 });
 

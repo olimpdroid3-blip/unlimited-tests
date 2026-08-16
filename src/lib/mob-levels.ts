@@ -270,6 +270,24 @@ export function sortPlayerOptions(players: PlayerOption[]): PlayerOption[] {
   });
 }
 
+export function mergePlayerOptions(
+  remotePlayers: readonly PlayerOption[],
+  localPlayers: readonly PlayerOption[],
+): PlayerOption[] {
+  const playersByNickname = new Map(
+    remotePlayers.map((player) => [normalizePlayerNickname(player.nickname), player]),
+  );
+  localPlayers.forEach((player) => {
+    const nicknameKey = normalizePlayerNickname(player.nickname);
+    if (!playersByNickname.has(nicknameKey)) playersByNickname.set(nicknameKey, player);
+  });
+  return sortPlayerOptions([...playersByNickname.values()]);
+}
+
+function normalizePlayerNickname(nickname: string): string {
+  return nickname.trim().toLocaleLowerCase();
+}
+
 export function haveSameMobLevelDraft(left: MobLevelDraft[], right: MobLevelDraft[]): boolean {
   return serializeDraft(left) === serializeDraft(right);
 }
