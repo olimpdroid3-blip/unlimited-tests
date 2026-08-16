@@ -32,7 +32,7 @@ export function PlayerSelectField({
       >
         Гравець
       </span>
-      <Select value={value} disabled={disabled} onValueChange={onValueChange}>
+      <Select value={value ?? ""} disabled={disabled} onValueChange={onValueChange}>
         <SelectTrigger
           id={id}
           aria-labelledby={labelId}
