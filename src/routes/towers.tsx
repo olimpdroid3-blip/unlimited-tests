@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Toaster } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
+import { Toaster } from "@/components/ui/sonner";
 import { TowerModal } from "@/components/TowerModal";
 import * as Dialog from "@radix-ui/react-dialog";
 
@@ -34,12 +34,18 @@ const COLUMNS = [
 ] as const;
 
 const ROWS: Array<[number, number]> = [
-  [1, 1], [1, 2],
-  [2, 1], [2, 2],
-  [3, 1], [3, 2],
-  [4, 1], [4, 2],
-  [5, 1], [5, 2],
-  [6, 1], [6, 2],
+  [1, 1],
+  [1, 2],
+  [2, 1],
+  [2, 2],
+  [3, 1],
+  [3, 2],
+  [4, 1],
+  [4, 2],
+  [5, 1],
+  [5, 2],
+  [6, 1],
+  [6, 2],
 ];
 
 function HomePage() {
@@ -92,7 +98,7 @@ function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <Toaster theme="light" position="top-center" richColors />
+      <Toaster position="top-center" richColors />
       <AppHeader />
 
       <main className="mx-auto w-full max-w-5xl px-3 pb-6 pt-4 sm:px-4">

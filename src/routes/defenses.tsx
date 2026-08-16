@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
+import { Toaster } from "@/components/ui/sonner";
 import { HeroPicker, type HeroOption } from "@/components/HeroPicker";
 import { syncHeroes } from "@/lib/heroes.functions";
 
@@ -44,11 +45,7 @@ async function compressImage(file: File, maxSide = 1280, quality = 0.8): Promise
   }
 }
 
-async function uploadToBucket(
-  bucket: string,
-  file: File,
-  prefix: string,
-): Promise<string | null> {
+async function uploadToBucket(bucket: string, file: File, prefix: string): Promise<string | null> {
   const compressed = await compressImage(file);
   const extMatch = compressed.name.match(/\.([a-zA-Z0-9]+)$/);
   const ext = (extMatch?.[1] ?? compressed.type.split("/")[1] ?? "bin")
@@ -98,15 +95,12 @@ function DefensesPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <Toaster theme="light" position="top-center" richColors />
+      <Toaster position="top-center" richColors />
       <AppHeader />
 
       <main className="mx-auto w-full max-w-3xl px-3 pb-10 pt-4 sm:px-4">
         <div className="mb-4">
-          <Link
-            to="/"
-            className="text-xs text-muted-foreground transition hover:text-primary"
-          >
+          <Link to="/" className="text-xs text-muted-foreground transition hover:text-primary">
             ← На головну
           </Link>
           <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold tracking-tight">
@@ -417,16 +411,8 @@ function SearchTab({ heroes }: { heroes: HeroOption[] }) {
   );
 }
 
-function DefenseCard({
-  defense,
-  onDelete,
-}: {
-  defense: DefenseRow;
-  onDelete: () => void;
-}) {
-  const heroes = [...defense.defense_heroes].sort(
-    (a, b) => (a.position ?? 0) - (b.position ?? 0),
-  );
+function DefenseCard({ defense, onDelete }: { defense: DefenseRow; onDelete: () => void }) {
+  const heroes = [...defense.defense_heroes].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   const copy = async () => {
     if (!defense.run_code) return;
     await navigator.clipboard.writeText(defense.run_code);

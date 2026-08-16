@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, Trash2 } from "lucide-react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
 import { PlayerSelectField } from "@/components/PlayerSelectField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Toaster } from "@/components/ui/sonner";
 import {
   getChangedMobNames,
   getRemovedMobIds,
@@ -219,7 +220,7 @@ function MobLevelsEditorPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <Toaster theme="light" position="top-center" richColors />
+      <Toaster position="top-center" richColors />
       <AppHeader />
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-12 pt-6">
