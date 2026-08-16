@@ -57,7 +57,7 @@ Add separate assertions that a second repository instance reads the same overrid
 Run:
 
 ```bash
-node --import tsx --test src/lib/mob-levels.test.ts
+node --test src/lib/mob-levels.test.ts
 ```
 
 Expected: FAIL because `createLocalStorageMobCatalogRepository` and the writable catalog interface do not exist.
@@ -84,7 +84,7 @@ Implement `createLocalStorageMobCatalogRepository` so it validates the complete 
 Run:
 
 ```bash
-node --import tsx --test src/lib/mob-levels.test.ts
+node --test src/lib/mob-levels.test.ts
 ```
 
 Expected: all mob-level tests pass with no warnings.
@@ -134,7 +134,7 @@ assert.deepEqual(
 Run:
 
 ```bash
-node --import tsx --test src/lib/mob-levels.test.ts
+node --test src/lib/mob-levels.test.ts
 ```
 
 Expected: FAIL because the draft helper exports are missing.
@@ -243,7 +243,7 @@ git commit -m "feat: edit shared mob names"
 - [ ] **Step 1: Run all domain tests**
 
 ```bash
-node --import tsx --test src/lib/mob-levels.test.ts
+node --test src/lib/mob-levels.test.ts
 ```
 
 Expected: all tests pass.
