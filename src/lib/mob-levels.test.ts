@@ -7,6 +7,7 @@ import {
   emptyMobCatalogRepository,
   isValidMobLevel,
   resolvePlayerMobs,
+  sortPlayerOptions,
   type StorageLike,
 } from "./mob-levels.ts";
 
@@ -184,5 +185,17 @@ test("joins levels to catalog mobs, omits missing mobs, and sorts by name", () =
       { name: "Альфа", level: 30 },
       { name: "Бета", level: 10 },
     ],
+  );
+});
+
+test("sorts Latin player nicknames before Cyrillic nicknames", () => {
+  assert.deepEqual(
+    sortPlayerOptions([
+      { id: "3", nickname: "Ярина" },
+      { id: "2", nickname: "Bravo" },
+      { id: "1", nickname: "alpha" },
+      { id: "4", nickname: "Анна" },
+    ]).map(({ nickname }) => nickname),
+    ["alpha", "Bravo", "Анна", "Ярина"],
   );
 });

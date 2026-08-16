@@ -17,6 +17,11 @@ export type PlayerMobLevelInput = Omit<PlayerMobLevel, "updatedAt">;
 
 export type ResolvedPlayerMob = PlayerMobLevel & { mob: Mob };
 
+export type PlayerOption = {
+  id: string;
+  nickname: string;
+};
+
 export interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -115,6 +120,17 @@ export function resolvePlayerMobs(levels: PlayerMobLevel[], mobs: Mob[]): Resolv
         sensitivity: "base",
       }),
     );
+}
+
+export function sortPlayerOptions(players: PlayerOption[]): PlayerOption[] {
+  return [...players].sort((left, right) => {
+    const leftIsLatin = /^[A-Za-z]/.test(left.nickname.trim());
+    const rightIsLatin = /^[A-Za-z]/.test(right.nickname.trim());
+    if (leftIsLatin !== rightIsLatin) return leftIsLatin ? -1 : 1;
+    return left.nickname.localeCompare(right.nickname, leftIsLatin ? "en" : "uk", {
+      sensitivity: "base",
+    });
+  });
 }
 
 function isPlayerMobLevel(value: unknown): value is PlayerMobLevel {
