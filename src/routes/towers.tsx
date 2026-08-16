@@ -113,7 +113,9 @@ function HomePage() {
               <div className="flex flex-col gap-1.5">
                 {ROWS.map(([r, s]) => {
                   const id = `${col.num}.${r}.${s}`;
-                  const active = map.has(id);
+                  const tower = map.get(id);
+                  const active = !!tower;
+                  const breached = !!tower?.breached;
                   return (
                     <button
                       key={id}
@@ -121,15 +123,21 @@ function HomePage() {
                       className={[
                         "relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-semibold transition-all duration-200 active:scale-95 sm:gap-2 sm:rounded-lg sm:px-3 sm:py-1.5 sm:text-sm",
                         "border",
-                        active
-                          ? "border-tower-active/40 bg-tower-active text-tower-active-foreground shadow-[0_0_14px_-6px_var(--tower-active)]"
-                          : "border-border bg-tower-idle text-tower-idle-text hover:text-foreground",
+                        breached
+                          ? "border-tower-breached/40 bg-tower-breached text-tower-breached-foreground shadow-[0_0_14px_-6px_var(--tower-breached)]"
+                          : active
+                            ? "border-tower-active/40 bg-tower-active text-tower-active-foreground shadow-[0_0_14px_-6px_var(--tower-active)]"
+                            : "border-border bg-tower-idle text-tower-idle-text hover:text-foreground",
                       ].join(" ")}
                     >
                       <span
                         className={[
                           "h-2 w-2 shrink-0 rounded-full sm:h-2.5 sm:w-2.5",
-                          active ? "bg-tower-active-foreground" : "bg-muted-foreground/60",
+                          breached
+                            ? "bg-tower-breached-foreground"
+                            : active
+                              ? "bg-tower-active-foreground"
+                              : "bg-muted-foreground/60",
                         ].join(" ")}
                       />
                       <span className="font-mono tracking-wide">{id}</span>
