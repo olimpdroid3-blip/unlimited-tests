@@ -9,6 +9,7 @@ type Tower = {
   nickname: string | null;
   awakenings: string | null;
   notes: string | null;
+  breached?: boolean | null;
 };
 
 export function TowerModal({
@@ -30,6 +31,7 @@ export function TowerModal({
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [cookieNick, setCookieNick] = useState("");
+  const [breached, setBreached] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -38,11 +40,30 @@ export function TowerModal({
       setNickname(existing?.nickname ?? ck ?? "");
       setAwakenings(existing?.awakenings ?? "");
       setNotes(existing?.notes ?? "");
+      setBreached(!!existing?.breached);
       setConfirmDelete(false);
     }
   }, [open, existing]);
 
   if (!towerId) return null;
+
+  const toggleBreached = async () => {
+    const next = !breached;
+    setBusy(true);
+    const { error } = await supabase.from("towers").upsert({
+      tower_id: towerId,
+      nickname: existing ? (existing.nickname ?? null) : nickname.trim() || null,
+      awakenings: existing ? (existing.awakenings ?? null) : awakenings.trim() || null,
+      notes: existing ? (existing.notes ?? null) : notes.trim() || null,
+      breached: next,
+      updated_at: new Date().toISOString(),
+    });
+    setBusy(false);
+    if (error) return toast.error("Помилка збереження");
+    setBreached(next);
+    toast.success(next ? "Позначено як пробито" : "Позначку знято");
+    onChanged();
+  };
 
   const handleSave = async () => {
     setBusy(true);
@@ -51,6 +72,7 @@ export function TowerModal({
       nickname: nickname.trim() || null,
       awakenings: awakenings.trim() || null,
       notes: notes.trim() || null,
+      breached,
       updated_at: new Date().toISOString(),
     });
     setBusy(false);
@@ -75,9 +97,25 @@ export function TowerModal({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2 duration-200">
-          <Dialog.Title className="text-lg font-semibold text-foreground">
-            🏰 Башня {towerId}
-          </Dialog.Title>
+          <div className="flex items-start justify-between gap-2">
+            <Dialog.Title className="text-lg font-semibold text-foreground">
+              🏰 Башня {towerId}
+            </Dialog.Title>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={toggleBreached}
+              aria-pressed={breached}
+              className={[
+                "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition active:scale-95 disabled:opacity-50",
+                breached
+                  ? "bg-destructive text-destructive-foreground shadow-sm"
+                  : "border border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20",
+              ].join(" ")}
+            >
+              {breached ? "🔴 Пробито ✓" : "🔴 Пробито"}
+            </button>
+          </div>
           <Dialog.Description className="sr-only">Редагування вежі {towerId}</Dialog.Description>
 
           <div className="mt-4 space-y-3">

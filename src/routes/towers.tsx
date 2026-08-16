@@ -24,6 +24,7 @@ type Tower = {
   nickname: string | null;
   awakenings: string | null;
   notes: string | null;
+  breached?: boolean | null;
 };
 
 const COLUMNS = [
@@ -73,6 +74,7 @@ function HomePage() {
         nickname: t.nickname,
         awakenings: t.awakenings,
         notes: t.notes,
+        breached: !!t.breached,
       }));
       const { error: archErr } = await supabase.from("towers_archive").insert(archiveRows);
       if (archErr) {
