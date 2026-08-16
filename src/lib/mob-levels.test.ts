@@ -7,8 +7,11 @@ import {
   createLocalStorageMobLevelsRepository,
   createLocalStorageMobCatalogRepository,
   emptyMobCatalogRepository,
+  getChangedMobNames,
   getRemovedMobIds,
+  haveSameMobNameDraft,
   haveSameMobLevelDraft,
+  isValidMobName,
   isValidMobLevel,
   resolvePlayerMobs,
   sortPlayerOptions,
@@ -301,5 +304,51 @@ test("finds mobs removed from an editor draft", () => {
       [{ mobId: "mob-2", level: 20 }],
     ),
     ["mob-1"],
+  );
+});
+
+test("accepts a non-empty mob name and rejects whitespace", () => {
+  assert.equal(isValidMobName("Бос павуків"), true);
+  assert.equal(isValidMobName("  Бос павуків  "), true);
+  assert.equal(isValidMobName("   "), false);
+  assert.equal(isValidMobName(null), false);
+});
+
+test("compares mob name drafts by mob id after trimming names", () => {
+  assert.equal(
+    haveSameMobNameDraft(
+      [
+        { mobId: "mob-1", name: "Альфа" },
+        { mobId: "mob-2", name: "Бета" },
+      ],
+      [
+        { mobId: "mob-2", name: " Бета " },
+        { mobId: "mob-1", name: "Альфа" },
+      ],
+    ),
+    true,
+  );
+  assert.equal(
+    haveSameMobNameDraft(
+      [{ mobId: "mob-1", name: "Альфа" }],
+      [{ mobId: "mob-1", name: "Інша назва" }],
+    ),
+    false,
+  );
+});
+
+test("returns only changed mob names with normalized values", () => {
+  assert.deepEqual(
+    getChangedMobNames(
+      [
+        { mobId: "mob-1", name: "Альфа" },
+        { mobId: "mob-2", name: "Бета" },
+      ],
+      [
+        { mobId: "mob-2", name: "  Нова Бета  " },
+        { mobId: "mob-1", name: " Альфа " },
+      ],
+    ),
+    [{ id: "mob-2", name: "Нова Бета" }],
   );
 });

@@ -29,6 +29,11 @@ export type MobLevelDraft = {
   level: number | null;
 };
 
+export type MobNameDraft = {
+  mobId: string;
+  name: string;
+};
+
 export interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -51,6 +56,10 @@ export interface MobCatalogRepository extends MobCatalogSource {
 
 export function isValidMobLevel(value: unknown): value is number {
   return Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 30;
+}
+
+export function isValidMobName(value: unknown): value is string {
+  return isNonEmptyString(value);
 }
 
 export function createLocalStorageMobLevelsRepository(storage?: StorageLike): MobLevelsRepository {
@@ -212,6 +221,22 @@ export function haveSameMobLevelDraft(left: MobLevelDraft[], right: MobLevelDraf
   return serializeDraft(left) === serializeDraft(right);
 }
 
+export function haveSameMobNameDraft(left: MobNameDraft[], right: MobNameDraft[]): boolean {
+  return serializeMobNameDraft(left) === serializeMobNameDraft(right);
+}
+
+export function getChangedMobNames(
+  baseline: MobNameDraft[],
+  draft: MobNameDraft[],
+): MobNameInput[] {
+  const baselineNames = new Map(baseline.map(({ mobId, name }) => [mobId, name.trim()]));
+  return draft
+    .filter(({ name }) => isValidMobName(name))
+    .map(({ mobId, name }) => ({ id: mobId, name: name.trim() }))
+    .filter(({ id, name }) => baselineNames.get(id) !== name)
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
 export function getRemovedMobIds(baseline: MobLevelDraft[], draft: MobLevelDraft[]): string[] {
   const draftIds = new Set(draft.map(({ mobId }) => mobId));
   return baseline
@@ -224,6 +249,13 @@ function serializeDraft(draft: MobLevelDraft[]): string {
   return [...draft]
     .sort((left, right) => left.mobId.localeCompare(right.mobId))
     .map(({ mobId, level }) => `${mobId}\u0000${level ?? ""}`)
+    .join("\u0001");
+}
+
+function serializeMobNameDraft(draft: MobNameDraft[]): string {
+  return [...draft]
+    .sort((left, right) => left.mobId.localeCompare(right.mobId))
+    .map(({ mobId, name }) => `${mobId}\u0000${name.trim()}`)
     .join("\u0001");
 }
 
