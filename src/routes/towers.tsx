@@ -24,6 +24,7 @@ type Tower = {
   nickname: string | null;
   awakenings: string | null;
   notes: string | null;
+  breached?: boolean | null;
 };
 
 const COLUMNS = [
