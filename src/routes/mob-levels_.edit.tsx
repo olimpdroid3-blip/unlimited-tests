@@ -5,6 +5,7 @@ import { Plus, Search, Trash2 } from "lucide-react";
 import { toast, Toaster } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
+import { PlayerSelectField } from "@/components/PlayerSelectField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -242,24 +243,13 @@ function MobLevelsEditorPage() {
         </div>
 
         <section className="mt-5 rounded-2xl border border-border bg-card/60 p-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Гравець
-            </span>
-            <select
-              value={selectedPlayerId ?? ""}
-              disabled={playersQuery.isLoading || players.length === 0 || isSaving}
-              onChange={(event) => changePlayer(event.target.value)}
-              className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-primary/60"
-            >
-              <option value="">Оберіть нік</option>
-              {players.map((player) => (
-                <option key={player.id} value={player.id}>
-                  {player.nickname}
-                </option>
-              ))}
-            </select>
-          </label>
+          <PlayerSelectField
+            id="mob-level-editor-player"
+            value={selectedPlayerId}
+            players={players}
+            disabled={playersQuery.isLoading || players.length === 0 || isSaving}
+            onValueChange={changePlayer}
+          />
         </section>
 
         {(queryError || storageError) && (

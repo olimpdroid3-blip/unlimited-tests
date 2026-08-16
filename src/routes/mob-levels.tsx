@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 
 import { AppHeader } from "@/components/AppHeader";
+import { PlayerSelectField } from "@/components/PlayerSelectField";
 import { Input } from "@/components/ui/input";
 import { resolvePlayerMobs } from "@/lib/mob-levels";
 import {
@@ -88,31 +89,20 @@ function MobLevelsPage() {
         </div>
 
         <section className="mt-5 rounded-2xl border border-border bg-card/60 p-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Гравець
-            </span>
-            <select
-              value={selectedPlayerId ?? ""}
-              disabled={playersQuery.isLoading || players.length === 0}
-              onChange={(event) => {
-                setFilter("");
-                void navigate({
-                  search: {
-                    playerId: event.target.value || undefined,
-                  },
-                });
-              }}
-              className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-primary/60"
-            >
-              <option value="">Оберіть нік</option>
-              {players.map((player) => (
-                <option key={player.id} value={player.id}>
-                  {player.nickname}
-                </option>
-              ))}
-            </select>
-          </label>
+          <PlayerSelectField
+            id="mob-level-player"
+            value={selectedPlayerId}
+            players={players}
+            disabled={playersQuery.isLoading || players.length === 0}
+            onValueChange={(nextPlayerId) => {
+              setFilter("");
+              void navigate({
+                search: {
+                  playerId: nextPlayerId,
+                },
+              });
+            }}
+          />
         </section>
 
         {queryError && (
