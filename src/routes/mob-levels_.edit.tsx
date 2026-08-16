@@ -8,11 +8,15 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  getChangedMobNames,
   getRemovedMobIds,
+  haveSameMobNameDraft,
   haveSameMobLevelDraft,
+  isValidMobName,
   isValidMobLevel,
   type Mob,
   type MobLevelDraft,
+  type MobNameDraft,
 } from "@/lib/mob-levels";
 import {
   loadMobLevelPlayers,
@@ -46,6 +50,8 @@ function MobLevelsEditorPage() {
   const queryClient = useQueryClient();
   const [baseline, setBaseline] = useState<MobLevelDraft[]>([]);
   const [draft, setDraft] = useState<MobLevelDraft[]>([]);
+  const [nameBaseline, setNameBaseline] = useState<MobNameDraft[]>([]);
+  const [nameDraft, setNameDraft] = useState<MobNameDraft[]>([]);
   const [mobSearch, setMobSearch] = useState("");
   const [isLoadingLevels, setIsLoadingLevels] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -63,11 +69,20 @@ function MobLevelsEditorPage() {
   const players = playersQuery.data ?? [];
   const catalog = useMemo(() => catalogQuery.data ?? [], [catalogQuery.data]);
   const selectedPlayerId = players.some((player) => player.id === playerId) ? playerId : undefined;
-  const isDirty = !haveSameMobLevelDraft(baseline, draft);
+  const hasLevelChanges = !haveSameMobLevelDraft(baseline, draft);
+  const hasNameChanges = !haveSameMobNameDraft(nameBaseline, nameDraft);
+  const isDirty = hasLevelChanges || hasNameChanges;
   const isValidDraft = draft.every(({ level }) => isValidMobLevel(level));
+  const areNamesValid = nameDraft.every(({ name }) => isValidMobName(name));
   const canSave = Boolean(
-    selectedPlayerId && catalog.length > 0 && isDirty && isValidDraft && !isSaving,
+    selectedPlayerId && catalog.length > 0 && isDirty && isValidDraft && areNamesValid && !isSaving,
   );
+
+  useEffect(() => {
+    const loadedNames = catalog.map(({ id, name }) => ({ mobId: id, name }));
+    setNameBaseline(loadedNames);
+    setNameDraft(loadedNames);
+  }, [catalog]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -105,6 +120,10 @@ function MobLevelsEditorPage() {
   }, [selectedPlayerId]);
 
   const mobsById = useMemo(() => new Map(catalog.map((mob) => [mob.id, mob])), [catalog]);
+  const nameDraftById = useMemo(
+    () => new Map(nameDraft.map(({ mobId, name }) => [mobId, name])),
+    [nameDraft],
+  );
   const draftRows = useMemo(
     () =>
       draft
@@ -127,6 +146,7 @@ function MobLevelsEditorPage() {
 
   function changePlayer(nextPlayerId: string) {
     if (isDirty && !window.confirm("Відхилити незбережені зміни?")) return;
+    setNameDraft(nameBaseline);
     void navigate({ search: { playerId: nextPlayerId || undefined } });
   }
 
@@ -140,32 +160,55 @@ function MobLevelsEditorPage() {
     setDraft((current) => current.map((row) => (row.mobId === mobId ? { ...row, level } : row)));
   }
 
+  function updateMobName(mobId: string, name: string) {
+    setNameDraft((current) => current.map((row) => (row.mobId === mobId ? { ...row, name } : row)));
+  }
+
   async function saveChanges() {
     if (!selectedPlayerId || !canSave) return;
     setIsSaving(true);
     setStorageError(null);
 
     try {
-      await mobLevelsRepository.upsertMany(
-        draft.map(({ mobId, level }) => ({
-          playerId: selectedPlayerId,
-          mobId,
-          level: level!,
-        })),
-      );
-      const removedMobIds = getRemovedMobIds(baseline, draft);
-      await Promise.all(
-        removedMobIds.map((mobId) => mobLevelsRepository.remove(selectedPlayerId, mobId)),
-      );
-      const savedLevels = await mobLevelsRepository.getByPlayer(selectedPlayerId);
+      if (hasLevelChanges) {
+        await mobLevelsRepository.upsertMany(
+          draft.map(({ mobId, level }) => ({
+            playerId: selectedPlayerId,
+            mobId,
+            level: level!,
+          })),
+        );
+        const removedMobIds = getRemovedMobIds(baseline, draft);
+        await Promise.all(
+          removedMobIds.map((mobId) => mobLevelsRepository.remove(selectedPlayerId, mobId)),
+        );
+      }
+
+      const changedNames = getChangedMobNames(nameBaseline, nameDraft);
+      await mobCatalogRepository.updateNames(changedNames);
+
+      const [savedLevels, savedCatalog] = await Promise.all([
+        mobLevelsRepository.getByPlayer(selectedPlayerId),
+        mobCatalogRepository.getAll(),
+      ]);
       const savedDraft = savedLevels.map(({ mobId, level }) => ({ mobId, level }));
+      const savedNames = savedCatalog.map(({ id, name }) => ({ mobId: id, name }));
       setBaseline(savedDraft);
       setDraft(savedDraft);
+      setNameBaseline(savedNames);
+      setNameDraft(savedNames);
+      await queryClient.invalidateQueries({ queryKey: ["mob-catalog"] });
       await queryClient.invalidateQueries({ queryKey: ["mob-levels", selectedPlayerId] });
-      toast.success("Рівні мобів збережено");
+      toast.success(
+        hasLevelChanges && hasNameChanges
+          ? "Назви й рівні мобів збережено"
+          : hasNameChanges
+            ? "Назви мобів збережено"
+            : "Рівні мобів збережено",
+      );
     } catch {
-      setStorageError("Не вдалося зберегти рівні. Внесені зміни залишилися у формі.");
-      toast.error("Не вдалося зберегти рівні");
+      setStorageError("Не вдалося зберегти зміни. Внесені дані залишилися у формі.");
+      toast.error("Не вдалося зберегти зміни");
     } finally {
       setIsSaving(false);
     }
@@ -190,7 +233,7 @@ function MobLevelsEditorPage() {
             </Link>
             <h1 className="mt-2 text-2xl font-bold tracking-tight">✏️ Редагування рівнів мобів</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Рівень кожного моба має бути від 1 до 30.
+              Назва спільна для всіх гравців, рівень має бути від 1 до 30.
             </p>
           </div>
           <Button disabled={!canSave} onClick={() => void saveChanges()}>
@@ -266,56 +309,72 @@ function MobLevelsEditorPage() {
                 </div>
               )}
 
-              {draftRows.map(({ mob, level }) => (
-                <article
-                  key={mob.id}
-                  className="flex items-center gap-3 rounded-2xl border border-border bg-card/60 p-3"
-                >
-                  {mob.imageUrl ? (
-                    <img
-                      src={mob.imageUrl}
-                      alt=""
-                      className="h-12 w-12 rounded-xl border border-border object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-secondary text-xl">
-                      👾
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold">{mob.name}</div>
-                    <label className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                      Рівень
-                      <Input
-                        type="number"
-                        min={1}
-                        max={30}
-                        step={1}
-                        value={level ?? ""}
-                        onChange={(event) => updateLevel(mob.id, event.target.value)}
-                        className="h-8 w-20"
-                        aria-invalid={!isValidMobLevel(level)}
-                      />
-                    </label>
-                    {!isValidMobLevel(level) && (
-                      <p className="mt-1 text-xs text-destructive">
-                        Вкажіть ціле число від 1 до 30
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    aria-label={`Видалити ${mob.name}`}
-                    onClick={() =>
-                      setDraft((current) => current.filter(({ mobId }) => mobId !== mob.id))
-                    }
+              {draftRows.map(({ mob, level }) => {
+                const mobName = nameDraftById.get(mob.id) ?? mob.name;
+                return (
+                  <article
+                    key={mob.id}
+                    className="flex items-center gap-3 rounded-2xl border border-border bg-card/60 p-3"
                   >
-                    <Trash2 />
-                  </Button>
-                </article>
-              ))}
+                    {mob.imageUrl ? (
+                      <img
+                        src={mob.imageUrl}
+                        alt=""
+                        className="h-12 w-12 rounded-xl border border-border object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-secondary text-xl">
+                        👾
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <label className="block text-xs text-muted-foreground">
+                        Назва моба
+                        <Input
+                          value={mobName}
+                          onChange={(event) => updateMobName(mob.id, event.target.value)}
+                          aria-invalid={!isValidMobName(mobName)}
+                          className="mt-1 h-8"
+                        />
+                      </label>
+                      {!isValidMobName(mobName) && (
+                        <p className="mt-1 text-xs text-destructive">
+                          Назва не може бути порожньою
+                        </p>
+                      )}
+                      <label className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                        Рівень
+                        <Input
+                          type="number"
+                          min={1}
+                          max={30}
+                          step={1}
+                          value={level ?? ""}
+                          onChange={(event) => updateLevel(mob.id, event.target.value)}
+                          className="h-8 w-20"
+                          aria-invalid={!isValidMobLevel(level)}
+                        />
+                      </label>
+                      {!isValidMobLevel(level) && (
+                        <p className="mt-1 text-xs text-destructive">
+                          Вкажіть ціле число від 1 до 30
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label={`Видалити ${mobName}`}
+                      onClick={() =>
+                        setDraft((current) => current.filter(({ mobId }) => mobId !== mob.id))
+                      }
+                    >
+                      <Trash2 />
+                    </Button>
+                  </article>
+                );
+              })}
             </section>
 
             <aside className="h-fit rounded-2xl border border-border bg-card/60 p-4 lg:sticky lg:top-24">

@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
+  createLocalStorageMobCatalogRepository,
   createLocalStorageMobLevelsRepository,
   emptyMobCatalogRepository,
   sortPlayerOptions,
@@ -7,7 +8,8 @@ import {
 } from "@/lib/mob-levels";
 
 export const mobLevelsRepository = createLocalStorageMobLevelsRepository();
-export const mobCatalogRepository = emptyMobCatalogRepository;
+export const mobCatalogRepository =
+  createLocalStorageMobCatalogRepository(emptyMobCatalogRepository);
 
 export async function loadMobLevelPlayers(): Promise<PlayerOption[]> {
   const { data, error } = await supabase.from("battle_power").select("id,nickname");

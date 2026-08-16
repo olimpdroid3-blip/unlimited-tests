@@ -181,13 +181,10 @@ test("stores a shared mob name override and merges it into every catalog read", 
     { id: "mob-1", name: "Нова назва", imageUrl: "/mob-1.webp" },
     { id: "mob-2", name: "Інший моб", imageUrl: null },
   ]);
-  assert.deepEqual(
-    await createLocalStorageMobCatalogRepository(baseCatalog, storage).getAll(),
-    [
-      { id: "mob-1", name: "Нова назва", imageUrl: "/mob-1.webp" },
-      { id: "mob-2", name: "Інший моб", imageUrl: null },
-    ],
-  );
+  assert.deepEqual(await createLocalStorageMobCatalogRepository(baseCatalog, storage).getAll(), [
+    { id: "mob-1", name: "Нова назва", imageUrl: "/mob-1.webp" },
+    { id: "mob-2", name: "Інший моб", imageUrl: null },
+  ]);
 });
 
 test("rejects an invalid mob name batch without changing catalog or level storage", async () => {
