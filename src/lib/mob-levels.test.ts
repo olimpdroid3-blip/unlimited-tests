@@ -3,13 +3,16 @@ import test from "node:test";
 
 import {
   MOB_LEVELS_STORAGE_KEY,
+  MOB_NAME_OVERRIDES_STORAGE_KEY,
   createLocalStorageMobLevelsRepository,
+  createLocalStorageMobCatalogRepository,
   emptyMobCatalogRepository,
   getRemovedMobIds,
   haveSameMobLevelDraft,
   isValidMobLevel,
   resolvePlayerMobs,
   sortPlayerOptions,
+  type Mob,
   type StorageLike,
 } from "./mob-levels.ts";
 
@@ -28,6 +31,14 @@ function createMemoryStorage(initialValue?: string): StorageLike {
     },
     removeItem(key) {
       values.delete(key);
+    },
+  };
+}
+
+function createStaticMobCatalog(mobs: Mob[]) {
+  return {
+    async getAll() {
+      return mobs;
     },
   };
 }
@@ -151,6 +162,64 @@ test("removes only the selected player and mob relation", async () => {
 
 test("empty catalog deliberately returns no fake mobs", async () => {
   assert.deepEqual(await emptyMobCatalogRepository.getAll(), []);
+});
+
+test("stores a shared mob name override and merges it into every catalog read", async () => {
+  const storage = createMemoryStorage();
+  const baseCatalog = createStaticMobCatalog([
+    { id: "mob-1", name: "Стара назва", imageUrl: "/mob-1.webp" },
+    { id: "mob-2", name: "Інший моб", imageUrl: null },
+  ]);
+  const repository = createLocalStorageMobCatalogRepository(baseCatalog, storage);
+
+  await repository.updateNames([{ id: "mob-1", name: "  Нова назва  " }]);
+
+  assert.deepEqual(await repository.getAll(), [
+    { id: "mob-1", name: "Нова назва", imageUrl: "/mob-1.webp" },
+    { id: "mob-2", name: "Інший моб", imageUrl: null },
+  ]);
+  assert.deepEqual(
+    await createLocalStorageMobCatalogRepository(baseCatalog, storage).getAll(),
+    [
+      { id: "mob-1", name: "Нова назва", imageUrl: "/mob-1.webp" },
+      { id: "mob-2", name: "Інший моб", imageUrl: null },
+    ],
+  );
+});
+
+test("rejects an invalid mob name batch without changing catalog or level storage", async () => {
+  const storage = createMemoryStorage();
+  const repository = createLocalStorageMobCatalogRepository(
+    createStaticMobCatalog([
+      { id: "mob-1", name: "Перший", imageUrl: null },
+      { id: "mob-2", name: "Другий", imageUrl: null },
+    ]),
+    storage,
+  );
+  await createLocalStorageMobLevelsRepository(storage).upsertMany([
+    { playerId: "player-1", mobId: "mob-1", level: 12 },
+  ]);
+  await repository.updateNames([{ id: "mob-1", name: "Збережена назва" }]);
+  const namesBefore = storage.getItem(MOB_NAME_OVERRIDES_STORAGE_KEY);
+  const levelsBefore = storage.getItem(MOB_LEVELS_STORAGE_KEY);
+
+  await assert.rejects(
+    repository.updateNames([
+      { id: "mob-1", name: "Нова назва" },
+      { id: "mob-2", name: "   " },
+    ]),
+    /Назва моба/,
+  );
+
+  assert.equal(storage.getItem(MOB_NAME_OVERRIDES_STORAGE_KEY), namesBefore);
+  assert.equal(storage.getItem(MOB_LEVELS_STORAGE_KEY), levelsBefore);
+  assert.deepEqual(
+    (await repository.getAll()).map(({ id, name }) => ({ id, name })),
+    [
+      { id: "mob-1", name: "Збережена назва" },
+      { id: "mob-2", name: "Другий" },
+    ],
+  );
 });
 
 test("joins levels to catalog mobs, omits missing mobs, and sorts by name", () => {
