@@ -32,6 +32,8 @@
   --color-tower-active: var(--tower-active);
   --color-tower-active-foreground: var(--tower-active-foreground);
   --color-tower-idle-text: var(--tower-idle-text);
+  --color-tower-breached: var(--tower-breached);
+  --color-tower-breached-foreground: var(--tower-breached-foreground);
   --color-col-i: var(--col-i);
   --color-col-ii: var(--col-ii);
   --color-col-iii: var(--col-iii);
@@ -77,6 +79,9 @@
   --tower-idle-text: oklch(0.45 0.01 260);
   --tower-active: oklch(0.72 0.19 55);
   --tower-active-foreground: oklch(1 0 0);
+  /* Breached tower — green (highest priority) */
+  --tower-breached: oklch(0.62 0.17 145);
+  --tower-breached-foreground: oklch(1 0 0);
 
   /* Column label colors (kept distinguishable on light bg) */
   --col-i: oklch(0.55 0.17 255);
