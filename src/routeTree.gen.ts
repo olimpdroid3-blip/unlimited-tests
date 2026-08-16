@@ -16,6 +16,7 @@ import { Route as DefensesRouteImport } from './routes/defenses'
 import { Route as MobLevelsRouteImport } from './routes/mob-levels'
 import { Route as TowersRouteImport } from './routes/towers'
 import { Route as VideosRouteImport } from './routes/videos'
+import { Route as MobLevelsEditRouteImport } from './routes/mob-levels_.edit'
 import { Route as ApiTelegramGvgVideoSetupRouteImport } from './routes/api/telegram/gvg-video-setup'
 import { Route as ApiPublicTelegramGvgVideoWebhookRouteImport } from './routes/api/public/telegram/gvg-video-webhook'
 
@@ -54,6 +55,11 @@ const VideosRoute = VideosRouteImport.update({
   path: '/videos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MobLevelsEditRoute = MobLevelsEditRouteImport.update({
+  id: '/mob-levels_/edit',
+  path: '/mob-levels/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTelegramGvgVideoSetupRoute =
   ApiTelegramGvgVideoSetupRouteImport.update({
     id: '/api/telegram/gvg-video-setup',
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/mob-levels': typeof MobLevelsRoute
   '/towers': typeof TowersRoute
   '/videos': typeof VideosRoute
+  '/mob-levels/edit': typeof MobLevelsEditRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -86,6 +93,7 @@ export interface FileRoutesByTo {
   '/mob-levels': typeof MobLevelsRoute
   '/towers': typeof TowersRoute
   '/videos': typeof VideosRoute
+  '/mob-levels/edit': typeof MobLevelsEditRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/mob-levels': typeof MobLevelsRoute
   '/towers': typeof TowersRoute
   '/videos': typeof VideosRoute
+  '/mob-levels_/edit': typeof MobLevelsEditRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/mob-levels'
     | '/towers'
     | '/videos'
+    | '/mob-levels/edit'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/mob-levels'
     | '/towers'
     | '/videos'
+    | '/mob-levels/edit'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   id:
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/mob-levels'
     | '/towers'
     | '/videos'
+    | '/mob-levels_/edit'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   fileRoutesById: FileRoutesById
@@ -145,6 +157,7 @@ export interface RootRouteChildren {
   MobLevelsRoute: typeof MobLevelsRoute
   TowersRoute: typeof TowersRoute
   VideosRoute: typeof VideosRoute
+  MobLevelsEditRoute: typeof MobLevelsEditRoute
   ApiTelegramGvgVideoSetupRoute: typeof ApiTelegramGvgVideoSetupRoute
   ApiPublicTelegramGvgVideoWebhookRoute: typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -200,6 +213,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VideosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mob-levels_/edit': {
+      id: '/mob-levels_/edit'
+      path: '/mob-levels/edit'
+      fullPath: '/mob-levels/edit'
+      preLoaderRoute: typeof MobLevelsEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/telegram/gvg-video-setup': {
       id: '/api/telegram/gvg-video-setup'
       path: '/api/telegram/gvg-video-setup'
@@ -225,6 +245,7 @@ const rootRouteChildren: RootRouteChildren = {
   MobLevelsRoute: MobLevelsRoute,
   TowersRoute: TowersRoute,
   VideosRoute: VideosRoute,
+  MobLevelsEditRoute: MobLevelsEditRoute,
   ApiTelegramGvgVideoSetupRoute: ApiTelegramGvgVideoSetupRoute,
   ApiPublicTelegramGvgVideoWebhookRoute: ApiPublicTelegramGvgVideoWebhookRoute,
 }

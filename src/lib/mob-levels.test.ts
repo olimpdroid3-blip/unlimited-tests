@@ -5,6 +5,8 @@ import {
   MOB_LEVELS_STORAGE_KEY,
   createLocalStorageMobLevelsRepository,
   emptyMobCatalogRepository,
+  getRemovedMobIds,
+  haveSameMobLevelDraft,
   isValidMobLevel,
   resolvePlayerMobs,
   sortPlayerOptions,
@@ -197,5 +199,38 @@ test("sorts Latin player nicknames before Cyrillic nicknames", () => {
       { id: "4", nickname: "Анна" },
     ]).map(({ nickname }) => nickname),
     ["alpha", "Bravo", "Анна", "Ярина"],
+  );
+});
+
+test("compares mob level drafts independently of row order", () => {
+  assert.equal(
+    haveSameMobLevelDraft(
+      [
+        { mobId: "mob-1", level: 10 },
+        { mobId: "mob-2", level: 20 },
+      ],
+      [
+        { mobId: "mob-2", level: 20 },
+        { mobId: "mob-1", level: 10 },
+      ],
+    ),
+    true,
+  );
+  assert.equal(
+    haveSameMobLevelDraft([{ mobId: "mob-1", level: 10 }], [{ mobId: "mob-1", level: 11 }]),
+    false,
+  );
+});
+
+test("finds mobs removed from an editor draft", () => {
+  assert.deepEqual(
+    getRemovedMobIds(
+      [
+        { mobId: "mob-1", level: 10 },
+        { mobId: "mob-2", level: 20 },
+      ],
+      [{ mobId: "mob-2", level: 20 }],
+    ),
+    ["mob-1"],
   );
 });

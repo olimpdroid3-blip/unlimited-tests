@@ -22,6 +22,11 @@ export type PlayerOption = {
   nickname: string;
 };
 
+export type MobLevelDraft = {
+  mobId: string;
+  level: number | null;
+};
+
 export interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -131,6 +136,25 @@ export function sortPlayerOptions(players: PlayerOption[]): PlayerOption[] {
       sensitivity: "base",
     });
   });
+}
+
+export function haveSameMobLevelDraft(left: MobLevelDraft[], right: MobLevelDraft[]): boolean {
+  return serializeDraft(left) === serializeDraft(right);
+}
+
+export function getRemovedMobIds(baseline: MobLevelDraft[], draft: MobLevelDraft[]): string[] {
+  const draftIds = new Set(draft.map(({ mobId }) => mobId));
+  return baseline
+    .map(({ mobId }) => mobId)
+    .filter((mobId) => !draftIds.has(mobId))
+    .sort((left, right) => left.localeCompare(right));
+}
+
+function serializeDraft(draft: MobLevelDraft[]): string {
+  return [...draft]
+    .sort((left, right) => left.mobId.localeCompare(right.mobId))
+    .map(({ mobId, level }) => `${mobId}\u0000${level ?? ""}`)
+    .join("\u0001");
 }
 
 function isPlayerMobLevel(value: unknown): value is PlayerMobLevel {
