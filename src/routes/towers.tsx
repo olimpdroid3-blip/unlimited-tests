@@ -47,6 +47,8 @@ function HomePage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
 
   const { data: towers = [], refetch } = useQuery({
@@ -89,8 +91,19 @@ function HomePage() {
     }
     setBusy(false);
     setClearOpen(false);
+    setConfirmOpen(false);
+    setConfirmText("");
     refetch();
   };
+
+  // Second-step confirmation: proceed only if the user typed "згоден"
+  const proceedFromFirst = () => {
+    setClearOpen(false);
+    setConfirmOpen(true);
+    setConfirmText("");
+  };
+
+  const confirmReady = confirmText.trim().toLowerCase() === "згоден";
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
