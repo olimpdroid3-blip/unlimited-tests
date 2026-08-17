@@ -47,6 +47,8 @@ function HomePage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
 
   const { data: towers = [], refetch } = useQuery({
@@ -89,8 +91,19 @@ function HomePage() {
     }
     setBusy(false);
     setClearOpen(false);
+    setConfirmOpen(false);
+    setConfirmText("");
     refetch();
   };
+
+  // Second-step confirmation: proceed only if the user typed "згоден"
+  const proceedFromFirst = () => {
+    setClearOpen(false);
+    setConfirmOpen(true);
+    setConfirmText("");
+  };
+
+  const confirmReady = confirmText.trim().toLowerCase() === "згоден";
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -195,7 +208,7 @@ function HomePage() {
             <div className="mt-5 grid grid-cols-2 gap-2">
               <button
                 disabled={busy}
-                onClick={handleClearAll}
+                onClick={proceedFromFirst}
                 className="rounded-lg bg-destructive px-3 py-2.5 text-sm font-semibold text-destructive-foreground transition hover:opacity-90 disabled:opacity-50"
               >
                 Так
@@ -203,6 +216,50 @@ function HomePage() {
               <button
                 disabled={busy}
                 onClick={() => setClearOpen(false)}
+                className="rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm text-secondary-foreground transition hover:bg-accent"
+              >
+                Скасувати
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 duration-200">
+            <Dialog.Title className="text-base font-semibold text-destructive">
+              Увага!
+            </Dialog.Title>
+            <Dialog.Description className="mt-2 text-sm text-muted-foreground">
+              Ця дія видалить всі записи всіх веж!
+            </Dialog.Description>
+            <p className="mt-2 text-sm text-foreground">
+              Для продовження напишіть — <span className="font-semibold">згоден</span>
+            </p>
+            <input
+              type="text"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              autoFocus
+              placeholder="згоден"
+              className="mt-3 w-full rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary"
+            />
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                disabled={!confirmReady || busy}
+                onClick={handleClearAll}
+                className="rounded-lg bg-destructive px-3 py-2.5 text-sm font-semibold text-destructive-foreground transition hover:opacity-90 disabled:opacity-50"
+              >
+                Згоден
+              </button>
+              <button
+                disabled={busy}
+                onClick={() => {
+                  setConfirmOpen(false);
+                  setConfirmText("");
+                }}
                 className="rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm text-secondary-foreground transition hover:bg-accent"
               >
                 Скасувати
