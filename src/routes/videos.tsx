@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { AppHeader } from "@/components/AppHeader";
 import { HeroPicker, type HeroOption } from "@/components/HeroPicker";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/db";
 
 export const Route = createFileRoute("/videos")({
   head: () => ({

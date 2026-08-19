@@ -1,5 +1,5 @@
 // Server-only logic for @gvg_video_index_bot: hero collection + notes flow.
-import { supabaseAdmin } from '@/integrations/supabase/client.server';
+import { supabaseAdmin } from '@/lib/db.server';
 
 const MAX_NOTES = 2000;
 const PENDING_TTL_MIN = 30;
