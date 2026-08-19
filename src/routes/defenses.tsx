@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { toast, Toaster } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/db";
 import { AppHeader } from "@/components/AppHeader";
 import { HeroPicker, type HeroOption } from "@/components/HeroPicker";
 import { syncHeroes } from "@/lib/heroes.functions";
