@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/db";
 import { createBattlePowerRepository, type BattlePowerRemoteSource } from "@/lib/battle-power";
 import { testBattlePowerRows } from "@/lib/test-player-data";
 

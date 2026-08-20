@@ -143,6 +143,66 @@ export type Database = {
         }
         Relationships: []
       }
+      mobs: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          image_url?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      player_mob_levels: {
+        Row: {
+          level: number
+          mob_id: string
+          player_id: string
+          updated_at: string
+        }
+        Insert: {
+          level: number
+          mob_id: string
+          player_id: string
+          updated_at?: string
+        }
+        Update: {
+          level?: number
+          mob_id?: string
+          player_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_mob_levels_mob_id_fkey"
+            columns: ["mob_id"]
+            isOneToOne: false
+            referencedRelation: "mobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_mob_levels_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "battle_power"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       telegram_sources: {
         Row: {
           active: boolean
