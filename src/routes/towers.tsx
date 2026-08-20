@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/db";
 import { AppHeader } from "@/components/AppHeader";
 import { Toaster } from "@/components/ui/sonner";
 import { TowerModal } from "@/components/TowerModal";
@@ -24,6 +24,7 @@ type Tower = {
   nickname: string | null;
   awakenings: string | null;
   notes: string | null;
+  breached?: boolean | null;
 };
 
 const COLUMNS = [
@@ -52,6 +53,8 @@ function HomePage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
 
   const { data: towers = [], refetch } = useQuery({
@@ -79,6 +82,7 @@ function HomePage() {
         nickname: t.nickname,
         awakenings: t.awakenings,
         notes: t.notes,
+        breached: !!t.breached,
       }));
       const { error: archErr } = await supabase.from("towers_archive").insert(archiveRows);
       if (archErr) {
@@ -93,8 +97,19 @@ function HomePage() {
     }
     setBusy(false);
     setClearOpen(false);
+    setConfirmOpen(false);
+    setConfirmText("");
     refetch();
   };
+
+  // Second-step confirmation: proceed only if the user typed "згоден"
+  const proceedFromFirst = () => {
+    setClearOpen(false);
+    setConfirmOpen(true);
+    setConfirmText("");
+  };
+
+  const confirmReady = confirmText.trim().toLowerCase() === "згоден";
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -117,7 +132,9 @@ function HomePage() {
               <div className="flex flex-col gap-1.5">
                 {ROWS.map(([r, s]) => {
                   const id = `${col.num}.${r}.${s}`;
-                  const active = map.has(id);
+                  const tower = map.get(id);
+                  const active = !!tower;
+                  const breached = !!tower?.breached;
                   return (
                     <button
                       key={id}
@@ -125,15 +142,21 @@ function HomePage() {
                       className={[
                         "relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-semibold transition-all duration-200 active:scale-95 sm:gap-2 sm:rounded-lg sm:px-3 sm:py-1.5 sm:text-sm",
                         "border",
-                        active
-                          ? "border-tower-active/40 bg-tower-active text-tower-active-foreground shadow-[0_0_14px_-6px_var(--tower-active)]"
-                          : "border-border bg-tower-idle text-tower-idle-text hover:text-foreground",
+                        breached
+                          ? "border-tower-breached/40 bg-tower-breached text-tower-breached-foreground shadow-[0_0_14px_-6px_var(--tower-breached)]"
+                          : active
+                            ? "border-tower-active/40 bg-tower-active text-tower-active-foreground shadow-[0_0_14px_-6px_var(--tower-active)]"
+                            : "border-border bg-tower-idle text-tower-idle-text hover:text-foreground",
                       ].join(" ")}
                     >
                       <span
                         className={[
                           "h-2 w-2 shrink-0 rounded-full sm:h-2.5 sm:w-2.5",
-                          active ? "bg-tower-active-foreground" : "bg-muted-foreground/60",
+                          breached
+                            ? "bg-tower-breached-foreground"
+                            : active
+                              ? "bg-tower-active-foreground"
+                              : "bg-muted-foreground/60",
                         ].join(" ")}
                       />
                       <span className="font-mono tracking-wide">{id}</span>
@@ -191,7 +214,7 @@ function HomePage() {
             <div className="mt-5 grid grid-cols-2 gap-2">
               <button
                 disabled={busy}
-                onClick={handleClearAll}
+                onClick={proceedFromFirst}
                 className="rounded-lg bg-destructive px-3 py-2.5 text-sm font-semibold text-destructive-foreground transition hover:opacity-90 disabled:opacity-50"
               >
                 Так
@@ -199,6 +222,48 @@ function HomePage() {
               <button
                 disabled={busy}
                 onClick={() => setClearOpen(false)}
+                className="rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm text-secondary-foreground transition hover:bg-accent"
+              >
+                Скасувати
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 duration-200">
+            <Dialog.Title className="text-base font-semibold text-destructive">Увага!</Dialog.Title>
+            <Dialog.Description className="mt-2 text-sm text-muted-foreground">
+              Ця дія видалить всі записи всіх веж!
+            </Dialog.Description>
+            <p className="mt-2 text-sm text-foreground">
+              Для продовження напишіть — <span className="font-semibold">згоден</span>
+            </p>
+            <input
+              type="text"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              autoFocus
+              placeholder="згоден"
+              className="mt-3 w-full rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary"
+            />
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                disabled={!confirmReady || busy}
+                onClick={handleClearAll}
+                className="rounded-lg bg-destructive px-3 py-2.5 text-sm font-semibold text-destructive-foreground transition hover:opacity-90 disabled:opacity-50"
+              >
+                Згоден
+              </button>
+              <button
+                disabled={busy}
+                onClick={() => {
+                  setConfirmOpen(false);
+                  setConfirmText("");
+                }}
                 className="rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm text-secondary-foreground transition hover:bg-accent"
               >
                 Скасувати

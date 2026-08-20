@@ -129,7 +129,7 @@ export const Route = createFileRoute('/api/public/telegram/gvg-video-webhook')({
         const chatId = message.chat.id;
         const threadId = resolveThreadId(message);
 
-        const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+        const { supabaseAdmin } = await import('@/lib/db.server');
 
         const { data: source, error: sourceError } = await supabaseAdmin
           .from('telegram_sources')

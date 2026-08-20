@@ -289,6 +289,7 @@ export type Database = {
       towers: {
         Row: {
           awakenings: string | null
+          breached: boolean
           nickname: string | null
           notes: string | null
           tower_id: string
@@ -296,6 +297,7 @@ export type Database = {
         }
         Insert: {
           awakenings?: string | null
+          breached?: boolean
           nickname?: string | null
           notes?: string | null
           tower_id: string
@@ -303,6 +305,7 @@ export type Database = {
         }
         Update: {
           awakenings?: string | null
+          breached?: boolean
           nickname?: string | null
           notes?: string | null
           tower_id?: string
@@ -314,6 +317,7 @@ export type Database = {
         Row: {
           archived_at: string
           awakenings: string | null
+          breached: boolean
           id: string
           nickname: string | null
           notes: string | null
@@ -323,6 +327,7 @@ export type Database = {
         Insert: {
           archived_at?: string
           awakenings?: string | null
+          breached?: boolean
           id?: string
           nickname?: string | null
           notes?: string | null
@@ -332,6 +337,7 @@ export type Database = {
         Update: {
           archived_at?: string
           awakenings?: string | null
+          breached?: boolean
           id?: string
           nickname?: string | null
           notes?: string | null

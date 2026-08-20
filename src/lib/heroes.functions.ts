@@ -105,7 +105,7 @@ async function translateBatch(names: string[]): Promise<Record<string, string>> 
 export const syncHeroes = createServerFn({ method: "POST" })
   .inputValidator((input: { limit?: number } | undefined) => input ?? {})
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/lib/db.server");
     const limit = Math.max(1, Math.min(data.limit ?? 80, 300));
 
     const parsed = await parseHeroesFromFastidious();
@@ -173,7 +173,7 @@ export const syncHeroes = createServerFn({ method: "POST" })
 export const uploadHeroIcon = createServerFn({ method: "POST" })
   .inputValidator((input: { name_en: string; dataUrl: string }) => input)
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/lib/db.server");
     const match = data.dataUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
     if (!match) throw new Error("Invalid image data");
     const contentType = match[1];
@@ -193,7 +193,7 @@ export const uploadHeroIcon = createServerFn({ method: "POST" })
 export const uploadDefenseScreenshot = createServerFn({ method: "POST" })
   .inputValidator((input: { dataUrl: string }) => input)
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/lib/db.server");
     const match = data.dataUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
     if (!match) throw new Error("Invalid image data");
     const contentType = match[1];
