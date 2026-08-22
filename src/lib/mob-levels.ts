@@ -1,11 +1,38 @@
 export const MOB_LEVELS_STORAGE_KEY = "gvg.mob-levels.v1";
 export const MOB_LEVEL_REMOVALS_STORAGE_KEY = "gvg.mob-level-removals.v1";
 export const MOB_NAME_OVERRIDES_STORAGE_KEY = "gvg.mob-name-overrides.v1";
+export const MOB_CLASSIFICATION_OVERRIDES_STORAGE_KEY = "gvg.mob-classification-overrides.v1";
+
+export const MOB_TYPES = ["demon", "demon-captain"] as const;
+export const MOB_RARITIES = ["epic", "legendary"] as const;
+export const MOB_SORT_MODES = ["default", "rarity", "name"] as const;
+
+export type MobType = (typeof MOB_TYPES)[number];
+export type MobRarity = (typeof MOB_RARITIES)[number];
+export type MobSortMode = (typeof MOB_SORT_MODES)[number];
+
+export const MOB_TYPE_LABELS: Record<MobType, string> = {
+  demon: "Демон",
+  "demon-captain": "Демон-капітан",
+};
+
+export const MOB_RARITY_LABELS: Record<MobRarity, string> = {
+  epic: "Епічний",
+  legendary: "Легендарний",
+};
+
+export const MOB_SORT_LABELS: Record<MobSortMode, string> = {
+  default: "За замовчуванням",
+  rarity: "За рідкістю",
+  name: "За іменем",
+};
 
 export type Mob = {
   id: string;
   name: string;
   imageUrl: string | null;
+  mobType: MobType;
+  rarity: MobRarity | null;
 };
 
 export type PlayerMobLevel = {
@@ -17,6 +44,7 @@ export type PlayerMobLevel = {
 
 export type PlayerMobLevelInput = Omit<PlayerMobLevel, "updatedAt">;
 export type MobNameInput = Pick<Mob, "id" | "name">;
+export type MobClassificationInput = Pick<Mob, "id" | "mobType" | "rarity">;
 
 export type ResolvedPlayerMob = PlayerMobLevel & { mob: Mob };
 
@@ -33,6 +61,12 @@ export type MobLevelDraft = {
 export type MobNameDraft = {
   mobId: string;
   name: string;
+};
+
+export type MobClassificationDraft = {
+  mobId: string;
+  mobType: MobType;
+  rarity: MobRarity | null;
 };
 
 export interface StorageLike {
@@ -53,6 +87,7 @@ export interface MobCatalogSource {
 
 export interface MobCatalogRepository extends MobCatalogSource {
   updateNames(inputs: MobNameInput[]): Promise<Mob[]>;
+  updateClassifications(inputs: MobClassificationInput[]): Promise<Mob[]>;
 }
 
 export function isValidMobLevel(value: unknown): value is number {
@@ -61,6 +96,21 @@ export function isValidMobLevel(value: unknown): value is number {
 
 export function isValidMobName(value: unknown): value is string {
   return isNonEmptyString(value);
+}
+
+export function isValidMobType(value: unknown): value is MobType {
+  return typeof value === "string" && MOB_TYPES.includes(value as MobType);
+}
+
+export function isValidMobRarity(value: unknown): value is MobRarity {
+  return typeof value === "string" && MOB_RARITIES.includes(value as MobRarity);
+}
+
+export function isValidMobClassification(mobType: unknown, rarity: unknown): mobType is MobType {
+  return (
+    (mobType === "demon" && isValidMobRarity(rarity)) ||
+    (mobType === "demon-captain" && rarity === null)
+  );
 }
 
 export function createLocalStorageMobLevelsRepository(
@@ -201,12 +251,42 @@ export function createLocalStorageMobCatalogRepository(
     }
   }
 
+  function readClassificationOverrides(): Record<string, Pick<Mob, "mobType" | "rarity">> {
+    const rawValue = getStorage()?.getItem(MOB_CLASSIFICATION_OVERRIDES_STORAGE_KEY);
+    if (!rawValue) return {};
+
+    try {
+      const parsedValue: unknown = JSON.parse(rawValue);
+      if (!parsedValue || typeof parsedValue !== "object" || Array.isArray(parsedValue)) return {};
+      return Object.fromEntries(
+        Object.entries(parsedValue).filter(
+          (entry): entry is [string, Pick<Mob, "mobType" | "rarity">] => {
+            const [mobId, classification] = entry;
+            return (
+              isNonEmptyString(mobId) &&
+              Boolean(classification) &&
+              typeof classification === "object" &&
+              isValidMobClassification(
+                (classification as Partial<Mob>).mobType,
+                (classification as Partial<Mob>).rarity,
+              )
+            );
+          },
+        ),
+      );
+    } catch {
+      return {};
+    }
+  }
+
   return {
     async getAll() {
       const overrides = readOverrides();
+      const classificationOverrides = readClassificationOverrides();
       return (await baseRepository.getAll()).map((mob) => ({
         ...mob,
         name: overrides[mob.id]?.trim() || mob.name,
+        ...classificationOverrides[mob.id],
       }));
     },
 
@@ -232,6 +312,32 @@ export function createLocalStorageMobCatalogRepository(
 
       return normalizedInputs.map(({ id, name }) => ({ ...mobsById.get(id)!, name }));
     },
+
+    async updateClassifications(inputs) {
+      inputs.forEach(validateMobClassificationInput);
+      if (inputs.length === 0) return [];
+
+      const catalog = await baseRepository.getAll();
+      const mobsById = new Map(catalog.map((mob) => [mob.id, mob]));
+      inputs.forEach(({ id }) => {
+        if (!mobsById.has(id)) throw new Error("Моба не знайдено в каталозі");
+      });
+
+      const activeStorage = getStorage();
+      if (!activeStorage) throw new Error("Локальне сховище недоступне на сервері");
+
+      const overrides = { ...readClassificationOverrides() };
+      inputs.forEach(({ id, mobType, rarity }) => {
+        overrides[id] = { mobType, rarity };
+      });
+      activeStorage.setItem(MOB_CLASSIFICATION_OVERRIDES_STORAGE_KEY, JSON.stringify(overrides));
+
+      return inputs.map(({ id, mobType, rarity }) => ({
+        ...mobsById.get(id)!,
+        mobType,
+        rarity,
+      }));
+    },
   };
 }
 
@@ -243,20 +349,39 @@ export const emptyMobCatalogRepository: MobCatalogRepository = {
     if (inputs.length > 0) throw new Error("Моба не знайдено в каталозі");
     return [];
   },
+  async updateClassifications(inputs) {
+    if (inputs.length > 0) throw new Error("Моба не знайдено в каталозі");
+    return [];
+  },
 };
 
-export function resolvePlayerMobs(levels: PlayerMobLevel[], mobs: Mob[]): ResolvedPlayerMob[] {
+export function resolvePlayerMobs(
+  levels: PlayerMobLevel[],
+  mobs: Mob[],
+  sortMode: MobSortMode = "default",
+): ResolvedPlayerMob[] {
   const mobsById = new Map(mobs.map((mob) => [mob.id, mob]));
   return levels
     .flatMap((level) => {
       const mob = mobsById.get(level.mobId);
       return mob ? [{ ...level, mob }] : [];
     })
-    .sort((left, right) =>
-      left.mob.name.localeCompare(right.mob.name, "uk", {
-        sensitivity: "base",
-      }),
-    );
+    .sort((left, right) => compareMobs(left.mob, right.mob, sortMode));
+}
+
+export function compareMobs(left: Mob, right: Mob, sortMode: MobSortMode): number {
+  if (sortMode === "name") return compareMobNames(left, right);
+
+  if (sortMode === "rarity") {
+    return rarityRank(left.rarity) - rarityRank(right.rarity) || compareMobNames(left, right);
+  }
+
+  const typeDifference = typeRank(left.mobType) - typeRank(right.mobType);
+  if (typeDifference !== 0) return typeDifference;
+  if (left.mobType === "demon" && right.mobType === "demon") {
+    return rarityRank(left.rarity) - rarityRank(right.rarity) || compareMobNames(left, right);
+  }
+  return compareMobNames(left, right);
 }
 
 export function sortPlayerOptions(players: PlayerOption[]): PlayerOption[] {
@@ -296,6 +421,13 @@ export function haveSameMobNameDraft(left: MobNameDraft[], right: MobNameDraft[]
   return serializeMobNameDraft(left) === serializeMobNameDraft(right);
 }
 
+export function haveSameMobClassificationDraft(
+  left: MobClassificationDraft[],
+  right: MobClassificationDraft[],
+): boolean {
+  return serializeMobClassificationDraft(left) === serializeMobClassificationDraft(right);
+}
+
 export function getChangedMobNames(
   baseline: MobNameDraft[],
   draft: MobNameDraft[],
@@ -305,6 +437,20 @@ export function getChangedMobNames(
     .filter(({ name }) => isValidMobName(name))
     .map(({ mobId, name }) => ({ id: mobId, name: name.trim() }))
     .filter(({ id, name }) => baselineNames.get(id) !== name)
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+export function getChangedMobClassifications(
+  baseline: MobClassificationDraft[],
+  draft: MobClassificationDraft[],
+): MobClassificationInput[] {
+  const baselineById = new Map(
+    baseline.map(({ mobId, mobType, rarity }) => [mobId, `${mobType}\u0000${rarity}`]),
+  );
+  return draft
+    .filter(({ mobType, rarity }) => isValidMobClassification(mobType, rarity))
+    .map(({ mobId, mobType, rarity }) => ({ id: mobId, mobType, rarity }))
+    .filter(({ id, mobType, rarity }) => baselineById.get(id) !== `${mobType}\u0000${rarity}`)
     .sort((left, right) => left.id.localeCompare(right.id));
 }
 
@@ -327,6 +473,13 @@ function serializeMobNameDraft(draft: MobNameDraft[]): string {
   return [...draft]
     .sort((left, right) => left.mobId.localeCompare(right.mobId))
     .map(({ mobId, name }) => `${mobId}\u0000${name.trim()}`)
+    .join("\u0001");
+}
+
+function serializeMobClassificationDraft(draft: MobClassificationDraft[]): string {
+  return [...draft]
+    .sort((left, right) => left.mobId.localeCompare(right.mobId))
+    .map(({ mobId, mobType, rarity }) => `${mobId}\u0000${mobType}\u0000${rarity}`)
     .join("\u0001");
 }
 
@@ -356,6 +509,13 @@ function validateMobNameInput(input: MobNameInput): void {
   if (!isNonEmptyString(input.name)) throw new Error("Назва моба не може бути порожньою");
 }
 
+function validateMobClassificationInput(input: MobClassificationInput): void {
+  if (!isNonEmptyString(input.id)) throw new Error("Моб має бути вибраний");
+  if (!isValidMobClassification(input.mobType, input.rarity)) {
+    throw new Error("Некоректна комбінація типу та рідкості моба");
+  }
+}
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -366,4 +526,18 @@ function levelKey(playerId: string, mobId: string): string {
 
 function comparePlayerMobLevels(left: PlayerMobLevel, right: PlayerMobLevel): number {
   return left.playerId.localeCompare(right.playerId) || left.mobId.localeCompare(right.mobId);
+}
+
+function compareMobNames(left: Mob, right: Mob): number {
+  return left.name.localeCompare(right.name, "uk", { sensitivity: "base" });
+}
+
+function typeRank(mobType: MobType): number {
+  return mobType === "demon-captain" ? 0 : 1;
+}
+
+function rarityRank(rarity: MobRarity | null): number {
+  if (rarity === "legendary") return 0;
+  if (rarity === "epic") return 1;
+  return 2;
 }

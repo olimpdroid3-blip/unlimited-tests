@@ -9,7 +9,10 @@ import {
 
 const supabaseMobLevelsGateway: MobLevelsGateway = {
   async listMobs() {
-    const { data, error } = await supabase.from("mobs").select("id,name,image_url").order("id");
+    const { data, error } = await supabase
+      .from("mobs")
+      .select("id,name,image_url,mob_type,rarity")
+      .order("id");
     if (error) throw error;
     return data;
   },
@@ -21,7 +24,22 @@ const supabaseMobLevelsGateway: MobLevelsGateway = {
           .from("mobs")
           .update({ name })
           .eq("id", id)
-          .select("id,name,image_url")
+          .select("id,name,image_url,mob_type,rarity")
+          .single();
+        if (error) throw error;
+        return data;
+      }),
+    );
+  },
+
+  async updateMobClassifications(inputs) {
+    return Promise.all(
+      inputs.map(async ({ id, mob_type, rarity }) => {
+        const { data, error } = await supabase
+          .from("mobs")
+          .update({ mob_type, rarity })
+          .eq("id", id)
+          .select("id,name,image_url,mob_type,rarity")
           .single();
         if (error) throw error;
         return data;

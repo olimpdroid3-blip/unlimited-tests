@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   createBattlePowerRepository,
+  getBattlePowerFormPresentation,
   type BattlePowerInput,
   type BattlePowerRemoteSource,
   type BattlePowerRow,
@@ -57,6 +58,12 @@ function createRemoteSource(initialRows: BattlePowerRow[]): BattlePowerRemoteSou
     },
   };
 }
+
+test("shows additions inline and edits in a dialog", () => {
+  assert.equal(getBattlePowerFormPresentation(false, null), "hidden");
+  assert.equal(getBattlePowerFormPresentation(true, null), "inline");
+  assert.equal(getBattlePowerFormPresentation(true, "player-01"), "dialog");
+});
 
 test("merges test and remote players while preferring an exact nickname match from remote", async () => {
   const repository = createBattlePowerRepository(

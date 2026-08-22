@@ -1,8 +1,13 @@
 import {
   isValidMobLevel,
+  isValidMobClassification,
   isValidMobName,
+  isValidMobType,
   type Mob,
   type MobCatalogRepository,
+  type MobClassificationInput,
+  type MobRarity,
+  type MobType,
   type MobNameInput,
   type MobLevelsRepository,
   type PlayerMobLevel,
@@ -13,6 +18,8 @@ export type MobRow = {
   id: string;
   name: string;
   image_url: string | null;
+  mob_type: MobType;
+  rarity: MobRarity | null;
 };
 
 export type PlayerMobLevelRow = {
@@ -27,11 +34,18 @@ type MobNameRowInput = {
   name: string;
 };
 
+type MobClassificationRowInput = {
+  id: string;
+  mob_type: MobType;
+  rarity: MobRarity | null;
+};
+
 type PlayerMobLevelRowInput = Omit<PlayerMobLevelRow, "updated_at">;
 
 export interface MobLevelsGateway {
   listMobs(): Promise<MobRow[]>;
   updateMobNames(inputs: MobNameRowInput[]): Promise<MobRow[]>;
+  updateMobClassifications(inputs: MobClassificationRowInput[]): Promise<MobRow[]>;
   listPlayerLevels(playerId: string): Promise<PlayerMobLevelRow[]>;
   upsertPlayerLevels(inputs: PlayerMobLevelRowInput[]): Promise<PlayerMobLevelRow[]>;
   deletePlayerLevel(playerId: string, mobId: string): Promise<void>;
@@ -51,6 +65,14 @@ export function createSupabaseMobCatalogRepository(
       if (normalizedInputs.length === 0) return [];
 
       return (await gateway.updateMobNames(normalizedInputs)).map(mapMobRow);
+    },
+
+    async updateClassifications(inputs) {
+      const normalizedInputs = inputs.map(normalizeMobClassificationInput);
+      normalizedInputs.forEach(validateMobClassificationInput);
+      if (normalizedInputs.length === 0) return [];
+
+      return (await gateway.updateMobClassifications(normalizedInputs)).map(mapMobRow);
     },
   };
 }
@@ -91,6 +113,8 @@ function mapMobRow(row: MobRow): Mob {
     id: row.id,
     name: row.name,
     imageUrl: row.image_url,
+    mobType: row.mob_type,
+    rarity: row.rarity,
   };
 }
 
@@ -110,6 +134,25 @@ function normalizeMobNameInput({ id, name }: MobNameInput): MobNameRowInput {
 function validateMobNameInput({ id, name }: MobNameRowInput): void {
   if (!id) throw new Error("Моб має бути вибраний");
   if (!isValidMobName(name)) throw new Error("Назва моба не може бути порожньою");
+}
+
+function normalizeMobClassificationInput({
+  id,
+  mobType,
+  rarity,
+}: MobClassificationInput): MobClassificationRowInput {
+  return { id: id.trim(), mob_type: mobType, rarity };
+}
+
+function validateMobClassificationInput({
+  id,
+  mob_type: mobType,
+  rarity,
+}: MobClassificationRowInput): void {
+  if (!id) throw new Error("Моб має бути вибраний");
+  if (!isValidMobType(mobType) || !isValidMobClassification(mobType, rarity)) {
+    throw new Error("Некоректна комбінація типу та рідкості моба");
+  }
 }
 
 function validatePlayerMobLevelInput(input: PlayerMobLevelInput): void {

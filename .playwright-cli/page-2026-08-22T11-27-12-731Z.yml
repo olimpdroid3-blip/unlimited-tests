@@ -1,0 +1,211 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - link "🏰 Ukraine Unlimited База ресурсів" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e6]: 🏰
+        - generic [ref=e7]:
+          - generic [ref=e8]: Ukraine Unlimited
+          - generic [ref=e9]: База ресурсів
+      - generic [ref=e10]:
+        - button "Увімкнути темну тему" [ref=e23]
+        - link "🏠 Головна" [ref=e14] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e15]: 🏠
+          - generic [ref=e16]: Головна
+  - region "Notifications alt+T"
+  - main [ref=e17]:
+    - heading "💪 Бойова Сила" [level=1] [ref=e18]
+    - paragraph [ref=e19]: Збереження бойової сили учасників
+    - button "➕ Додати свій БС" [ref=e230] [cursor=pointer]
+    - generic [ref=e21]:
+      - generic [ref=e24]:
+        - generic [ref=e25]: Adam
+        - generic [ref=e26]: "142.6"
+        - generic [ref=e27]: "138.6"
+        - generic [ref=e28]: "137.5"
+        - generic [ref=e29]: "125.6"
+        - generic [ref=e30]:
+          - generic [ref=e31]: "120.4"
+          - button "Редагувати" [ref=e32] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e33] [cursor=pointer]: 🗑️
+      - generic [ref=e34]:
+        - generic [ref=e35]: Alex
+        - generic [ref=e36]: "146.3"
+        - generic [ref=e37]: "139.8"
+        - generic [ref=e38]: "138.7"
+        - generic [ref=e39]: "138.2"
+        - generic [ref=e40]:
+          - generic [ref=e41]: "136"
+          - button "Редагувати" [ref=e42] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e43] [cursor=pointer]: 🗑️
+      - generic [ref=e44]:
+        - generic [ref=e45]: Ashikumi
+        - generic [ref=e46]: "146.4"
+        - generic [ref=e47]: "138.5"
+        - generic [ref=e48]: "136"
+        - generic [ref=e49]: "134.1"
+        - generic [ref=e50]:
+          - generic [ref=e51]: "128"
+          - button "Редагувати" [ref=e52] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e53] [cursor=pointer]: 🗑️
+      - generic [ref=e54]:
+        - generic [ref=e55]: Black Pearl
+        - generic [ref=e56]: "149.7"
+        - generic [ref=e57]: "141.5"
+        - generic [ref=e58]: "140"
+        - generic [ref=e59]: "131.7"
+        - generic [ref=e60]:
+          - generic [ref=e61]: "130.3"
+          - button "Редагувати" [ref=e62] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e63] [cursor=pointer]: 🗑️
+      - generic [ref=e64]:
+        - generic [ref=e65]: BloodReaper
+        - generic [ref=e66]: "142.6"
+        - generic [ref=e67]: "140"
+        - generic [ref=e68]: "132"
+        - generic [ref=e69]: "125.4"
+        - generic [ref=e70]:
+          - generic [ref=e71]: "121.5"
+          - button "Редагувати" [ref=e72] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e73] [cursor=pointer]: 🗑️
+      - generic [ref=e74]:
+        - generic [ref=e75]: Chucky
+        - generic [ref=e76]: "146.5"
+        - generic [ref=e77]: "140.3"
+        - generic [ref=e78]: "139.3"
+        - generic [ref=e79]: "136.2"
+        - generic [ref=e80]:
+          - generic [ref=e81]: "133"
+          - button "Редагувати" [ref=e82] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e83] [cursor=pointer]: 🗑️
+      - generic [ref=e84]:
+        - generic [ref=e85]: DrDoom
+        - generic [ref=e86]: "142.3"
+        - generic [ref=e87]: "138"
+        - generic [ref=e88]: "134.9"
+        - generic [ref=e89]: "133.8"
+        - generic [ref=e90]:
+          - generic [ref=e91]: "131.8"
+          - button "Редагувати" [ref=e92] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e93] [cursor=pointer]: 🗑️
+      - generic [ref=e94]:
+        - generic [ref=e95]: Fakra
+        - generic [ref=e96]: "145.3"
+        - generic [ref=e97]: "143.5"
+        - generic [ref=e98]: "136.8"
+        - generic [ref=e99]: "133.4"
+        - generic [ref=e100]:
+          - generic [ref=e101]: "131.8"
+          - button "Редагувати" [ref=e102] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e103] [cursor=pointer]: 🗑️
+      - generic [ref=e104]:
+        - generic [ref=e105]: Halex
+        - generic [ref=e106]: "147.2"
+        - generic [ref=e107]: "139.4"
+        - generic [ref=e108]: "137.8"
+        - generic [ref=e109]: "126.3"
+        - generic [ref=e110]:
+          - generic [ref=e111]: "125.7"
+          - button "Редагувати" [ref=e112] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e113] [cursor=pointer]: 🗑️
+      - generic [ref=e114]:
+        - generic [ref=e115]: JlyHb
+        - generic [ref=e116]: "150.8"
+        - generic [ref=e117]: "145.3"
+        - generic [ref=e118]: "133.2"
+        - generic [ref=e119]: "127.8"
+        - generic [ref=e120]:
+          - generic [ref=e121]: "127.1"
+          - button "Редагувати" [ref=e122] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e123] [cursor=pointer]: 🗑️
+      - generic [ref=e124]:
+        - generic [ref=e125]: LEGAkrad
+        - generic [ref=e126]: "152"
+        - generic [ref=e127]: "138"
+        - generic [ref=e128]: "132"
+        - generic [ref=e129]: "129"
+        - generic [ref=e130]:
+          - generic [ref=e131]: "121"
+          - button "Редагувати" [ref=e132] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e133] [cursor=pointer]: 🗑️
+      - generic [ref=e134]:
+        - generic [ref=e135]: Lucifer
+        - generic [ref=e136]: "155.6"
+        - generic [ref=e137]: "147.2"
+        - generic [ref=e138]: "141.7"
+        - generic [ref=e139]: "141.2"
+        - generic [ref=e140]:
+          - generic [ref=e141]: "136.2"
+          - button "Редагувати" [ref=e142] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e143] [cursor=pointer]: 🗑️
+      - generic [ref=e144]:
+        - generic [ref=e145]: Magura
+        - generic [ref=e146]: "141"
+        - generic [ref=e147]: "137.7"
+        - generic [ref=e148]: "136.8"
+        - generic [ref=e149]: "131.2"
+        - generic [ref=e150]:
+          - generic [ref=e151]: "129"
+          - button "Редагувати" [ref=e152] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e153] [cursor=pointer]: 🗑️
+      - generic [ref=e154]:
+        - generic [ref=e155]: Sir Lord Stinky
+        - generic [ref=e156]: "141.1"
+        - generic [ref=e157]: "137.5"
+        - generic [ref=e158]: "128.4"
+        - generic [ref=e159]: "127.6"
+        - generic [ref=e160]:
+          - generic [ref=e161]: "127.2"
+          - button "Редагувати" [ref=e162] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e163] [cursor=pointer]: 🗑️
+      - generic [ref=e164]:
+        - generic [ref=e165]: Skye
+        - generic [ref=e166]: "152.4"
+        - generic [ref=e167]: "143.2"
+        - generic [ref=e168]: "137.4"
+        - generic [ref=e169]: "133.3"
+        - generic [ref=e170]:
+          - generic [ref=e171]: "131.2"
+          - button "Редагувати" [ref=e172] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e173] [cursor=pointer]: 🗑️
+      - generic [ref=e174]:
+        - generic [ref=e175]: Sollers
+        - generic [ref=e176]: "136"
+        - generic [ref=e177]: "131.5"
+        - generic [ref=e178]: "122"
+        - generic [ref=e179]: "121.5"
+        - generic [ref=e180]:
+          - generic [ref=e181]: "119.6"
+          - button "Редагувати" [ref=e182] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e183] [cursor=pointer]: 🗑️
+      - generic [ref=e184]:
+        - generic [ref=e185]: Zahart
+        - generic [ref=e186]: "151.7"
+        - generic [ref=e187]: "139.3"
+        - generic [ref=e188]: "136.5"
+        - generic [ref=e189]: "132.2"
+        - generic [ref=e190]:
+          - generic [ref=e191]: "132.2"
+          - button "Редагувати" [ref=e192] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e193] [cursor=pointer]: 🗑️
+      - generic [ref=e194]:
+        - generic [ref=e195]: Люцифер
+        - generic [ref=e196]: "155.6"
+        - generic [ref=e197]: "147.2"
+        - generic [ref=e198]: "141.7"
+        - generic [ref=e199]: "141.2"
+        - generic [ref=e200]:
+          - generic [ref=e201]: "136.2"
+          - button "Редагувати" [ref=e202] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e203] [cursor=pointer]: 🗑️
+      - generic [ref=e204]:
+        - generic [ref=e205]: 口寂しい
+        - generic [ref=e206]: "155.1"
+        - generic [ref=e207]: "139.5"
+        - generic [ref=e208]: "139.1"
+        - generic [ref=e209]: "136.6"
+        - generic [ref=e210]:
+          - generic [ref=e211]: "134.6"
+          - button "Редагувати" [ref=e212] [cursor=pointer]: ✏️
+          - button "Видалити" [ref=e213] [cursor=pointer]: 🗑️

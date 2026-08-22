@@ -26,6 +26,16 @@ export interface BattlePowerRemoteSource {
 
 export type BattlePowerRepository = BattlePowerRemoteSource;
 
+export type BattlePowerFormPresentation = "hidden" | "inline" | "dialog";
+
+export function getBattlePowerFormPresentation(
+  isOpen: boolean,
+  editingId: string | null,
+): BattlePowerFormPresentation {
+  if (!isOpen) return "hidden";
+  return editingId ? "dialog" : "inline";
+}
+
 export function createBattlePowerRepository(
   remoteSource: BattlePowerRemoteSource,
   seedRows: readonly BattlePowerRow[],

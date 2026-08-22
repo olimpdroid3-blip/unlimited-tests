@@ -14,11 +14,15 @@ test("contains the complete normalized workbook fixture", () => {
     true,
   );
   assert.equal(testMobCatalog.filter(({ imageUrl }) => imageUrl === null).length, 2);
+  assert.equal(
+    testMobCatalog.every(({ mobType, rarity }) => mobType === "demon" && rarity === "epic"),
+    true,
+  );
 });
 
 test("keeps player and mob references internally consistent", () => {
   const playerIds = new Set(testBattlePowerRows.map(({ id }) => id));
-  const mobIds = new Set(testMobCatalog.map(({ id }) => id));
+  const mobIds = new Set<string>(testMobCatalog.map(({ id }) => id));
 
   assert.equal(
     testPlayerMobLevels.every(({ playerId }) => playerIds.has(playerId)),

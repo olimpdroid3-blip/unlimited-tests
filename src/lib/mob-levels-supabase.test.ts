@@ -10,7 +10,15 @@ import {
 } from "./mob-levels-supabase.ts";
 
 function createMemoryGateway(): MobLevelsGateway {
-  let mobs: MobRow[] = [{ id: "mob-01", name: "Моб 01", image_url: "/mobs/image10.jpg" }];
+  let mobs: MobRow[] = [
+    {
+      id: "mob-01",
+      name: "Моб 01",
+      image_url: "/mobs/image10.jpg",
+      mob_type: "demon" as const,
+      rarity: "epic" as const,
+    },
+  ];
   let levels: PlayerMobLevelRow[] = [
     {
       player_id: "player-01",
@@ -28,6 +36,13 @@ function createMemoryGateway(): MobLevelsGateway {
       mobs = mobs.map((mob) => {
         const input = inputs.find(({ id }) => id === mob.id);
         return input ? { ...mob, name: input.name } : mob;
+      });
+      return mobs.filter((mob) => inputs.some(({ id }) => id === mob.id));
+    },
+    async updateMobClassifications(inputs) {
+      mobs = mobs.map((mob) => {
+        const input = inputs.find(({ id }) => id === mob.id);
+        return input ? { ...mob, mob_type: input.mob_type, rarity: input.rarity } : mob;
       });
       return mobs.filter((mob) => inputs.some(({ id }) => id === mob.id));
     },
@@ -57,12 +72,43 @@ test("maps database mob rows and persists globally edited names", async () => {
   const repository = createSupabaseMobCatalogRepository(createMemoryGateway());
 
   assert.deepEqual(await repository.getAll(), [
-    { id: "mob-01", name: "Моб 01", imageUrl: "/mobs/image10.jpg" },
+    {
+      id: "mob-01",
+      name: "Моб 01",
+      imageUrl: "/mobs/image10.jpg",
+      mobType: "demon",
+      rarity: "epic",
+    },
   ]);
 
   assert.deepEqual(await repository.updateNames([{ id: "mob-01", name: "  Вовк  " }]), [
-    { id: "mob-01", name: "Вовк", imageUrl: "/mobs/image10.jpg" },
+    {
+      id: "mob-01",
+      name: "Вовк",
+      imageUrl: "/mobs/image10.jpg",
+      mobType: "demon",
+      rarity: "epic",
+    },
   ]);
+});
+
+test("persists a mob type and rarity globally", async () => {
+  const repository = createSupabaseMobCatalogRepository(createMemoryGateway());
+
+  assert.deepEqual(
+    await repository.updateClassifications([
+      { id: "mob-01", mobType: "demon-captain", rarity: null },
+    ]),
+    [
+      {
+        id: "mob-01",
+        name: "Моб 01",
+        imageUrl: "/mobs/image10.jpg",
+        mobType: "demon-captain",
+        rarity: null,
+      },
+    ],
+  );
 });
 
 test("maps player levels and upserts the selected player and mob pair", async () => {

@@ -7,10 +7,12 @@ import {
   createLocalStorageMobLevelsRepository,
   createLocalStorageMobCatalogRepository,
   emptyMobCatalogRepository,
+  getChangedMobClassifications,
   getChangedMobNames,
   getRemovedMobIds,
   haveSameMobNameDraft,
   haveSameMobLevelDraft,
+  haveSameMobClassificationDraft,
   isValidMobName,
   isValidMobLevel,
   mergePlayerOptions,
@@ -241,20 +243,56 @@ test("empty catalog deliberately returns no fake mobs", async () => {
 test("stores a shared mob name override and merges it into every catalog read", async () => {
   const storage = createMemoryStorage();
   const baseCatalog = createStaticMobCatalog([
-    { id: "mob-1", name: "Стара назва", imageUrl: "/mob-1.webp" },
-    { id: "mob-2", name: "Інший моб", imageUrl: null },
+    {
+      id: "mob-1",
+      name: "Стара назва",
+      imageUrl: "/mob-1.webp",
+      mobType: "demon",
+      rarity: "epic",
+    },
+    {
+      id: "mob-2",
+      name: "Інший моб",
+      imageUrl: null,
+      mobType: "demon",
+      rarity: "epic",
+    },
   ]);
   const repository = createLocalStorageMobCatalogRepository(baseCatalog, storage);
 
   await repository.updateNames([{ id: "mob-1", name: "  Нова назва  " }]);
 
   assert.deepEqual(await repository.getAll(), [
-    { id: "mob-1", name: "Нова назва", imageUrl: "/mob-1.webp" },
-    { id: "mob-2", name: "Інший моб", imageUrl: null },
+    {
+      id: "mob-1",
+      name: "Нова назва",
+      imageUrl: "/mob-1.webp",
+      mobType: "demon",
+      rarity: "epic",
+    },
+    {
+      id: "mob-2",
+      name: "Інший моб",
+      imageUrl: null,
+      mobType: "demon",
+      rarity: "epic",
+    },
   ]);
   assert.deepEqual(await createLocalStorageMobCatalogRepository(baseCatalog, storage).getAll(), [
-    { id: "mob-1", name: "Нова назва", imageUrl: "/mob-1.webp" },
-    { id: "mob-2", name: "Інший моб", imageUrl: null },
+    {
+      id: "mob-1",
+      name: "Нова назва",
+      imageUrl: "/mob-1.webp",
+      mobType: "demon",
+      rarity: "epic",
+    },
+    {
+      id: "mob-2",
+      name: "Інший моб",
+      imageUrl: null,
+      mobType: "demon",
+      rarity: "epic",
+    },
   ]);
 });
 
@@ -262,8 +300,20 @@ test("rejects an invalid mob name batch without changing catalog or level storag
   const storage = createMemoryStorage();
   const repository = createLocalStorageMobCatalogRepository(
     createStaticMobCatalog([
-      { id: "mob-1", name: "Перший", imageUrl: null },
-      { id: "mob-2", name: "Другий", imageUrl: null },
+      {
+        id: "mob-1",
+        name: "Перший",
+        imageUrl: null,
+        mobType: "demon",
+        rarity: "epic",
+      },
+      {
+        id: "mob-2",
+        name: "Другий",
+        imageUrl: null,
+        mobType: "demon",
+        rarity: "epic",
+      },
     ]),
     storage,
   );
@@ -316,8 +366,20 @@ test("joins levels to catalog mobs, omits missing mobs, and sorts by name", () =
       },
     ],
     [
-      { id: "mob-1", name: "Альфа", imageUrl: null },
-      { id: "mob-2", name: "Бета", imageUrl: "/beta.webp" },
+      {
+        id: "mob-1",
+        name: "Альфа",
+        imageUrl: null,
+        mobType: "demon",
+        rarity: "epic",
+      },
+      {
+        id: "mob-2",
+        name: "Бета",
+        imageUrl: "/beta.webp",
+        mobType: "demon",
+        rarity: "epic",
+      },
     ],
   );
 
@@ -327,6 +389,72 @@ test("joins levels to catalog mobs, omits missing mobs, and sorts by name", () =
       { name: "Альфа", level: 30 },
       { name: "Бета", level: 10 },
     ],
+  );
+});
+
+test("sorts captains first by default, then legendary and epic demons", () => {
+  const mobs: Mob[] = [
+    { id: "epic", name: "Альфа", imageUrl: null, mobType: "demon", rarity: "epic" },
+    {
+      id: "captain",
+      name: "Якір",
+      imageUrl: null,
+      mobType: "demon-captain",
+      rarity: null,
+    },
+    {
+      id: "legendary",
+      name: "Бета",
+      imageUrl: null,
+      mobType: "demon",
+      rarity: "legendary",
+    },
+  ];
+  const levels = mobs.map((mob) => ({
+    playerId: "player-1",
+    mobId: mob.id,
+    level: 1,
+    updatedAt: "2026-08-22T00:00:00.000Z",
+  }));
+
+  assert.deepEqual(
+    resolvePlayerMobs(levels, mobs, "default").map(({ mob }) => mob.id),
+    ["captain", "legendary", "epic"],
+  );
+});
+
+test("sorts mobs by rarity or name when requested", () => {
+  const mobs: Mob[] = [
+    { id: "epic", name: "Вовк", imageUrl: null, mobType: "demon", rarity: "epic" },
+    {
+      id: "captain",
+      name: "Альфа",
+      imageUrl: null,
+      mobType: "demon-captain",
+      rarity: null,
+    },
+    {
+      id: "legendary",
+      name: "Бета",
+      imageUrl: null,
+      mobType: "demon",
+      rarity: "legendary",
+    },
+  ];
+  const levels = mobs.map((mob) => ({
+    playerId: "player-1",
+    mobId: mob.id,
+    level: 1,
+    updatedAt: "2026-08-22T00:00:00.000Z",
+  }));
+
+  assert.deepEqual(
+    resolvePlayerMobs(levels, mobs, "rarity").map(({ mob }) => mob.id),
+    ["legendary", "epic", "captain"],
+  );
+  assert.deepEqual(
+    resolvePlayerMobs(levels, mobs, "name").map(({ mob }) => mob.id),
+    ["captain", "legendary", "epic"],
   );
 });
 
@@ -438,5 +566,44 @@ test("returns only changed mob names with normalized values", () => {
       ],
     ),
     [{ id: "mob-2", name: "Нова Бета" }],
+  );
+});
+
+test("compares mob classification drafts independently of row order", () => {
+  assert.equal(
+    haveSameMobClassificationDraft(
+      [
+        { mobId: "mob-1", mobType: "demon", rarity: "epic" },
+        { mobId: "mob-2", mobType: "demon-captain", rarity: null },
+      ],
+      [
+        { mobId: "mob-2", mobType: "demon-captain", rarity: null },
+        { mobId: "mob-1", mobType: "demon", rarity: "epic" },
+      ],
+    ),
+    true,
+  );
+  assert.equal(
+    haveSameMobClassificationDraft(
+      [{ mobId: "mob-1", mobType: "demon", rarity: "epic" }],
+      [{ mobId: "mob-1", mobType: "demon", rarity: "legendary" }],
+    ),
+    false,
+  );
+});
+
+test("returns only changed mob classifications", () => {
+  assert.deepEqual(
+    getChangedMobClassifications(
+      [
+        { mobId: "mob-1", mobType: "demon", rarity: "epic" },
+        { mobId: "mob-2", mobType: "demon", rarity: "epic" },
+      ],
+      [
+        { mobId: "mob-2", mobType: "demon-captain", rarity: null },
+        { mobId: "mob-1", mobType: "demon", rarity: "epic" },
+      ],
+    ),
+    [{ id: "mob-2", mobType: "demon-captain", rarity: null }],
   );
 });

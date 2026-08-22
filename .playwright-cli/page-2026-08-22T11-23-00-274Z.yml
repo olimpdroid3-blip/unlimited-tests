@@ -1,0 +1,224 @@
+- generic:
+  - generic:
+    - banner:
+      - generic:
+        - link:
+          - /url: /
+          - generic: 🏰
+          - generic:
+            - generic: Ukraine Unlimited
+            - generic: База ресурсів
+        - generic:
+          - button
+          - link:
+            - /url: /
+            - generic: 🏠
+            - generic: Головна
+    - region "Notifications alt+T"
+    - main:
+      - heading [level=1]: 💪 Бойова Сила
+      - paragraph: Збереження бойової сили учасників
+      - generic:
+        - generic:
+          - generic: Adam
+          - generic: "142.6"
+          - generic: "138.6"
+          - generic: "137.5"
+          - generic: "125.6"
+          - generic:
+            - generic: "120.4"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: Alex
+          - generic: "146.3"
+          - generic: "139.8"
+          - generic: "138.7"
+          - generic: "138.2"
+          - generic:
+            - generic: "136"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: Ashikumi
+          - generic: "146.4"
+          - generic: "138.5"
+          - generic: "136"
+          - generic: "134.1"
+          - generic:
+            - generic: "128"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: Black Pearl
+          - generic: "149.7"
+          - generic: "141.5"
+          - generic: "140"
+          - generic: "131.7"
+          - generic:
+            - generic: "130.3"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: BloodReaper
+          - generic: "142.6"
+          - generic: "140"
+          - generic: "132"
+          - generic: "125.4"
+          - generic:
+            - generic: "121.5"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: Chucky
+          - generic: "146.5"
+          - generic: "140.3"
+          - generic: "139.3"
+          - generic: "136.2"
+          - generic:
+            - generic: "133"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: DrDoom
+          - generic: "142.3"
+          - generic: "138"
+          - generic: "134.9"
+          - generic: "133.8"
+          - generic:
+            - generic: "131.8"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: Fakra
+          - generic: "145.3"
+          - generic: "143.5"
+          - generic: "136.8"
+          - generic: "133.4"
+          - generic:
+            - generic: "131.8"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: Halex
+          - generic: "147.2"
+          - generic: "139.4"
+          - generic: "137.8"
+          - generic: "126.3"
+          - generic:
+            - generic: "125.7"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: JlyHb
+          - generic: "150.8"
+          - generic: "145.3"
+          - generic: "133.2"
+          - generic: "127.8"
+          - generic:
+            - generic: "127.1"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: LEGAkrad
+          - generic: "152"
+          - generic: "138"
+          - generic: "132"
+          - generic: "129"
+          - generic:
+            - generic: "121"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: Lucifer
+          - generic: "155.6"
+          - generic: "147.2"
+          - generic: "141.7"
+          - generic: "141.2"
+          - generic:
+            - generic: "136.2"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: Magura
+          - generic: "141"
+          - generic: "137.7"
+          - generic: "136.8"
+          - generic: "131.2"
+          - generic:
+            - generic: "129"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: Sir Lord Stinky
+          - generic: "141.1"
+          - generic: "137.5"
+          - generic: "128.4"
+          - generic: "127.6"
+          - generic:
+            - generic: "127.2"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: Skye
+          - generic: "152.4"
+          - generic: "143.2"
+          - generic: "137.4"
+          - generic: "133.3"
+          - generic:
+            - generic: "131.2"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: Sollers
+          - generic: "136"
+          - generic: "131.5"
+          - generic: "122"
+          - generic: "121.5"
+          - generic:
+            - generic: "119.6"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: Zahart
+          - generic: "151.7"
+          - generic: "139.3"
+          - generic: "136.5"
+          - generic: "132.2"
+          - generic:
+            - generic: "132.2"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: Люцифер
+          - generic: "155.6"
+          - generic: "147.2"
+          - generic: "141.7"
+          - generic: "141.2"
+          - generic:
+            - generic: "136.2"
+            - button: ✏️
+            - button: 🗑️
+        - generic:
+          - generic: 口寂しい
+          - generic: "155.1"
+          - generic: "139.5"
+          - generic: "139.1"
+          - generic: "136.6"
+          - generic:
+            - generic: "134.6"
+            - button: ✏️
+            - button: 🗑️
+  - dialog [ref=e215]:
+    - heading "✏️ Редагування запису" [level=2] [ref=e216]
+    - paragraph [ref=e217]: Оновіть нік або значення бойової сили.
+    - generic [ref=e218]:
+      - textbox "Нік" [active] [ref=e220]: Adam
+      - textbox "БС 1" [ref=e221]: "142.568"
+      - textbox "БС 2" [ref=e222]: "138.6"
+      - textbox "БС 3" [ref=e223]: "137.531"
+      - textbox "БС 4" [ref=e224]: "125.59"
+      - textbox "БС 5" [ref=e225]: "120.436"
+    - generic [ref=e226]:
+      - button "✅ OK" [ref=e227] [cursor=pointer]
+      - button "Скасувати" [ref=e228] [cursor=pointer]

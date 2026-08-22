@@ -6,7 +6,13 @@ import { Search } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { PlayerSelectField } from "@/components/PlayerSelectField";
 import { Input } from "@/components/ui/input";
-import { resolvePlayerMobs } from "@/lib/mob-levels";
+import { MobSortMenu } from "@/components/MobSortMenu";
+import {
+  MOB_RARITY_LABELS,
+  MOB_TYPE_LABELS,
+  resolvePlayerMobs,
+  type MobSortMode,
+} from "@/lib/mob-levels";
 import {
   loadMobLevelPlayers,
   mobCatalogRepository,
@@ -37,6 +43,7 @@ function MobLevelsPage() {
   const { playerId } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [filter, setFilter] = useState("");
+  const [sortMode, setSortMode] = useState<MobSortMode>("default");
 
   const playersQuery = useQuery({
     queryKey: ["mob-level-players"],
@@ -57,10 +64,10 @@ function MobLevelsPage() {
 
   const visibleMobs = useMemo(() => {
     const normalizedFilter = filter.trim().toLocaleLowerCase("uk");
-    return resolvePlayerMobs(levelsQuery.data ?? [], catalog).filter(({ mob }) =>
+    return resolvePlayerMobs(levelsQuery.data ?? [], catalog, sortMode).filter(({ mob }) =>
       mob.name.toLocaleLowerCase("uk").includes(normalizedFilter),
     );
-  }, [catalog, filter, levelsQuery.data]);
+  }, [catalog, filter, levelsQuery.data, sortMode]);
 
   const queryError = playersQuery.error ?? catalogQuery.error ?? levelsQuery.error;
 
@@ -138,14 +145,17 @@ function MobLevelsPage() {
 
         {!queryError && catalog.length > 0 && selectedPlayerId && (
           <section className="mt-5">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={filter}
-                onChange={(event) => setFilter(event.target.value)}
-                placeholder="Пошук моба…"
-                className="pl-9"
-              />
+            <div className="flex flex-wrap gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={filter}
+                  onChange={(event) => setFilter(event.target.value)}
+                  placeholder="Пошук моба…"
+                  className="pl-9"
+                />
+              </div>
+              <MobSortMenu value={sortMode} onValueChange={setSortMode} />
             </div>
 
             {levelsQuery.isLoading && (
@@ -184,6 +194,28 @@ function MobLevelsPage() {
                     <div className="min-w-0 flex-1">
                       <h2 className="truncate font-semibold">{mob.name}</h2>
                       <p className="mt-1 text-sm text-muted-foreground">Рівень {level}</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
+                        <span
+                          className={
+                            mob.mobType === "demon-captain"
+                              ? "rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-red-600 dark:text-red-400"
+                              : "rounded-full border border-border bg-secondary px-2 py-0.5 text-secondary-foreground"
+                          }
+                        >
+                          {MOB_TYPE_LABELS[mob.mobType]}
+                        </span>
+                        {mob.rarity && (
+                          <span
+                            className={
+                              mob.rarity === "legendary"
+                                ? "rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-amber-600 dark:text-amber-400"
+                                : "rounded-full border border-violet-500/40 bg-violet-500/10 px-2 py-0.5 text-violet-600 dark:text-violet-400"
+                            }
+                          >
+                            {MOB_RARITY_LABELS[mob.rarity]}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </article>
                 ))}

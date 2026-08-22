@@ -1,0 +1,21 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - link "🏰 Ukraine Unlimited База ресурсів" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e6]: 🏰
+        - generic [ref=e7]:
+          - generic [ref=e8]: Ukraine Unlimited
+          - generic [ref=e9]: База ресурсів
+      - generic [ref=e10]:
+        - button "Перемкнути тему" [ref=e11]
+        - link "🏠 Головна" [ref=e14] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e15]: 🏠
+          - generic [ref=e16]: Головна
+  - region "Notifications alt+T"
+  - main [ref=e17]:
+    - heading "💪 Бойова Сила" [level=1] [ref=e18]
+    - paragraph [ref=e19]: Збереження бойової сили учасників
+    - button "➕ Додати свій БС" [ref=e20] [cursor=pointer]
+    - generic [ref=e21]: Завантаження…

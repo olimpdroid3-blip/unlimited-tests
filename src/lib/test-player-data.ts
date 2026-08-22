@@ -184,7 +184,7 @@ export const testBattlePowerRows = [
   },
 ] satisfies readonly TestBattlePowerRow[];
 
-export const testMobCatalog = [
+const testMobCatalogBase = [
   {
     id: "mob-01",
     name: "Моб 01",
@@ -405,7 +405,13 @@ export const testMobCatalog = [
     name: "Моб 44",
     imageUrl: "/mobs/image42.jpg",
   },
-] satisfies readonly Mob[];
+] as const;
+
+export const testMobCatalog = testMobCatalogBase.map((mob) => ({
+  ...mob,
+  mobType: "demon" as const,
+  rarity: "epic" as const,
+})) satisfies readonly Mob[];
 
 export const testPlayerMobLevels = [
   {

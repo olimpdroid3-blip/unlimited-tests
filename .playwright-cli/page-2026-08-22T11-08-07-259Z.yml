@@ -1,0 +1,105 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - link "🏰 Ukraine Unlimited База ресурсів" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e6]: 🏰
+        - generic [ref=e7]:
+          - generic [ref=e8]: Ukraine Unlimited
+          - generic [ref=e9]: База ресурсів
+      - generic [ref=e10]:
+        - button "Перемкнути тему" [ref=e11]
+        - link "🏠 Головна" [ref=e14] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e15]: 🏠
+          - generic [ref=e16]: Головна
+  - main [ref=e17]:
+    - generic [ref=e18]:
+      - link "← На головну" [ref=e19] [cursor=pointer]:
+        - /url: /
+      - heading "🛡 База захистів" [level=1] [ref=e20]:
+        - generic [ref=e21]: 🛡
+        - generic [ref=e22]: База захистів
+      - paragraph [ref=e23]: Додавання, пошук та керування базою проходок.
+    - generic [ref=e24]:
+      - button "➕ Додати захист" [ref=e25]:
+        - text: ➕
+        - generic [ref=e26]: Додати захист
+      - button "🔍 Пошук" [ref=e27]:
+        - text: 🔍
+        - generic [ref=e28]: Пошук
+      - button "⚙️ Редактор героїв" [ref=e29]:
+        - text: ⚙️
+        - generic [ref=e30]: Редактор героїв
+    - generic [ref=e31]:
+      - generic [ref=e32]:
+        - generic [ref=e33]: 📷 Скріншот
+        - button "📷 Скріншот" [ref=e35]
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - generic [ref=e38]: Код проходки
+          - textbox "Код проходки" [ref=e39]:
+            - /placeholder: Напр. WoR-12345
+        - generic [ref=e40]:
+          - generic [ref=e41]: Гравець
+          - combobox "Гравець" [ref=e42] [cursor=pointer]:
+            - generic: Оберіть нік
+          - combobox [ref=e45]
+      - generic [ref=e46]:
+        - generic [ref=e47]:
+          - generic [ref=e48]: Герой 1*
+          - button "Пошук героя… ▾" [ref=e51]:
+            - generic [ref=e52]: Пошук героя…
+            - generic [ref=e53]: ▾
+        - generic [ref=e54]:
+          - generic [ref=e55]: Герой 2
+          - button "Пошук героя… ▾" [ref=e58]:
+            - generic [ref=e59]: Пошук героя…
+            - generic [ref=e60]: ▾
+        - generic [ref=e61]:
+          - generic [ref=e62]: Герой 3
+          - button "Пошук героя… ▾" [ref=e65]:
+            - generic [ref=e66]: Пошук героя…
+            - generic [ref=e67]: ▾
+        - generic [ref=e68]:
+          - generic [ref=e69]: Герой 4
+          - button "Пошук героя… ▾" [ref=e72]:
+            - generic [ref=e73]: Пошук героя…
+            - generic [ref=e74]: ▾
+        - generic [ref=e75]:
+          - generic [ref=e76]: Герой 5
+          - button "Пошук героя… ▾" [ref=e79]:
+            - generic [ref=e80]: Пошук героя…
+            - generic [ref=e81]: ▾
+      - generic [ref=e82]:
+        - generic [ref=e83]:
+          - generic [ref=e84]: Моб 1*
+          - button "Оберіть моба 1 ▾" [ref=e87]:
+            - generic [ref=e88]: Оберіть моба 1
+            - generic [ref=e89]: ▾
+        - generic [ref=e90]:
+          - generic [ref=e91]: Моб 2*
+          - button "Оберіть моба 2 ▾" [ref=e94]:
+            - generic [ref=e95]: Оберіть моба 2
+            - generic [ref=e96]: ▾
+        - generic [ref=e97]:
+          - generic [ref=e98]: Моб 3
+          - button "Оберіть моба 3 ▾" [ref=e101]:
+            - generic [ref=e102]: Оберіть моба 3
+            - generic [ref=e103]: ▾
+        - generic [ref=e104]:
+          - generic [ref=e105]: Моб 4
+          - button "Оберіть моба 4 ▾" [ref=e108]:
+            - generic [ref=e109]: Оберіть моба 4
+            - generic [ref=e110]: ▾
+        - generic [ref=e111]:
+          - generic [ref=e112]: Моб 5
+          - button "Оберіть моба 5 ▾" [ref=e115]:
+            - generic [ref=e116]: Оберіть моба 5
+            - generic [ref=e117]: ▾
+      - generic [ref=e118]:
+        - generic [ref=e119]: Коментар
+        - textbox "Коментар" [ref=e120]:
+          - /placeholder: БС, таймінг, порядок дій або інші нюанси…
+      - button "💾 Зберегти" [disabled] [ref=e121]

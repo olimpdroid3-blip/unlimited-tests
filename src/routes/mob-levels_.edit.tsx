@@ -11,20 +11,39 @@ import { Input } from "@/components/ui/input";
 import { Toaster } from "@/components/ui/sonner";
 import {
   getChangedMobNames,
+  getChangedMobClassifications,
   getRemovedMobIds,
+  haveSameMobClassificationDraft,
   haveSameMobNameDraft,
   haveSameMobLevelDraft,
   isValidMobName,
+  isValidMobRarity,
+  isValidMobType,
+  MOB_RARITIES,
+  MOB_RARITY_LABELS,
+  MOB_TYPES,
+  MOB_TYPE_LABELS,
   isValidMobLevel,
   type Mob,
+  type MobClassificationDraft,
   type MobLevelDraft,
   type MobNameDraft,
+  type MobSortMode,
+  compareMobs,
 } from "@/lib/mob-levels";
+import { MobSortMenu } from "@/components/MobSortMenu";
 import {
   loadMobLevelPlayers,
   mobCatalogRepository,
   mobLevelsRepository,
 } from "@/lib/mob-levels-ui";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type MobLevelsEditSearch = {
   playerId?: string;
@@ -54,7 +73,12 @@ function MobLevelsEditorPage() {
   const [draft, setDraft] = useState<MobLevelDraft[]>([]);
   const [nameBaseline, setNameBaseline] = useState<MobNameDraft[]>([]);
   const [nameDraft, setNameDraft] = useState<MobNameDraft[]>([]);
+  const [classificationBaseline, setClassificationBaseline] = useState<MobClassificationDraft[]>(
+    [],
+  );
+  const [classificationDraft, setClassificationDraft] = useState<MobClassificationDraft[]>([]);
   const [mobSearch, setMobSearch] = useState("");
+  const [sortMode, setSortMode] = useState<MobSortMode>("default");
   const [isLoadingLevels, setIsLoadingLevels] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [storageError, setStorageError] = useState<string | null>(null);
@@ -73,7 +97,11 @@ function MobLevelsEditorPage() {
   const selectedPlayerId = players.some((player) => player.id === playerId) ? playerId : undefined;
   const hasLevelChanges = !haveSameMobLevelDraft(baseline, draft);
   const hasNameChanges = !haveSameMobNameDraft(nameBaseline, nameDraft);
-  const isDirty = hasLevelChanges || hasNameChanges;
+  const hasClassificationChanges = !haveSameMobClassificationDraft(
+    classificationBaseline,
+    classificationDraft,
+  );
+  const isDirty = hasLevelChanges || hasNameChanges || hasClassificationChanges;
   const isValidDraft = draft.every(({ level }) => isValidMobLevel(level));
   const areNamesValid = nameDraft.every(({ name }) => isValidMobName(name));
   const canSave = Boolean(
@@ -82,8 +110,15 @@ function MobLevelsEditorPage() {
 
   useEffect(() => {
     const loadedNames = catalog.map(({ id, name }) => ({ mobId: id, name }));
+    const loadedClassifications = catalog.map(({ id, mobType, rarity }) => ({
+      mobId: id,
+      mobType,
+      rarity,
+    }));
     setNameBaseline(loadedNames);
     setNameDraft(loadedNames);
+    setClassificationBaseline(loadedClassifications);
+    setClassificationDraft(loadedClassifications);
   }, [catalog]);
 
   useEffect(() => {
@@ -126,15 +161,32 @@ function MobLevelsEditorPage() {
     () => new Map(nameDraft.map(({ mobId, name }) => [mobId, name])),
     [nameDraft],
   );
+  const classificationDraftById = useMemo(
+    () =>
+      new Map(classificationDraft.map((classification) => [classification.mobId, classification])),
+    [classificationDraft],
+  );
   const draftRows = useMemo(
     () =>
       draft
         .flatMap((row) => {
           const mob = mobsById.get(row.mobId);
-          return mob ? [{ ...row, mob }] : [];
+          const classification = classificationDraftById.get(row.mobId);
+          return mob
+            ? [
+                {
+                  ...row,
+                  mob: {
+                    ...mob,
+                    name: nameDraftById.get(row.mobId) ?? mob.name,
+                    ...classification,
+                  },
+                },
+              ]
+            : [];
         })
-        .sort((left, right) => left.mob.name.localeCompare(right.mob.name, "uk")),
-    [draft, mobsById],
+        .sort((left, right) => compareMobs(left.mob, right.mob, sortMode)),
+    [classificationDraftById, draft, mobsById, nameDraftById, sortMode],
   );
   const draftMobIds = useMemo(() => new Set(draft.map(({ mobId }) => mobId)), [draft]);
   const availableMobs = useMemo(() => {
@@ -149,6 +201,7 @@ function MobLevelsEditorPage() {
   function changePlayer(nextPlayerId: string) {
     if (isDirty && !window.confirm("Відхилити незбережені зміни?")) return;
     setNameDraft(nameBaseline);
+    setClassificationDraft(classificationBaseline);
     void navigate({ search: { playerId: nextPlayerId || undefined } });
   }
 
@@ -164,6 +217,24 @@ function MobLevelsEditorPage() {
 
   function updateMobName(mobId: string, name: string) {
     setNameDraft((current) => current.map((row) => (row.mobId === mobId ? { ...row, name } : row)));
+  }
+
+  function updateMobType(mobId: string, mobType: string) {
+    if (!isValidMobType(mobType)) return;
+    setClassificationDraft((current) =>
+      current.map((row) =>
+        row.mobId === mobId
+          ? { ...row, mobType, rarity: mobType === "demon-captain" ? null : (row.rarity ?? "epic") }
+          : row,
+      ),
+    );
+  }
+
+  function updateMobRarity(mobId: string, rarity: string) {
+    if (!isValidMobRarity(rarity)) return;
+    setClassificationDraft((current) =>
+      current.map((row) => (row.mobId === mobId ? { ...row, rarity } : row)),
+    );
   }
 
   async function saveChanges() {
@@ -187,7 +258,14 @@ function MobLevelsEditorPage() {
       }
 
       const changedNames = getChangedMobNames(nameBaseline, nameDraft);
-      await mobCatalogRepository.updateNames(changedNames);
+      const changedClassifications = getChangedMobClassifications(
+        classificationBaseline,
+        classificationDraft,
+      );
+      await Promise.all([
+        mobCatalogRepository.updateNames(changedNames),
+        mobCatalogRepository.updateClassifications(changedClassifications),
+      ]);
 
       const [savedLevels, savedCatalog] = await Promise.all([
         mobLevelsRepository.getByPlayer(selectedPlayerId),
@@ -195,17 +273,24 @@ function MobLevelsEditorPage() {
       ]);
       const savedDraft = savedLevels.map(({ mobId, level }) => ({ mobId, level }));
       const savedNames = savedCatalog.map(({ id, name }) => ({ mobId: id, name }));
+      const savedClassifications = savedCatalog.map(({ id, mobType, rarity }) => ({
+        mobId: id,
+        mobType,
+        rarity,
+      }));
       setBaseline(savedDraft);
       setDraft(savedDraft);
       setNameBaseline(savedNames);
       setNameDraft(savedNames);
+      setClassificationBaseline(savedClassifications);
+      setClassificationDraft(savedClassifications);
       await queryClient.invalidateQueries({ queryKey: ["mob-catalog"] });
       await queryClient.invalidateQueries({ queryKey: ["mob-levels", selectedPlayerId] });
       toast.success(
-        hasLevelChanges && hasNameChanges
-          ? "Назви й рівні мобів збережено"
-          : hasNameChanges
-            ? "Назви мобів збережено"
+        hasLevelChanges && (hasNameChanges || hasClassificationChanges)
+          ? "Дані та рівні мобів збережено"
+          : hasNameChanges || hasClassificationChanges
+            ? "Дані мобів збережено"
             : "Рівні мобів збережено",
       );
     } catch {
@@ -235,7 +320,7 @@ function MobLevelsEditorPage() {
             </Link>
             <h1 className="mt-2 text-2xl font-bold tracking-tight">✏️ Редагування рівнів мобів</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Назва спільна для всіх гравців, рівень має бути від 1 до 30.
+              Назва, тип і рідкість спільні для всіх гравців, рівень має бути від 1 до 30.
             </p>
           </div>
           <Button disabled={!canSave} onClick={() => void saveChanges()}>
@@ -283,11 +368,14 @@ function MobLevelsEditorPage() {
         {!queryError && catalog.length > 0 && selectedPlayerId && (
           <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
             <section className="space-y-3">
-              <div>
-                <h2 className="font-semibold">Моби гравця</h2>
-                <p className="text-xs text-muted-foreground">
-                  {draftRows.length} записів · зміни зберігаються однією кнопкою
-                </p>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h2 className="font-semibold">Моби гравця</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {draftRows.length} записів · зміни зберігаються однією кнопкою
+                  </p>
+                </div>
+                <MobSortMenu value={sortMode} onValueChange={setSortMode} />
               </div>
 
               {isLoadingLevels && (
@@ -302,6 +390,7 @@ function MobLevelsEditorPage() {
 
               {draftRows.map(({ mob, level }) => {
                 const mobName = nameDraftById.get(mob.id) ?? mob.name;
+                const classification = classificationDraftById.get(mob.id) ?? mob;
                 return (
                   <article
                     key={mob.id}
@@ -333,19 +422,59 @@ function MobLevelsEditorPage() {
                           Назва не може бути порожньою
                         </p>
                       )}
-                      <label className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                        Рівень
-                        <Input
-                          type="number"
-                          min={1}
-                          max={30}
-                          step={1}
-                          value={level ?? ""}
-                          onChange={(event) => updateLevel(mob.id, event.target.value)}
-                          className="h-8 w-20"
-                          aria-invalid={!isValidMobLevel(level)}
-                        />
-                      </label>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-[5rem_minmax(8rem,1fr)_minmax(8rem,1fr)]">
+                        <label className="block text-xs text-muted-foreground">
+                          Рівень
+                          <Input
+                            type="number"
+                            min={1}
+                            max={30}
+                            step={1}
+                            value={level ?? ""}
+                            onChange={(event) => updateLevel(mob.id, event.target.value)}
+                            className="mt-1 h-8"
+                            aria-invalid={!isValidMobLevel(level)}
+                          />
+                        </label>
+                        <label className="block text-xs text-muted-foreground">
+                          Тип
+                          <Select
+                            value={classification.mobType}
+                            onValueChange={(value) => updateMobType(mob.id, value)}
+                          >
+                            <SelectTrigger className="mt-1 h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {MOB_TYPES.map((mobType) => (
+                                <SelectItem key={mobType} value={mobType}>
+                                  {MOB_TYPE_LABELS[mobType]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </label>
+                        {classification.mobType === "demon" && (
+                          <label className="block text-xs text-muted-foreground">
+                            Рідкість
+                            <Select
+                              value={classification.rarity ?? "epic"}
+                              onValueChange={(value) => updateMobRarity(mob.id, value)}
+                            >
+                              <SelectTrigger className="mt-1 h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {MOB_RARITIES.map((rarity) => (
+                                  <SelectItem key={rarity} value={rarity}>
+                                    {MOB_RARITY_LABELS[rarity]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </label>
+                        )}
+                      </div>
                       {!isValidMobLevel(level) && (
                         <p className="mt-1 text-xs text-destructive">
                           Вкажіть ціле число від 1 до 30
