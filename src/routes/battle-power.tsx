@@ -2,9 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { toast, Toaster } from "sonner";
-import { supabase } from "@/lib/db";
+import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
+import { Toaster } from "@/components/ui/sonner";
+import { getBattlePowerFormPresentation, type BattlePowerRow } from "@/lib/battle-power";
+import { battlePowerRepository } from "@/lib/battle-power-ui";
 import { getNickCookie } from "@/lib/nickname";
 
 export const Route = createFileRoute("/battle-power")({
@@ -24,29 +26,6 @@ export const Route = createFileRoute("/battle-power")({
   }),
   component: BattlePowerPage,
 });
-
-type Row = {
-  id: string;
-  nickname: string;
-  power1: number | null;
-  power2: number | null;
-  power3: number | null;
-  power4: number | null;
-  power5: number | null;
-};
-
-const isLatin = (s: string) => /^[A-Za-z]/.test(s.trim());
-
-function sortRows(rows: Row[]) {
-  return [...rows].sort((a, b) => {
-    const la = isLatin(a.nickname);
-    const lb = isLatin(b.nickname);
-    if (la !== lb) return la ? -1 : 1;
-    return a.nickname.localeCompare(b.nickname, la ? "en" : "uk", {
-      sensitivity: "base",
-    });
-  });
-}
 
 const fmt = (v: number | null) => {
   if (v === null || v === undefined) return "—";
@@ -70,14 +49,9 @@ function BattlePowerPage() {
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["battle_power"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("battle_power")
-        .select("id,nickname,power1,power2,power3,power4,power5");
-      if (error) throw error;
-      return sortRows((data ?? []) as Row[]);
-    },
+    queryFn: () => battlePowerRepository.getAll(),
   });
+  const formPresentation = getBattlePowerFormPresentation(open, editingId);
 
   const openForm = () => {
     setNick(getNickCookie());
@@ -86,7 +60,7 @@ function BattlePowerPage() {
     setOpen(true);
   };
 
-  const openEdit = (r: Row) => {
+  const openEdit = (r: BattlePowerRow) => {
     setNick(r.nickname);
     setPowers([
       r.power1?.toString() ?? "",
@@ -106,6 +80,11 @@ function BattlePowerPage() {
 
   const num = (v: string) => (v.trim() === "" ? null : Number(v));
 
+  const closeForm = () => {
+    setOpen(false);
+    setEditingId(null);
+  };
+
   const handleSave = async () => {
     const n = nick.trim();
     if (!n) {
@@ -122,23 +101,24 @@ function BattlePowerPage() {
       power5: num(powers[4]),
     };
     if (editingId) {
-      const { error } = await supabase
-        .from("battle_power")
-        .update(payload)
-        .eq("id", editingId);
-      setSaving(false);
-      if (error) {
+      try {
+        await battlePowerRepository.update(editingId, payload);
+      } catch {
+        setSaving(false);
         toast.error("Не вдалося оновити");
         return;
       }
+      setSaving(false);
       toast.success("Оновлено");
     } else {
-      const { error } = await supabase.from("battle_power").insert(payload);
-      setSaving(false);
-      if (error) {
+      try {
+        await battlePowerRepository.create(payload);
+      } catch {
+        setSaving(false);
         toast.error("Не вдалося зберегти");
         return;
       }
+      setSaving(false);
       toast.success("Збережено");
     }
     setOpen(false);
@@ -149,18 +129,38 @@ function BattlePowerPage() {
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    const { error } = await supabase
-      .from("battle_power")
-      .delete()
-      .eq("id", deleteId);
-    setDeleteId(null);
-    if (error) {
+    try {
+      await battlePowerRepository.remove(deleteId);
+    } catch {
+      setDeleteId(null);
       toast.error("Не вдалося видалити");
       return;
     }
+    setDeleteId(null);
     toast.success("Видалено");
     qc.invalidateQueries({ queryKey: ["battle_power"] });
   };
+
+  const nicknameInput = (
+    <input
+      value={nick}
+      onChange={(e) => setNick(e.target.value)}
+      placeholder="Нік"
+      aria-label="Нік"
+      className="w-full min-w-0 rounded-lg border border-border bg-input px-3 py-2.5 text-sm outline-none focus:border-primary"
+    />
+  );
+  const powerInputs = powers.map((power, index) => (
+    <input
+      key={index}
+      value={power}
+      inputMode="decimal"
+      onChange={(e) => setPower(index, e.target.value)}
+      placeholder={`БС ${index + 1}`}
+      aria-label={`БС ${index + 1}`}
+      className="w-full min-w-0 rounded-lg border border-border bg-input px-3 py-2.5 text-sm outline-none focus:border-primary"
+    />
+  ));
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -168,9 +168,7 @@ function BattlePowerPage() {
       <Toaster position="top-center" />
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-3 pb-10 pt-6">
-        <h1 className="text-center text-xl font-bold tracking-tight sm:text-2xl">
-          💪 Бойова Сила
-        </h1>
+        <h1 className="text-center text-xl font-bold tracking-tight sm:text-2xl">💪 Бойова Сила</h1>
         <p className="mt-1 text-center text-xs text-muted-foreground">
           Збереження бойової сили учасників
         </p>
@@ -178,46 +176,31 @@ function BattlePowerPage() {
         {!open && (
           <button
             onClick={openForm}
-            className="mt-4 w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 active:scale-[0.99]"
+            className="mt-4 w-full cursor-pointer rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 active:scale-[0.99]"
           >
             ➕ Додати свій БС
           </button>
         )}
 
-        {open && (
+        {formPresentation === "inline" && (
           <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-card/60 p-2">
-            {editingId && (
-              <p className="mb-2 px-1 text-xs font-semibold text-muted-foreground">
-                ✏️ Редагування запису
-              </p>
-            )}
             <div className="flex min-w-max items-center gap-1.5">
-              <input
-                value={nick}
-                onChange={(e) => setNick(e.target.value)}
-                placeholder="Нік"
-                className="w-28 rounded-lg border border-border bg-input px-2 py-2 text-xs outline-none focus:border-primary"
-              />
-              {powers.map((p, i) => (
-                <input
-                  key={i}
-                  value={p}
-                  inputMode="decimal"
-                  onChange={(e) => setPower(i, e.target.value)}
-                  placeholder={`БС ${i + 1}`}
-                  className="w-20 rounded-lg border border-border bg-input px-2 py-2 text-xs outline-none focus:border-primary"
-                />
+              <div className="w-28">{nicknameInput}</div>
+              {powerInputs.map((input, index) => (
+                <div key={index} className="w-20">
+                  {input}
+                </div>
               ))}
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+                className="cursor-pointer rounded-lg bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 ✅ OK
               </button>
               <button
-                onClick={() => setOpen(false)}
-                className="rounded-lg border border-border bg-secondary px-3 py-2 text-xs text-secondary-foreground transition hover:bg-accent"
+                onClick={closeForm}
+                className="cursor-pointer rounded-lg border border-border bg-secondary px-3 py-2.5 text-xs text-secondary-foreground transition hover:bg-accent"
               >
                 ❌
               </button>
@@ -227,14 +210,10 @@ function BattlePowerPage() {
 
         <div className="mt-4 divide-y divide-border rounded-xl border border-border bg-card/60">
           {isLoading && (
-            <div className="p-4 text-center text-xs text-muted-foreground">
-              Завантаження…
-            </div>
+            <div className="p-4 text-center text-xs text-muted-foreground">Завантаження…</div>
           )}
           {!isLoading && data.length === 0 && (
-            <div className="p-4 text-center text-xs text-muted-foreground">
-              Записів поки немає
-            </div>
+            <div className="p-4 text-center text-xs text-muted-foreground">Записів поки немає</div>
           )}
           {data.map((r) => (
             <div
@@ -257,14 +236,14 @@ function BattlePowerPage() {
                 <button
                   onClick={() => openEdit(r)}
                   aria-label="Редагувати"
-                  className="shrink-0 rounded-md px-1 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
+                  className="shrink-0 cursor-pointer rounded-md px-1 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
                 >
                   ✏️
                 </button>
                 <button
                   onClick={() => setDeleteId(r.id)}
                   aria-label="Видалити"
-                  className="shrink-0 rounded-md px-1 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                  className="shrink-0 cursor-pointer rounded-md px-1 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
                 >
                   🗑️
                 </button>
@@ -275,28 +254,66 @@ function BattlePowerPage() {
       </main>
 
       <Dialog.Root
-        open={!!deleteId}
-        onOpenChange={(o) => !o && setDeleteId(null)}
+        open={formPresentation === "dialog"}
+        onOpenChange={(isOpen) => !isOpen && closeForm()}
       >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=open]:zoom-in-95">
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                aria-label="Закрити"
+                className="absolute right-3 top-3 flex size-8 cursor-pointer items-center justify-center rounded-full text-xl leading-none text-muted-foreground transition hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                ×
+              </button>
+            </Dialog.Close>
+            <Dialog.Title className="text-base font-semibold">✏️ Редагування запису</Dialog.Title>
+            <Dialog.Description className="mt-1 text-sm text-muted-foreground">
+              Оновіть нік або значення бойової сили.
+            </Dialog.Description>
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="col-span-2 sm:col-span-3">{nicknameInput}</div>
+              {powerInputs}
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="cursor-pointer rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ✅ OK
+              </button>
+              <button
+                onClick={closeForm}
+                className="cursor-pointer rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm text-secondary-foreground transition hover:bg-accent"
+              >
+                Скасувати
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0" />
           <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=open]:zoom-in-95">
-            <Dialog.Title className="text-base font-semibold">
-              Видалити запис?
-            </Dialog.Title>
+            <Dialog.Title className="text-base font-semibold">Видалити запис?</Dialog.Title>
             <Dialog.Description className="mt-2 text-sm text-muted-foreground">
-              Запис буде повністю видалено з бази даних.
+              Запис буде видалено.
             </Dialog.Description>
             <div className="mt-5 grid grid-cols-2 gap-2">
               <button
                 onClick={handleDelete}
-                className="rounded-lg bg-destructive px-3 py-2.5 text-sm font-semibold text-destructive-foreground transition hover:opacity-90"
+                className="cursor-pointer rounded-lg bg-destructive px-3 py-2.5 text-sm font-semibold text-destructive-foreground transition hover:opacity-90"
               >
                 🗑 Видалити
               </button>
               <button
                 onClick={() => setDeleteId(null)}
-                className="rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm text-secondary-foreground transition hover:bg-accent"
+                className="cursor-pointer rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm text-secondary-foreground transition hover:bg-accent"
               >
                 Скасувати
               </button>

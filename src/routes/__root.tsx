@@ -11,6 +11,8 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
 
 function NotFoundComponent() {
   return (
@@ -42,7 +44,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <h1 className="text-lg font-semibold text-foreground">Щось пішло не так</h1>
         <div className="mt-6 flex justify-center gap-2">
           <button
-            onClick={() => { router.invalidate(); reset(); }}
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
           >
             Спробувати знову
@@ -67,15 +72,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "GvG Вежі — Watcher of Realms" },
       { name: "twitter:description", content: "48 веж GvG — швидкий трекер проходки." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d569b15c-1ed3-438d-8ebe-1d9ce8dabb18/id-preview-10937737--33e3ef01-cf16-4bfd-9d4e-cc28e96d83d2.lovable.app-1784903885109.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d569b15c-1ed3-438d-8ebe-1d9ce8dabb18/id-preview-10937737--33e3ef01-cf16-4bfd-9d4e-cc28e96d83d2.lovable.app-1784903885109.png" },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d569b15c-1ed3-438d-8ebe-1d9ce8dabb18/id-preview-10937737--33e3ef01-cf16-4bfd-9d4e-cc28e96d83d2.lovable.app-1784903885109.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d569b15c-1ed3-438d-8ebe-1d9ce8dabb18/id-preview-10937737--33e3ef01-cf16-4bfd-9d4e-cc28e96d83d2.lovable.app-1784903885109.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -86,8 +102,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="uk">
+    <html lang="uk" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
@@ -102,7 +119,9 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <ThemeProvider>
+        <Outlet />
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

@@ -8,8 +8,7 @@ export const Route = createFileRoute("/")({
       { title: "Ukraine Unlimited — База ресурсів" },
       {
         name: "description",
-        content:
-          "Ukraine Unlimited · Watcher of Realms — база інструментів та ресурсів гільдії.",
+        content: "Ukraine Unlimited · Watcher of Realms — база інструментів та ресурсів гільдії.",
       },
       { property: "og:title", content: "Ukraine Unlimited — База ресурсів" },
       {
@@ -22,7 +21,7 @@ export const Route = createFileRoute("/")({
 });
 
 type SectionCard = {
-  to: "/towers" | "/defenses" | "/battle-power" | "/videos";
+  to: "/towers" | "/defenses" | "/battle-power" | "/videos" | "/mob-levels";
   icon: string;
   title: string;
   subtitle: string;
@@ -53,8 +52,13 @@ const SECTIONS: SectionCard[] = [
     title: "Відео проходок",
     subtitle: "Пошук відео з Telegram по героях",
   },
+  {
+    to: "/mob-levels",
+    icon: "👾",
+    title: "Рівні мобів",
+    subtitle: "Перегляд і редагування мобів учасників",
+  },
 ];
-
 
 function LandingPage() {
   return (
@@ -63,9 +67,7 @@ function LandingPage() {
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-10 pt-8 sm:pt-12">
         <div className="mb-8 text-center sm:mb-12">
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            База ресурсів
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">База ресурсів</h1>
           <p className="mt-2 text-xs text-muted-foreground sm:text-sm">
             Watcher of Realms · база інструментів та ресурсів
           </p>
@@ -85,16 +87,12 @@ function LandingPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold text-foreground sm:text-xl">
-                    {s.title}
-                  </h2>
+                  <h2 className="text-lg font-semibold text-foreground sm:text-xl">{s.title}</h2>
                   <span className="text-primary opacity-0 transition group-hover:translate-x-1 group-hover:opacity-100">
                     →
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-                  {s.subtitle}
-                </p>
+                <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{s.subtitle}</p>
               </div>
               <span
                 aria-hidden

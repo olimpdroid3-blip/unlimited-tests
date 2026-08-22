@@ -1,0 +1,75 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - link "🏰 Ukraine Unlimited База ресурсів" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e6]: 🏰
+        - generic [ref=e7]:
+          - generic [ref=e8]: Ukraine Unlimited
+          - generic [ref=e9]: База ресурсів
+      - generic [ref=e10]:
+        - button "Увімкнути темну тему" [ref=e122]
+        - link "🏠 Головна" [ref=e14] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e15]: 🏠
+          - generic [ref=e16]: Головна
+  - main [ref=e17]:
+    - generic [ref=e18]:
+      - link "← На головну" [ref=e19] [cursor=pointer]:
+        - /url: /
+      - heading "🛡 База захистів" [level=1] [ref=e20]:
+        - generic [ref=e21]: 🛡
+        - generic [ref=e22]: База захистів
+      - paragraph [ref=e23]: Додавання, пошук та керування базою проходок.
+    - generic [ref=e24]:
+      - button "➕ Додати захист" [ref=e25]:
+        - text: ➕
+        - generic [ref=e26]: Додати захист
+      - button "🔍 Пошук" [ref=e27]:
+        - text: 🔍
+        - generic [ref=e28]: Пошук
+      - button "⚙️ Редактор героїв" [ref=e29]:
+        - text: ⚙️
+        - generic [ref=e30]: Редактор героїв
+    - generic [ref=e123]:
+      - generic [ref=e124]:
+        - generic [ref=e125]: Фільтр (AND) — оберіть від 1 до 5 героїв
+        - generic [ref=e127]:
+          - button "Орен Oren ▾" [ref=e252]:
+            - generic [ref=e253]:
+              - generic [ref=e254]: Орен
+              - generic [ref=e255]: Oren
+            - generic [ref=e130]: ▾
+          - button "Очистити" [ref=e256]: ✕
+        - button "Герой 2 ▾" [ref=e133]:
+          - generic [ref=e134]: Герой 2
+          - generic [ref=e135]: ▾
+        - button "Герой 3 ▾" [ref=e138]:
+          - generic [ref=e139]: Герой 3
+          - generic [ref=e140]: ▾
+        - button "Герой 4 ▾" [ref=e143]:
+          - generic [ref=e144]: Герой 4
+          - generic [ref=e145]: ▾
+        - button "Герой 5 ▾" [ref=e148]:
+          - generic [ref=e149]: Герой 5
+          - generic [ref=e150]: ▾
+        - generic [ref=e151]:
+          - button "🔍 Пошук" [active] [ref=e152]
+          - button "Очистити фільтр" [ref=e257]
+      - generic [ref=e258]:
+        - generic [ref=e259]: "Знайдено: 1"
+        - generic [ref=e260]:
+          - link [ref=e261] [cursor=pointer]:
+            - /url: https://aabaapmktkfwmvgcirxb.supabase.co/storage/v1/object/sign/defense-screenshots/def-1784928960744-j3ze4k.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hMDNlMmYyOS0yMTM0LTRhNTQtOTE3MC1jZmQ2MTkyMTM2NWMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJkZWZlbnNlLXNjcmVlbnNob3RzL2RlZi0xNzg0OTI4OTYwNzQ0LWozemU0ay5qcGciLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg3MTU2NDYwLCJleHAiOjIxMDI1MTY0NjB9.Yibcn_yDa-868_pW68aIDhwtOxCaP-2URZ9hZqNwOyM
+          - generic [ref=e262]:
+            - generic [ref=e263]: 🔑
+            - code [ref=e264]: <GVG>cACOh5PzobBqAfcHAhCAMjdjZTg0YjM2ZDVj-xI</GVG>
+            - button "📋 Копіювати" [ref=e265]
+          - generic [ref=e266]:
+            - generic [ref=e267]: Орен
+            - generic [ref=e268]: Валара
+            - generic [ref=e269]: Хадгрим
+            - generic [ref=e270]: Жадность
+            - generic [ref=e271]: Эйрлис
+          - button "🗑 Видалити" [ref=e273]

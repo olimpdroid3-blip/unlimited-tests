@@ -1,11 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import { supabase } from "@/lib/db";
 import { AppHeader } from "@/components/AppHeader";
+import { MobPicker } from "@/components/MobPicker";
+import { PlayerSelectField } from "@/components/PlayerSelectField";
+import { Toaster } from "@/components/ui/sonner";
 import { HeroPicker, type HeroOption } from "@/components/HeroPicker";
+import type { BattlePowerRow } from "@/lib/battle-power";
+import {
+  getDefenseMobSelection,
+  resolveDefenseMobs,
+  type ResolvedDefenseMob,
+} from "@/lib/defenses";
 import { syncHeroes } from "@/lib/heroes.functions";
+import type { Mob, PlayerMobLevel } from "@/lib/mob-levels";
 
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
@@ -44,11 +54,7 @@ async function compressImage(file: File, maxSide = 1280, quality = 0.8): Promise
   }
 }
 
-async function uploadToBucket(
-  bucket: string,
-  file: File,
-  prefix: string,
-): Promise<string | null> {
+async function uploadToBucket(bucket: string, file: File, prefix: string): Promise<string | null> {
   const compressed = await compressImage(file);
   const extMatch = compressed.name.match(/\.([a-zA-Z0-9]+)$/);
   const ext = (extMatch?.[1] ?? compressed.type.split("/")[1] ?? "bin")
@@ -96,17 +102,44 @@ function DefensesPage() {
     },
   });
 
+  const { data: players = [] } = useQuery({
+    queryKey: ["defense-players"],
+    queryFn: async (): Promise<BattlePowerRow[]> => {
+      const { data, error } = await supabase
+        .from("battle_power")
+        .select("id,nickname,power1,power2,power3,power4,power5")
+        .order("nickname");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: mobs = [] } = useQuery({
+    queryKey: ["defense-mobs-catalog"],
+    queryFn: async (): Promise<Mob[]> => {
+      const { data, error } = await supabase
+        .from("mobs")
+        .select("id,name,image_url,mob_type,rarity")
+        .order("name");
+      if (error) throw error;
+      return (data ?? []).map((mob) => ({
+        id: mob.id,
+        name: mob.name,
+        imageUrl: mob.image_url,
+        mobType: mob.mob_type,
+        rarity: mob.rarity,
+      }));
+    },
+  });
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <Toaster theme="light" position="top-center" richColors />
+      <Toaster position="top-center" richColors />
       <AppHeader />
 
       <main className="mx-auto w-full max-w-3xl px-3 pb-10 pt-4 sm:px-4">
         <div className="mb-4">
-          <Link
-            to="/"
-            className="text-xs text-muted-foreground transition hover:text-primary"
-          >
+          <Link to="/" className="text-xs text-muted-foreground transition hover:text-primary">
             ← На головну
           </Link>
           <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold tracking-tight">
@@ -133,7 +166,7 @@ function DefensesPage() {
           </TabButton>
         </div>
 
-        {tab === "add" && <AddTab heroes={heroes} />}
+        {tab === "add" && <AddTab heroes={heroes} players={players} mobs={mobs} />}
         {tab === "search" && <SearchTab heroes={heroes} />}
         {tab === "editor" && <EditorTab heroes={heroes} />}
       </main>
@@ -176,16 +209,29 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-function AddTab({ heroes }: { heroes: HeroOption[] }) {
+function AddTab({
+  heroes,
+  players,
+  mobs,
+}: {
+  heroes: HeroOption[];
+  players: BattlePowerRow[];
+  mobs: Mob[];
+}) {
   const qc = useQueryClient();
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [runCode, setRunCode] = useState("");
   const [slots, setSlots] = useState<Array<string | null>>([null, null, null, null, null]);
+  const [playerId, setPlayerId] = useState<string>();
+  const [mobSlots, setMobSlots] = useState<Array<string | null>>([null, null, null, null, null]);
+  const [comment, setComment] = useState("");
   const [busy, setBusy] = useState(false);
 
   const chosen = slots.filter((v): v is string => !!v);
-  const canSave = chosen.length >= 1 && !busy;
+  const chosenMobs = mobSlots.filter((value): value is string => Boolean(value));
+  const selectedMobIds = getDefenseMobSelection(mobSlots);
+  const canSave = chosen.length >= 1 && Boolean(playerId) && selectedMobIds !== null && !busy;
 
   const onSave = async () => {
     if (!canSave) return;
@@ -195,24 +241,23 @@ function AddTab({ heroes }: { heroes: HeroOption[] }) {
       if (screenshotFile) {
         screenshot_url = await uploadToBucket("defense-screenshots", screenshotFile, "def");
       }
-      const { data: def, error } = await supabase
-        .from("defenses")
-        .insert({ screenshot_url, run_code: runCode.trim() || null })
-        .select("id")
-        .single();
+      const { error } = await supabase.rpc("create_defense_with_details", {
+        p_screenshot_url: screenshot_url,
+        p_run_code: runCode.trim() || null,
+        p_player_id: playerId!,
+        p_comment: comment.trim() || null,
+        p_hero_ids: chosen,
+        p_mob_ids: selectedMobIds!,
+      });
       if (error) throw error;
-      const rows = chosen.map((hero_id, i) => ({
-        defense_id: def!.id,
-        hero_id,
-        position: i + 1,
-      }));
-      const { error: linkErr } = await supabase.from("defense_heroes").insert(rows);
-      if (linkErr) throw linkErr;
       toast.success("Захист збережено");
       setScreenshot(null);
       setScreenshotFile(null);
       setRunCode("");
       setSlots([null, null, null, null, null]);
+      setPlayerId(undefined);
+      setMobSlots([null, null, null, null, null]);
+      setComment("");
       qc.invalidateQueries({ queryKey: ["defenses"] });
     } catch (e) {
       console.error(e);
@@ -249,36 +294,87 @@ function AddTab({ heroes }: { heroes: HeroOption[] }) {
         </div>
       </label>
 
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Код проходки
+          </span>
+          <input
+            value={runCode}
+            onChange={(e) => setRunCode(e.target.value)}
+            placeholder="Напр. WoR-12345"
+            className="h-11 rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-primary/60 focus:outline-none"
+          />
+        </label>
+
+        <PlayerSelectField
+          id="defense-player"
+          value={playerId}
+          players={players}
+          disabled={busy}
+          onValueChange={setPlayerId}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {slots.map((value, index) => (
+          <div key={index} className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Герой {index + 1}
+              {index === 0 && <span className="ml-1 text-destructive">*</span>}
+            </span>
+            <HeroPicker
+              heroes={heroes}
+              value={value}
+              onChange={(heroId) =>
+                setSlots((currentSlots) =>
+                  currentSlots.map((currentValue, slotIndex) =>
+                    slotIndex === index ? heroId : currentValue,
+                  ),
+                )
+              }
+              excludeIds={chosen}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {mobSlots.map((value, index) => (
+          <div key={index} className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Моб {index + 1}
+              {index < 2 && <span className="ml-1 text-destructive">*</span>}
+            </span>
+            <MobPicker
+              mobs={mobs}
+              value={value}
+              onChange={(mobId) =>
+                setMobSlots((currentSlots) =>
+                  currentSlots.map((currentValue, slotIndex) =>
+                    slotIndex === index ? mobId : currentValue,
+                  ),
+                )
+              }
+              excludeIds={chosenMobs}
+              placeholder={`Оберіть моба ${index + 1}`}
+            />
+          </div>
+        ))}
+      </div>
+
       <label className="flex flex-col gap-1.5">
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Код проходки
+          Коментар
         </span>
-        <input
-          value={runCode}
-          onChange={(e) => setRunCode(e.target.value)}
-          placeholder="Напр. WoR-12345"
-          className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-primary/60 focus:outline-none"
+        <textarea
+          value={comment}
+          onChange={(event) => setComment(event.target.value)}
+          placeholder="БС, таймінг, порядок дій або інші нюанси…"
+          rows={4}
+          className="resize-y rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none"
         />
       </label>
-
-      {slots.map((val, i) => (
-        <div key={i} className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Герой {i + 1}
-            {i === 0 && <span className="ml-1 text-destructive">*</span>}
-          </span>
-          <HeroPicker
-            heroes={heroes}
-            value={val}
-            onChange={(id) => {
-              const next = [...slots];
-              next[i] = id;
-              setSlots(next);
-            }}
-            excludeIds={chosen}
-          />
-        </div>
-      ))}
 
       <button
         disabled={!canSave}
@@ -297,11 +393,29 @@ type DefenseRow = {
   id: string;
   screenshot_url: string | null;
   run_code: string | null;
+  comment: string | null;
+  player_id: string | null;
   created_at: string;
+  player: BattlePowerRow | null;
+  defense_mobs: ResolvedDefenseMob[];
   defense_heroes: Array<{
     position: number | null;
     hero_id: string;
     heroes: { id: string; name_ru: string; name_en: string; icon_url: string | null } | null;
+  }>;
+};
+
+type RawDefenseRow = Omit<DefenseRow, "defense_mobs"> & {
+  defense_mobs: Array<{
+    position: number;
+    mob_id: string;
+    mobs: {
+      id: string;
+      name: string;
+      image_url: string | null;
+      mob_type: Mob["mobType"];
+      rarity: Mob["rarity"];
+    } | null;
   }>;
 };
 
@@ -310,9 +424,10 @@ function SearchTab({ heroes }: { heroes: HeroOption[] }) {
   const [slots, setSlots] = useState<Array<string | null>>([null, null, null, null, null]);
   const chosen = slots.filter((v): v is string => !!v);
   const [searchIds, setSearchIds] = useState<string[] | null>(null);
+  const [searchVersion, setSearchVersion] = useState(0);
 
   const { data: results = [], isFetching } = useQuery({
-    queryKey: ["defenses", searchIds],
+    queryKey: ["defenses", searchIds, searchVersion],
     enabled: searchIds !== null && searchIds.length > 0,
     queryFn: async (): Promise<DefenseRow[]> => {
       const ids = searchIds ?? [];
@@ -334,12 +449,67 @@ function SearchTab({ heroes }: { heroes: HeroOption[] }) {
       const { data, error } = await supabase
         .from("defenses")
         .select(
-          "id, screenshot_url, run_code, created_at, defense_heroes(position, hero_id, heroes(id, name_ru, name_en, icon_url))",
+          "id, screenshot_url, run_code, comment, player_id, created_at, player:battle_power(id, nickname, power1, power2, power3, power4, power5), defense_heroes(position, hero_id, heroes(id, name_ru, name_en, icon_url)), defense_mobs(position, mob_id, mobs(id, name, image_url, mob_type, rarity))",
         )
         .in("id", defenseIds)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as DefenseRow[];
+      const rawDefenses = (data ?? []) as unknown as RawDefenseRow[];
+      const playerIds = [
+        ...new Set(
+          rawDefenses
+            .map((defense) => defense.player_id)
+            .filter((playerId): playerId is string => Boolean(playerId)),
+        ),
+      ];
+      const mobIds = [
+        ...new Set(
+          rawDefenses.flatMap((defense) => defense.defense_mobs.map(({ mob_id }) => mob_id)),
+        ),
+      ];
+      let levels: PlayerMobLevel[] = [];
+      if (playerIds.length > 0 && mobIds.length > 0) {
+        const { data: levelRows, error: levelsError } = await supabase
+          .from("player_mob_levels")
+          .select("player_id,mob_id,level,updated_at")
+          .in("player_id", playerIds)
+          .in("mob_id", mobIds);
+        if (levelsError) throw levelsError;
+        levels = (levelRows ?? []).map((level) => ({
+          playerId: level.player_id,
+          mobId: level.mob_id,
+          level: level.level,
+          updatedAt: level.updated_at,
+        }));
+      }
+
+      return rawDefenses.map((defense) => {
+        const catalog = defense.defense_mobs.flatMap(({ mobs: mob }) =>
+          mob
+            ? [
+                {
+                  id: mob.id,
+                  name: mob.name,
+                  imageUrl: mob.image_url,
+                  mobType: mob.mob_type,
+                  rarity: mob.rarity,
+                },
+              ]
+            : [],
+        );
+        return {
+          ...defense,
+          defense_mobs: resolveDefenseMobs(
+            defense.player_id,
+            defense.defense_mobs.map(({ mob_id, position }) => ({
+              mobId: mob_id,
+              position,
+            })),
+            catalog,
+            levels,
+          ),
+        };
+      });
     },
   });
 
@@ -379,7 +549,10 @@ function SearchTab({ heroes }: { heroes: HeroOption[] }) {
         <div className="flex items-center gap-2">
           <button
             disabled={!canSearch}
-            onClick={() => setSearchIds(chosen)}
+            onClick={() => {
+              setSearchIds(chosen);
+              setSearchVersion((version) => version + 1);
+            }}
             className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
           >
             🔍 Пошук
@@ -417,16 +590,17 @@ function SearchTab({ heroes }: { heroes: HeroOption[] }) {
   );
 }
 
-function DefenseCard({
-  defense,
-  onDelete,
-}: {
-  defense: DefenseRow;
-  onDelete: () => void;
-}) {
-  const heroes = [...defense.defense_heroes].sort(
-    (a, b) => (a.position ?? 0) - (b.position ?? 0),
-  );
+function DefenseCard({ defense, onDelete }: { defense: DefenseRow; onDelete: () => void }) {
+  const heroes = [...defense.defense_heroes].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  const powers = defense.player
+    ? [
+        defense.player.power1,
+        defense.player.power2,
+        defense.player.power3,
+        defense.player.power4,
+        defense.player.power5,
+      ]
+    : [];
   const copy = async () => {
     if (!defense.run_code) return;
     await navigator.clipboard.writeText(defense.run_code);
@@ -434,14 +608,34 @@ function DefenseCard({
   };
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card/50 p-3">
-      {defense.screenshot_url && (
-        <a href={defense.screenshot_url} target="_blank" rel="noreferrer">
-          <img
-            src={defense.screenshot_url}
-            alt=""
-            className="max-h-64 w-full rounded-lg border border-border object-cover"
-          />
-        </a>
+      {(defense.screenshot_url || heroes.length > 0) && (
+        <div className="grid gap-3 md:grid-cols-2">
+          {defense.screenshot_url && (
+            <a href={defense.screenshot_url} target="_blank" rel="noreferrer" className="min-w-0">
+              <img
+                src={defense.screenshot_url}
+                alt=""
+                className="aspect-video w-full rounded-lg border border-border bg-background/50 object-contain"
+              />
+            </a>
+          )}
+          {heroes.length > 0 && (
+            <div
+              className={`flex flex-wrap content-start items-start gap-1.5 ${defense.screenshot_url ? "" : "md:col-span-2"}`}
+            >
+              {heroes.map((row) =>
+                row.heroes ? (
+                  <span
+                    key={row.hero_id}
+                    className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-foreground"
+                  >
+                    {row.heroes.name_ru}
+                  </span>
+                ) : null,
+              )}
+            </div>
+          )}
+        </div>
       )}
       {defense.run_code && (
         <div className="flex items-center gap-2 rounded-lg border border-border bg-input px-3 py-2">
@@ -457,18 +651,63 @@ function DefenseCard({
           </button>
         </div>
       )}
-      <div className="flex flex-wrap gap-1.5">
-        {heroes.map((r) =>
-          r.heroes ? (
-            <span
-              key={r.hero_id}
-              className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-foreground"
+      {defense.player && (
+        <div className="rounded-xl border border-border bg-background/50 p-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <span aria-hidden="true">👤</span>
+            <span>{defense.player.nickname}</span>
+          </div>
+          <div className="mt-2 grid grid-cols-5 gap-1.5">
+            {powers.map((power, index) => (
+              <div
+                key={index}
+                className="rounded-lg border border-border bg-secondary/70 px-1.5 py-2 text-center"
+              >
+                <div className="text-[10px] uppercase text-muted-foreground">БС {index + 1}</div>
+                <div className="mt-0.5 truncate font-mono text-xs font-semibold tabular-nums text-foreground">
+                  {formatDefensePower(power)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {defense.defense_mobs.length > 0 && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {defense.defense_mobs.map(({ mob, level, position }) => (
+            <div
+              key={mob.id}
+              className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-secondary/50 p-2"
             >
-              {r.heroes.name_ru}
-            </span>
-          ) : null,
-        )}
-      </div>
+              {mob.imageUrl && (
+                <img
+                  src={mob.imageUrl}
+                  alt=""
+                  className="h-10 w-10 shrink-0 rounded-md border border-border object-cover"
+                />
+              )}
+              <div className="min-w-0">
+                <div className="truncate text-xs font-medium text-foreground">
+                  {position}. {mob.name}
+                </div>
+                <div className="mt-0.5 text-[11px] font-semibold text-primary">
+                  Рівень {level ?? "—"}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {defense.comment && (
+        <div className="rounded-lg border border-border bg-background/50 px-3 py-2.5">
+          <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Коментар
+          </div>
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">
+            {defense.comment}
+          </p>
+        </div>
+      )}
       <div className="flex justify-end">
         <button
           onClick={onDelete}
@@ -479,6 +718,11 @@ function DefenseCard({
       </div>
     </div>
   );
+}
+
+function formatDefensePower(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  return Number(value.toFixed(3)).toString();
 }
 
 // ---------------- EDITOR TAB ----------------

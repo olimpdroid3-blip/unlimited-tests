@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Toaster } from "sonner";
 import { supabase } from "@/lib/db";
 import { AppHeader } from "@/components/AppHeader";
+import { Toaster } from "@/components/ui/sonner";
 import { TowerModal } from "@/components/TowerModal";
 import * as Dialog from "@radix-ui/react-dialog";
 
@@ -35,12 +35,18 @@ const COLUMNS = [
 ] as const;
 
 const ROWS: Array<[number, number]> = [
-  [1, 1], [1, 2],
-  [2, 1], [2, 2],
-  [3, 1], [3, 2],
-  [4, 1], [4, 2],
-  [5, 1], [5, 2],
-  [6, 1], [6, 2],
+  [1, 1],
+  [1, 2],
+  [2, 1],
+  [2, 2],
+  [3, 1],
+  [3, 2],
+  [4, 1],
+  [4, 2],
+  [5, 1],
+  [5, 2],
+  [6, 1],
+  [6, 2],
 ];
 
 function HomePage() {
@@ -107,7 +113,7 @@ function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <Toaster theme="light" position="top-center" richColors />
+      <Toaster position="top-center" richColors />
       <AppHeader />
 
       <main className="mx-auto w-full max-w-5xl px-3 pb-6 pt-4 sm:px-4">
@@ -229,9 +235,7 @@ function HomePage() {
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0" />
           <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 duration-200">
-            <Dialog.Title className="text-base font-semibold text-destructive">
-              Увага!
-            </Dialog.Title>
+            <Dialog.Title className="text-base font-semibold text-destructive">Увага!</Dialog.Title>
             <Dialog.Description className="mt-2 text-sm text-muted-foreground">
               Ця дія видалить всі записи всіх веж!
             </Dialog.Description>

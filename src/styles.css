@@ -65,12 +65,12 @@
   --muted-foreground: oklch(0.52 0.01 260);
 
   --accent: oklch(0.94 0.02 55);
-  --accent-foreground: oklch(0.30 0.05 55);
+  --accent-foreground: oklch(0.3 0.05 55);
 
-  --destructive: oklch(0.60 0.22 25);
+  --destructive: oklch(0.6 0.22 25);
   --destructive-foreground: oklch(1 0 0);
 
-  --border: oklch(0.90 0.005 260);
+  --border: oklch(0.9 0.005 260);
   --input: oklch(1 0 0);
   --ring: oklch(0.72 0.19 55);
 
@@ -87,14 +87,70 @@
   --col-i: oklch(0.55 0.17 255);
   --col-ii: oklch(0.55 0.17 155);
   --col-iii: oklch(0.65 0.18 60);
-  --col-iv: oklch(0.55 0.20 310);
+  --col-iv: oklch(0.55 0.2 310);
+}
+
+.dark {
+  --background: oklch(0.18 0.012 260);
+  --foreground: oklch(0.94 0.006 260);
+
+  --card: oklch(0.22 0.012 260);
+  --card-foreground: oklch(0.94 0.006 260);
+
+  --popover: oklch(0.235 0.012 260);
+  --popover-foreground: oklch(0.94 0.006 260);
+
+  --primary: oklch(0.76 0.18 58);
+  --primary-foreground: oklch(0.18 0.025 55);
+
+  --secondary: oklch(0.27 0.012 260);
+  --secondary-foreground: oklch(0.92 0.006 260);
+
+  --muted: oklch(0.265 0.01 260);
+  --muted-foreground: oklch(0.7 0.008 260);
+
+  --accent: oklch(0.3 0.055 55);
+  --accent-foreground: oklch(0.92 0.05 65);
+
+  --destructive: oklch(0.66 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --border: oklch(0.34 0.012 260);
+  --input: oklch(0.245 0.012 260);
+  --ring: oklch(0.76 0.18 58);
+
+  --tower-idle: oklch(0.255 0.012 260);
+  --tower-idle-text: oklch(0.72 0.008 260);
+  --tower-active: oklch(0.76 0.18 58);
+  --tower-active-foreground: oklch(0.18 0.025 55);
+
+  --col-i: oklch(0.72 0.14 255);
+  --col-ii: oklch(0.72 0.14 155);
+  --col-iii: oklch(0.79 0.15 70);
+  --col-iv: oklch(0.72 0.16 310);
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
-  html, body { background-color: var(--color-background); color: var(--color-foreground); }
+  * {
+    border-color: var(--color-border);
+  }
+  html,
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
   body {
     font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-transition *,
+  html.theme-transition *::before,
+  html.theme-transition *::after {
+    transition-property: color, background-color, border-color, outline-color, fill, stroke;
+    transition-duration: 180ms;
+    transition-timing-function: ease;
   }
 }
