@@ -89,82 +89,29 @@ export type Database = {
           },
         ]
       }
-      defense_mobs: {
-        Row: {
-          created_at: string
-          defense_id: string
-          id: string
-          mob_id: string
-          position: number
-        }
-        Insert: {
-          created_at?: string
-          defense_id: string
-          id?: string
-          mob_id: string
-          position: number
-        }
-        Update: {
-          created_at?: string
-          defense_id?: string
-          id?: string
-          mob_id?: string
-          position?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "defense_mobs_defense_id_fkey"
-            columns: ["defense_id"]
-            isOneToOne: false
-            referencedRelation: "defenses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "defense_mobs_mob_id_fkey"
-            columns: ["mob_id"]
-            isOneToOne: false
-            referencedRelation: "mobs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       defenses: {
         Row: {
-          comment: string | null
           created_at: string
           id: string
-          player_id: string | null
           run_code: string | null
           screenshot_url: string | null
           updated_at: string
         }
         Insert: {
-          comment?: string | null
           created_at?: string
           id?: string
-          player_id?: string | null
           run_code?: string | null
           screenshot_url?: string | null
           updated_at?: string
         }
         Update: {
-          comment?: string | null
           created_at?: string
           id?: string
-          player_id?: string | null
           run_code?: string | null
           screenshot_url?: string | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "defenses_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: false
-            referencedRelation: "battle_power"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       heroes: {
         Row: {
@@ -195,72 +142,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      mobs: {
-        Row: {
-          created_at: string
-          id: string
-          image_url: string | null
-          mob_type: "demon" | "demon-captain"
-          name: string
-          rarity: "epic" | "legendary" | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id: string
-          image_url?: string | null
-          mob_type?: "demon" | "demon-captain"
-          name: string
-          rarity?: "epic" | "legendary" | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          image_url?: string | null
-          mob_type?: "demon" | "demon-captain"
-          name?: string
-          rarity?: "epic" | "legendary" | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      player_mob_levels: {
-        Row: {
-          level: number
-          mob_id: string
-          player_id: string
-          updated_at: string
-        }
-        Insert: {
-          level: number
-          mob_id: string
-          player_id: string
-          updated_at?: string
-        }
-        Update: {
-          level?: number
-          mob_id?: string
-          player_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "player_mob_levels_mob_id_fkey"
-            columns: ["mob_id"]
-            isOneToOne: false
-            referencedRelation: "mobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "player_mob_levels_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: false
-            referencedRelation: "battle_power"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       telegram_sources: {
         Row: {
@@ -506,17 +387,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      create_defense_with_details: {
-        Args: {
-          p_comment: string | null
-          p_hero_ids: string[]
-          p_mob_ids: string[]
-          p_player_id: string
-          p_run_code: string | null
-          p_screenshot_url: string | null
-        }
-        Returns: string
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never

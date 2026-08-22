@@ -1,39 +1,34 @@
-# Аудит підключень до БД (read-only)
+# Изменения от DStukalo: статус и починка сборки
 
-## Висновок
+## Что я вижу
 
-Усі реальні запити застосунку (браузер + сервер) ідуть **тільки** до `https://aabaapmktkfwmvgcirxb.supabase.co`. Залишились лише неактивні артефакти старого проєкту `cifsbkkebifyyjgsjriq`.
+Прямого доступа к GitHub у меня нет — в воркспейсе нет ни одного подключения GitHub-коннектора, поэтому список PR, автора и счётчик «119 файлов / 32 коммита» я подтвердить не могу.
 
-## Перелік джерел підключення
+Но код этих изменений уже находится в проекте: появились новые модули `src/lib/mob-levels.ts`, `mob-levels-ui.ts`, `mob-levels-supabase.ts`, `test-player-data.ts`, `theme.ts`, `battle-power-ui.ts`, `defenses.ts` и набор тестов. Похоже, merge уже выполнен и код синхронизировался в Lovable.
 
-| Джерело | Куди веде | Вердикт |
-|---|---|---|
-| `src/lib/db.ts` (браузерний клієнт, URL+ключ захардкожені) | aabaapmktkfwmvgcirxb | new |
-| `src/lib/db.server.ts` (service role, `GVG_SUPABASE_URL` / `GVG_SUPABASE_SERVICE_ROLE_KEY`) | aabaapmktkfwmvgcirxb | new |
-| `src/routes/towers.tsx`, `archive.tsx`, `defenses.tsx`, `battle-power.tsx`, `videos.tsx`, `src/components/TowerModal.tsx`, `HeroPicker.tsx` — усі через `@/lib/db` | new | new |
-| `src/lib/gvg-video-bot.server.ts` → `@/lib/db.server` | new | new |
-| `src/lib/heroes.functions.ts` → `await import("@/lib/db.server")` (3 місця), Storage upload/signed URL | new | new |
-| `src/routes/api/public/telegram/gvg-video-webhook.ts` → `await import('@/lib/db.server')` | new | new |
-| `src/routes/api/telegram/gvg-video-setup.ts` — лише Telegram API, БД не чіпає | n/a | new |
-| Storage: `defenses.tsx` завантаження скріншотів через `supabase.storage` з `@/lib/db` | new | new |
-| Дані в БД: `heroes.icon_url` та `defenses.screenshot_url` — перевірено REST-запитом, домен `aabaapmktkfwmvgcirxb` | new | new |
-| Зовнішній fetch: `fastidious.gg/heroes`, `ai.gateway.lovable.dev`, `api.telegram.org` | не БД | n/a |
+Однако сборка сейчас падает: TypeScript-ошибки в `src/lib/mob-levels-ui.ts` и `src/routes/defenses.tsx`.
 
-## Залишкові артефакти старого проєкту (не впливають на запити)
+## Причина ошибок
 
-| Артефакт | Стан | Вердикт |
-|---|---|---|
-| `.env` — `SUPABASE_URL`, `VITE_SUPABASE_URL`, `*_PROJECT_ID`, `*_PUBLISHABLE_KEY` = cifsbkkebifyyjgsjriq | автогенерований Lovable Cloud; жоден файл коду ці змінні не читає, крім generated-клієнтів нижче | old (неактивний) |
-| `supabase/config.toml` → `project_id = "cifsbkkebifyyjgsjriq"` | лише для тулінгу міграцій Lovable Cloud | old (неактивний) |
-| `src/integrations/supabase/client.ts` (generated) | читає `VITE_SUPABASE_*` → старий проєкт; **не імпортується жодним файлом застосунку** | old, unused |
-| `src/integrations/supabase/client.server.ts` (generated) | читає `SUPABASE_SERVICE_ROLE_KEY` → старий проєкт; не імпортується | old, unused |
-| `src/integrations/supabase/auth-middleware.ts` (`requireSupabaseAuth`) | ніде не використовується | old, unused |
-| `src/integrations/supabase/auth-attacher.ts` → зареєстрований у `src/start.ts` як `functionMiddleware` | **єдиний активний код, що торкається старого клієнта**: на кожному виклику serverFn робить `supabase.auth.getSession()` зі старого клієнта. Це лише читання localStorage, мережевого запиту до старої БД зазвичай немає, дані не читаються/не пишуться | uncertain (косметично) |
-| `src/integrations/supabase/types.ts` | тільки типи; схеми в обох проєктах однакові | n/a |
+Новый код обращается к таблицам `mobs`, `player_mob_levels` и к функции `create_defense_with_details`. В базе `aabaapmktkfwmvgcirxb` они реально существуют (проверено запросами: таблица `mobs` содержит записи вида `mob-12` с полями `name/image_url/mob_type/rarity`, `player_mob_levels` — `player_id/mob_id/level/updated_at`). Не существуют они только в локальном файле типов `src/integrations/supabase/types.ts` — он остался от прежнего набора таблиц. Отсюда `Argument of type '"mobs"' is not assignable to parameter of type 'never'` и все производные ошибки.
 
-## Що можна прибрати (за бажанням, окремим кроком)
+То есть это не логическая ошибка кода DStukalo, а рассинхрон типов.
 
-1. Прибрати `attachSupabaseAuth` з `functionMiddleware` у `src/start.ts` — авторизація Supabase у застосунку не використовується.
-2. Видалити невикористані generated-файли `client.ts`, `client.server.ts`, `auth-middleware.ts`, `auth-attacher.ts` (типи `types.ts` залишити).
+## План починки
 
-`.env` та `supabase/config.toml` — автогенеровані платформою, редагувати їх не варто; вони не впливають на runtime.
+1. Дополнить `src/integrations/supabase/types.ts` описаниями:
+   - `mobs`: `id: string`, `name: string`, `image_url: string | null`, `mob_type: string`, `rarity: string`, `created_at`, `updated_at` (Row / Insert / Update).
+   - `player_mob_levels`: `player_id: string`, `mob_id: string`, `level: number`, `updated_at` (Row / Insert / Update).
+   - RPC `create_defense_with_details` в секции `Functions` с фактическими аргументами и возвращаемым типом (сигнатуру возьму из базы).
+2. Прогнать типизацию и сборку, убедиться, что ошибки в `mob-levels-ui.ts` и `defenses.tsx` ушли.
+3. Прогнать существующие тесты (`mob-levels.test.ts`, `defenses.test.ts`, `battle-power.test.ts` и др.) и починить только то, что связано с типами — бизнес-логику из merge не трогаю.
+4. Проверить страницу `/defenses` в превью: загрузка мобов, уровни игрока, сохранение защиты.
+
+## Если merge всё-таки не выполнен
+
+Тогда отдельным шагом подключаем GitHub-коннектор (карточка авторизации в чате), я нахожу PR автора DStukalo, показываю сводку диффа и по вашему подтверждению делаю merge через API. Сам по себе merge без обзора диффа делать не буду — 119 файлов могут задеть подключение к базе.
+
+## Технические детали
+
+- Тип базы генерируется вручную для внешнего проекта `aabaapmktkfwmvgcirxb`, автогенератор Lovable Cloud его не обновляет — поэтому правки в `types.ts` вношу напрямую.
+- Схема сверяется REST-запросами к таблицам с publishable-ключом; изменений в самой базе не делаю.
