@@ -1,7 +1,7 @@
 // Browser Supabase client for the GvG project database.
 // Publishable (anon) key is public by design.
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/integrations/supabase/types';
+import type { Database } from '@/lib/database.types';
 
 export const GVG_SUPABASE_URL = 'https://aabaapmktkfwmvgcirxb.supabase.co';
 export const GVG_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_MBLfvi1fzfED-yHIPG4Zjw_keR88XKs';
