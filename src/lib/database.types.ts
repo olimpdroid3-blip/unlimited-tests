@@ -161,27 +161,27 @@ export type Database = {
           created_at: string
           id: string
           image_url: string | null
-          mob_type: string
+          mob_type: "demon" | "demon-captain"
           name: string
-          rarity: string | null
+          rarity: "epic" | "legendary" | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           id: string
           image_url?: string | null
-          mob_type?: string
+          mob_type?: "demon" | "demon-captain"
           name: string
-          rarity?: string | null
+          rarity?: "epic" | "legendary" | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
           image_url?: string | null
-          mob_type?: string
+          mob_type?: "demon" | "demon-captain"
           name?: string
-          rarity?: string | null
+          rarity?: "epic" | "legendary" | null
           updated_at?: string
         }
         Relationships: []
