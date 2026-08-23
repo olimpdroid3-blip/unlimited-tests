@@ -6,14 +6,21 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 export function AppHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-border">
-      <div
-        className="relative min-h-24 bg-cover sm:min-h-28"
-        style={{ backgroundImage: `url(${bannerAsset.url})`, backgroundPosition: "center 62%" }}
-      >
-        {/* затемнення для читабельності елементів шапки */}
-        <div className="absolute inset-0 bg-[oklch(0.12_0.03_260/0.35)]" />
+      <div className="relative min-h-[88px] overflow-hidden bg-[oklch(0.1_0.03_260)] sm:min-h-[112px]">
+        {/* розмитий шар: безликі герої та руни формують фон */}
+        <div
+          className="absolute inset-0 scale-110 bg-cover bg-center blur-[3px]"
+          style={{ backgroundImage: `url(${bannerAsset.url})`, backgroundPosition: "center 35%" }}
+        />
+        <div className="absolute inset-0 bg-[oklch(0.1_0.03_260/0.45)]" />
 
-        <div className="relative mx-auto flex min-h-24 max-w-5xl items-start justify-between gap-3 px-4 py-3 sm:min-h-28 sm:py-4">
+        {/* цілісний логотип по центру шапки */}
+        <div
+          className="absolute inset-y-1 inset-x-0 bg-contain bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${bannerAsset.url})` }}
+        />
+
+        <div className="relative mx-auto flex min-h-[88px] max-w-5xl items-start justify-between gap-3 px-4 py-3 sm:min-h-[112px] sm:py-4">
           <Link to="/" className="flex min-w-0 flex-col leading-tight">
             <span className="sr-only">NoNameClan</span>
             <span className="text-[10px] font-medium uppercase tracking-[0.22em] text-[oklch(0.95_0.02_250)] drop-shadow-[0_1px_3px_oklch(0.1_0_0/0.9)]">
