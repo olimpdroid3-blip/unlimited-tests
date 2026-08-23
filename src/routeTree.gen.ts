@@ -9,40 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as VideosRouteImport } from './routes/videos'
-import { Route as TowersRouteImport } from './routes/towers'
-import { Route as MobLevelsRouteImport } from './routes/mob-levels'
-import { Route as DefensesRouteImport } from './routes/defenses'
-import { Route as BattlePowerRouteImport } from './routes/battle-power'
-import { Route as ArchiveRouteImport } from './routes/archive'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ArchiveRouteImport } from './routes/archive'
+import { Route as BattlePowerRouteImport } from './routes/battle-power'
+import { Route as DefensesRouteImport } from './routes/defenses'
+import { Route as MobLevelsRouteImport } from './routes/mob-levels'
+import { Route as ProgressRouteImport } from './routes/progress'
+import { Route as TowersRouteImport } from './routes/towers'
+import { Route as VideosRouteImport } from './routes/videos'
+import { Route as WalkthroughsRouteImport } from './routes/walkthroughs'
 import { Route as MobLevelsEditRouteImport } from './routes/mob-levels_.edit'
 import { Route as ApiTelegramGvgVideoSetupRouteImport } from './routes/api/telegram/gvg-video-setup'
 import { Route as ApiPublicTelegramGvgVideoWebhookRouteImport } from './routes/api/public/telegram/gvg-video-webhook'
 
-const VideosRoute = VideosRouteImport.update({
-  id: '/videos',
-  path: '/videos',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TowersRoute = TowersRouteImport.update({
-  id: '/towers',
-  path: '/towers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MobLevelsRoute = MobLevelsRouteImport.update({
-  id: '/mob-levels',
-  path: '/mob-levels',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DefensesRoute = DefensesRouteImport.update({
-  id: '/defenses',
-  path: '/defenses',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BattlePowerRoute = BattlePowerRouteImport.update({
-  id: '/battle-power',
-  path: '/battle-power',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArchiveRoute = ArchiveRouteImport.update({
@@ -50,9 +32,39 @@ const ArchiveRoute = ArchiveRouteImport.update({
   path: '/archive',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const BattlePowerRoute = BattlePowerRouteImport.update({
+  id: '/battle-power',
+  path: '/battle-power',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DefensesRoute = DefensesRouteImport.update({
+  id: '/defenses',
+  path: '/defenses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MobLevelsRoute = MobLevelsRouteImport.update({
+  id: '/mob-levels',
+  path: '/mob-levels',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProgressRoute = ProgressRouteImport.update({
+  id: '/progress',
+  path: '/progress',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TowersRoute = TowersRouteImport.update({
+  id: '/towers',
+  path: '/towers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VideosRoute = VideosRouteImport.update({
+  id: '/videos',
+  path: '/videos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WalkthroughsRoute = WalkthroughsRouteImport.update({
+  id: '/walkthroughs',
+  path: '/walkthroughs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MobLevelsEditRoute = MobLevelsEditRouteImport.update({
@@ -79,8 +91,10 @@ export interface FileRoutesByFullPath {
   '/battle-power': typeof BattlePowerRoute
   '/defenses': typeof DefensesRoute
   '/mob-levels': typeof MobLevelsRoute
+  '/progress': typeof ProgressRoute
   '/towers': typeof TowersRoute
   '/videos': typeof VideosRoute
+  '/walkthroughs': typeof WalkthroughsRoute
   '/mob-levels/edit': typeof MobLevelsEditRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
@@ -91,8 +105,10 @@ export interface FileRoutesByTo {
   '/battle-power': typeof BattlePowerRoute
   '/defenses': typeof DefensesRoute
   '/mob-levels': typeof MobLevelsRoute
+  '/progress': typeof ProgressRoute
   '/towers': typeof TowersRoute
   '/videos': typeof VideosRoute
+  '/walkthroughs': typeof WalkthroughsRoute
   '/mob-levels/edit': typeof MobLevelsEditRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
@@ -104,8 +120,10 @@ export interface FileRoutesById {
   '/battle-power': typeof BattlePowerRoute
   '/defenses': typeof DefensesRoute
   '/mob-levels': typeof MobLevelsRoute
+  '/progress': typeof ProgressRoute
   '/towers': typeof TowersRoute
   '/videos': typeof VideosRoute
+  '/walkthroughs': typeof WalkthroughsRoute
   '/mob-levels_/edit': typeof MobLevelsEditRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
@@ -118,8 +136,10 @@ export interface FileRouteTypes {
     | '/battle-power'
     | '/defenses'
     | '/mob-levels'
+    | '/progress'
     | '/towers'
     | '/videos'
+    | '/walkthroughs'
     | '/mob-levels/edit'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
@@ -130,8 +150,10 @@ export interface FileRouteTypes {
     | '/battle-power'
     | '/defenses'
     | '/mob-levels'
+    | '/progress'
     | '/towers'
     | '/videos'
+    | '/walkthroughs'
     | '/mob-levels/edit'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
@@ -142,8 +164,10 @@ export interface FileRouteTypes {
     | '/battle-power'
     | '/defenses'
     | '/mob-levels'
+    | '/progress'
     | '/towers'
     | '/videos'
+    | '/walkthroughs'
     | '/mob-levels_/edit'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
@@ -155,8 +179,10 @@ export interface RootRouteChildren {
   BattlePowerRoute: typeof BattlePowerRoute
   DefensesRoute: typeof DefensesRoute
   MobLevelsRoute: typeof MobLevelsRoute
+  ProgressRoute: typeof ProgressRoute
   TowersRoute: typeof TowersRoute
   VideosRoute: typeof VideosRoute
+  WalkthroughsRoute: typeof WalkthroughsRoute
   MobLevelsEditRoute: typeof MobLevelsEditRoute
   ApiTelegramGvgVideoSetupRoute: typeof ApiTelegramGvgVideoSetupRoute
   ApiPublicTelegramGvgVideoWebhookRoute: typeof ApiPublicTelegramGvgVideoWebhookRoute
@@ -164,39 +190,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/videos': {
-      id: '/videos'
-      path: '/videos'
-      fullPath: '/videos'
-      preLoaderRoute: typeof VideosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/towers': {
-      id: '/towers'
-      path: '/towers'
-      fullPath: '/towers'
-      preLoaderRoute: typeof TowersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mob-levels': {
-      id: '/mob-levels'
-      path: '/mob-levels'
-      fullPath: '/mob-levels'
-      preLoaderRoute: typeof MobLevelsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/defenses': {
-      id: '/defenses'
-      path: '/defenses'
-      fullPath: '/defenses'
-      preLoaderRoute: typeof DefensesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/battle-power': {
-      id: '/battle-power'
-      path: '/battle-power'
-      fullPath: '/battle-power'
-      preLoaderRoute: typeof BattlePowerRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/archive': {
@@ -206,11 +204,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArchiveRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/battle-power': {
+      id: '/battle-power'
+      path: '/battle-power'
+      fullPath: '/battle-power'
+      preLoaderRoute: typeof BattlePowerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/defenses': {
+      id: '/defenses'
+      path: '/defenses'
+      fullPath: '/defenses'
+      preLoaderRoute: typeof DefensesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mob-levels': {
+      id: '/mob-levels'
+      path: '/mob-levels'
+      fullPath: '/mob-levels'
+      preLoaderRoute: typeof MobLevelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/progress': {
+      id: '/progress'
+      path: '/progress'
+      fullPath: '/progress'
+      preLoaderRoute: typeof ProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/towers': {
+      id: '/towers'
+      path: '/towers'
+      fullPath: '/towers'
+      preLoaderRoute: typeof TowersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/videos': {
+      id: '/videos'
+      path: '/videos'
+      fullPath: '/videos'
+      preLoaderRoute: typeof VideosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/walkthroughs': {
+      id: '/walkthroughs'
+      path: '/walkthroughs'
+      fullPath: '/walkthroughs'
+      preLoaderRoute: typeof WalkthroughsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mob-levels_/edit': {
@@ -243,8 +283,10 @@ const rootRouteChildren: RootRouteChildren = {
   BattlePowerRoute: BattlePowerRoute,
   DefensesRoute: DefensesRoute,
   MobLevelsRoute: MobLevelsRoute,
+  ProgressRoute: ProgressRoute,
   TowersRoute: TowersRoute,
   VideosRoute: VideosRoute,
+  WalkthroughsRoute: WalkthroughsRoute,
   MobLevelsEditRoute: MobLevelsEditRoute,
   ApiTelegramGvgVideoSetupRoute: ApiTelegramGvgVideoSetupRoute,
   ApiPublicTelegramGvgVideoWebhookRoute: ApiPublicTelegramGvgVideoWebhookRoute,

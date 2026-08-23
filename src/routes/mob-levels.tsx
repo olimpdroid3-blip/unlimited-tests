@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { PlayerSelectField } from "@/components/PlayerSelectField";
 import { Input } from "@/components/ui/input";
 import { MobSortMenu } from "@/components/MobSortMenu";
+import { findPlayerIdByNickname, getNickCookie } from "@/lib/nickname";
 import {
   MOB_RARITY_LABELS,
   MOB_TYPE_LABELS,
@@ -53,9 +54,19 @@ function MobLevelsPage() {
     queryKey: ["mob-catalog"],
     queryFn: () => mobCatalogRepository.getAll(),
   });
-  const players = playersQuery.data ?? [];
+  const players = useMemo(() => playersQuery.data ?? [], [playersQuery.data]);
   const catalog = useMemo(() => catalogQuery.data ?? [], [catalogQuery.data]);
   const selectedPlayerId = players.some((player) => player.id === playerId) ? playerId : undefined;
+
+  useEffect(() => {
+    if (selectedPlayerId || players.length === 0) return;
+
+    const savedPlayerId = findPlayerIdByNickname(players, getNickCookie());
+    if (!savedPlayerId) return;
+
+    void navigate({ search: { playerId: savedPlayerId } });
+  }, [navigate, players, selectedPlayerId]);
+
   const levelsQuery = useQuery({
     queryKey: ["mob-levels", selectedPlayerId],
     queryFn: () => mobLevelsRepository.getByPlayer(selectedPlayerId!),
