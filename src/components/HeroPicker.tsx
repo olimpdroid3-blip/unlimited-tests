@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { filterHeroOptions } from "@/lib/hero-picker";
 
 export type HeroOption = {
   id: string;
@@ -38,15 +39,7 @@ export function HeroPicker({
   }, [open]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const excl = new Set(excludeIds);
-    return heroes
-      .filter((h) => !excl.has(h.id) || h.id === value)
-      .filter((h) => {
-        if (!q) return true;
-        return h.name_ru.toLowerCase().includes(q) || h.name_en.toLowerCase().includes(q);
-      })
-      .slice(0, 30);
+    return filterHeroOptions(heroes, query, excludeIds, value);
   }, [heroes, query, excludeIds, value]);
 
   return (

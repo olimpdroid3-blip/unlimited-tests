@@ -1,6 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { AppHeader } from "@/components/AppHeader";
 import { NicknameInput } from "@/components/NicknameInput";
+import { ResourceCardGrid } from "@/components/ResourceCardGrid";
+import { LANDING_SECTIONS } from "@/lib/resource-navigation";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -20,46 +22,6 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
-type SectionCard = {
-  to: "/towers" | "/defenses" | "/battle-power" | "/videos" | "/mob-levels";
-  icon: string;
-  title: string;
-  subtitle: string;
-};
-
-const SECTIONS: SectionCard[] = [
-  {
-    to: "/towers",
-    icon: "🏰",
-    title: "Вежі",
-    subtitle: "GvG · 48 позицій веж",
-  },
-  {
-    to: "/defenses",
-    icon: "🛡",
-    title: "База захистів",
-    subtitle: "Скріншоти · коди проходок · пошук по героях",
-  },
-  {
-    to: "/battle-power",
-    icon: "💪",
-    title: "Бойова Сила",
-    subtitle: "Збереження бойової сили учасників",
-  },
-  {
-    to: "/videos",
-    icon: "🎥",
-    title: "Відео проходок",
-    subtitle: "Пошук відео з Telegram по героях",
-  },
-  {
-    to: "/mob-levels",
-    icon: "👾",
-    title: "Рівні мобів",
-    subtitle: "Перегляд і редагування мобів учасників",
-  },
-];
-
 function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -75,34 +37,7 @@ function LandingPage() {
 
         <NicknameInput />
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-          {SECTIONS.map((s) => (
-            <Link
-              key={s.to}
-              to={s.to}
-              className="group relative flex items-center gap-4 rounded-2xl border border-border bg-card/60 p-5 transition-all duration-200 hover:border-primary/50 hover:bg-card active:scale-[0.99] sm:flex-col sm:items-start sm:gap-3 sm:p-6"
-            >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-secondary text-2xl sm:h-14 sm:w-14 sm:text-3xl">
-                {s.icon}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold text-foreground sm:text-xl">{s.title}</h2>
-                  <span className="text-primary opacity-0 transition group-hover:translate-x-1 group-hover:opacity-100">
-                    →
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{s.subtitle}</p>
-              </div>
-              <span
-                aria-hidden
-                className="hidden self-center text-lg text-muted-foreground transition group-hover:text-primary sm:block"
-              >
-                →
-              </span>
-            </Link>
-          ))}
-        </div>
+        <ResourceCardGrid sections={LANDING_SECTIONS} />
       </main>
     </div>
   );
