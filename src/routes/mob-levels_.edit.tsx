@@ -55,7 +55,7 @@ export const Route = createFileRoute("/mob-levels_/edit")({
   }),
   head: () => ({
     meta: [
-      { title: "Редагування рівнів мобів — Ukraine Unlimited" },
+      { title: "Редагування рівнів мобів — NoNameClan" },
       {
         name: "description",
         content: "Редагування рівнів мобів учасників гільдії.",

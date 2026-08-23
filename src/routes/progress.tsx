@@ -7,10 +7,10 @@ import { PLAYER_PROGRESS_SECTIONS } from "@/lib/resource-navigation";
 export const Route = createFileRoute("/progress")({
   head: () => ({
     meta: [
-      { title: "БС та моби — Ukraine Unlimited" },
+      { title: "БС та моби — NoNameClan" },
       {
         name: "description",
-        content: "Бойова сила та рівні мобів учасників Ukraine Unlimited.",
+        content: "Бойова сила та рівні мобів учасників NoNameClan.",
       },
     ],
   }),

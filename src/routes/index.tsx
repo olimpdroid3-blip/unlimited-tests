@@ -7,12 +7,12 @@ import { LANDING_SECTIONS } from "@/lib/resource-navigation";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Ukraine Unlimited — База ресурсів" },
+      { title: "NoNameClan — База ресурсів" },
       {
         name: "description",
-        content: "Ukraine Unlimited · Watcher of Realms — база інструментів та ресурсів гільдії.",
+        content: "NoNameClan · Watcher of Realms — база інструментів та ресурсів гільдії.",
       },
-      { property: "og:title", content: "Ukraine Unlimited — База ресурсів" },
+      { property: "og:title", content: "NoNameClan — База ресурсів" },
       {
         property: "og:description",
         content: "Watcher of Realms · база інструментів та ресурсів гільдії.",
