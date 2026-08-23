@@ -22,10 +22,12 @@
 ### Task 1: Shared catalog override adapter
 
 **Files:**
+
 - Modify: `src/lib/mob-levels.test.ts`
 - Modify: `src/lib/mob-levels.ts`
 
 **Interfaces:**
+
 - Consumes: `StorageLike`, `Mob`, and a base `MobCatalogRepository`.
 - Produces: `MOB_NAME_OVERRIDES_STORAGE_KEY`, `MobNameInput`, `MobCatalogRepository.updateNames(inputs: MobNameInput[]): Promise<Mob[]>`, and `createLocalStorageMobCatalogRepository(baseRepository, storage?)`.
 
@@ -99,10 +101,12 @@ git commit -m "feat: add shared mob name overrides"
 ### Task 2: Name draft helpers
 
 **Files:**
+
 - Modify: `src/lib/mob-levels.test.ts`
 - Modify: `src/lib/mob-levels.ts`
 
 **Interfaces:**
+
 - Consumes: `MobNameDraft = { mobId: string; name: string }`.
 - Produces: `isValidMobName(name: unknown): name is string`, `haveSameMobNameDraft(left, right): boolean`, and `getChangedMobNames(baseline, draft): MobNameInput[]`.
 
@@ -114,16 +118,19 @@ Cover these behaviors:
 assert.equal(isValidMobName("  "), false);
 assert.equal(isValidMobName("Бос павуків"), true);
 assert.equal(
-  haveSameMobNameDraft(
-    [{ mobId: "mob-1", name: "Альфа" }],
-    [{ mobId: "mob-1", name: " Альфа " }],
-  ),
+  haveSameMobNameDraft([{ mobId: "mob-1", name: "Альфа" }], [{ mobId: "mob-1", name: " Альфа " }]),
   true,
 );
 assert.deepEqual(
   getChangedMobNames(
-    [{ mobId: "mob-1", name: "Альфа" }, { mobId: "mob-2", name: "Бета" }],
-    [{ mobId: "mob-2", name: "Нова Бета" }, { mobId: "mob-1", name: "Альфа" }],
+    [
+      { mobId: "mob-1", name: "Альфа" },
+      { mobId: "mob-2", name: "Бета" },
+    ],
+    [
+      { mobId: "mob-2", name: "Нова Бета" },
+      { mobId: "mob-1", name: "Альфа" },
+    ],
   ),
   [{ id: "mob-2", name: "Нова Бета" }],
 );
@@ -157,10 +164,12 @@ git commit -m "feat: add mob name draft helpers"
 ### Task 3: Editor integration
 
 **Files:**
+
 - Modify: `src/lib/mob-levels-ui.ts`
 - Modify: `src/routes/mob-levels_.edit.tsx`
 
 **Interfaces:**
+
 - Consumes: `createLocalStorageMobCatalogRepository`, `MobNameDraft`, `getChangedMobNames`, `haveSameMobNameDraft`, and `isValidMobName`.
 - Produces: a `mobCatalogRepository` with `getAll()` and `updateNames()`, plus inline shared-name fields on `/mob-levels/edit`.
 
@@ -169,9 +178,8 @@ git commit -m "feat: add mob name draft helpers"
 Wrap the existing empty base catalog:
 
 ```ts
-export const mobCatalogRepository = createLocalStorageMobCatalogRepository(
-  emptyMobCatalogRepository,
-);
+export const mobCatalogRepository =
+  createLocalStorageMobCatalogRepository(emptyMobCatalogRepository);
 ```
 
 - [ ] **Step 2: Add independent name baseline and draft state**
@@ -234,9 +242,11 @@ git commit -m "feat: edit shared mob names"
 ### Task 4: Verification
 
 **Files:**
+
 - Verify only; no production files expected.
 
 **Interfaces:**
+
 - Consumes: the completed catalog adapter and editor.
 - Produces: evidence that tests, lint, production build, and browser flow are healthy.
 

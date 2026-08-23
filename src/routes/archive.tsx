@@ -78,10 +78,7 @@ function ArchivePage() {
                     .slice()
                     .sort((a, b) => a.tower_id.localeCompare(b.tower_id))
                     .map((r) => (
-                      <div
-                        key={r.id}
-                        className="rounded-lg border border-border bg-card p-3"
-                      >
+                      <div key={r.id} className="rounded-lg border border-border bg-card p-3">
                         <div className="flex items-baseline justify-between gap-3">
                           <div className="text-sm font-semibold text-foreground">
                             🏰 {r.tower_id}

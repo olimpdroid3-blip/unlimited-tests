@@ -22,9 +22,11 @@
 ### Task 1: Create the shared styled player dropdown
 
 **Files:**
+
 - Create: `src/components/PlayerSelectField.tsx`
 
 **Interfaces:**
+
 - Consumes: `PlayerOption` from `src/lib/mob-levels.ts` and the existing primitives from `src/components/ui/select.tsx`.
 - Produces: `PlayerSelectField({ id, value, players, disabled, onValueChange })`.
 
@@ -53,7 +55,10 @@ export function PlayerSelectField({
   const labelId = `${id}-label`;
   return (
     <label className="flex flex-col gap-1.5">
-      <span id={labelId} className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <span
+        id={labelId}
+        className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+      >
         Гравець
       </span>
       <Select value={value} disabled={disabled} onValueChange={onValueChange}>
@@ -88,10 +93,12 @@ Expected: exit 0.
 ### Task 2: Replace both native player selects
 
 **Files:**
+
 - Modify: `src/routes/mob-levels.tsx`
 - Modify: `src/routes/mob-levels_.edit.tsx`
 
 **Interfaces:**
+
 - Consumes: `PlayerSelectField`.
 - Preserves: `navigate({ search: { playerId } })`, viewer `setFilter("")`, and editor `changePlayer(playerId)`.
 

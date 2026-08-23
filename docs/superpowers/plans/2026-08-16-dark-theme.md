@@ -22,10 +22,12 @@
 ### Task 1: Deterministic theme model
 
 **Files:**
+
 - Create: `src/lib/theme.ts`
 - Test: `src/lib/theme.test.ts`
 
 **Interfaces:**
+
 - Produces: `Theme`, `THEME_STORAGE_KEY`, `isTheme(value)`, `resolveTheme(stored, systemDark)`, `toggleTheme(theme)`, and `THEME_BOOTSTRAP_SCRIPT`.
 
 - [ ] **Step 1: Write failing unit tests** for stored preference precedence, system fallback, invalid values, and light/dark toggling.
@@ -37,12 +39,14 @@
 ### Task 2: Theme provider and header toggle
 
 **Files:**
+
 - Create: `src/components/ThemeProvider.tsx`
 - Create: `src/components/ThemeToggle.tsx`
 - Modify: `src/components/AppHeader.tsx`
 - Modify: `src/routes/__root.tsx`
 
 **Interfaces:**
+
 - Consumes: `Theme`, `THEME_STORAGE_KEY`, `resolveTheme`, `toggleTheme`, and `THEME_BOOTSTRAP_SCRIPT` from Task 1.
 - Produces: `ThemeProvider`, `useTheme()`, and a shared accessible `ThemeToggle` button.
 
@@ -56,6 +60,7 @@
 ### Task 3: Dark semantic tokens and notifications
 
 **Files:**
+
 - Modify: `src/styles.css`
 - Modify: `src/components/ui/sonner.tsx`
 - Modify: `src/routes/battle-power.tsx`
@@ -64,6 +69,7 @@
 - Modify: `src/routes/defenses.tsx`
 
 **Interfaces:**
+
 - Consumes: `useTheme()` from Task 2.
 - Produces: a graphite `.dark` token palette and the single theme-aware UI `Toaster` wrapper.
 
@@ -77,9 +83,11 @@
 ### Task 4: Browser acceptance check
 
 **Files:**
+
 - Verify only; no planned source changes.
 
 **Interfaces:**
+
 - Consumes: the completed theme implementation.
 - Produces: browser evidence for persistence, visuals, accessibility state, and clean hydration.
 

@@ -1,55 +1,55 @@
 - generic [ref=e2]:
-  - banner [ref=e3]:
-    - generic [ref=e4]:
-      - link "🏰 Ukraine Unlimited База ресурсів" [ref=e5] [cursor=pointer]:
-        - /url: /
-        - generic [ref=e6]: 🏰
-        - generic [ref=e7]:
-          - generic [ref=e8]: Ukraine Unlimited
-          - generic [ref=e9]: База ресурсів
-      - generic [ref=e10]:
-        - button "Перемкнути тему" [ref=e11]
-        - link "🏠 Головна" [ref=e14] [cursor=pointer]:
-          - /url: /
-          - generic [ref=e15]: 🏠
-          - generic [ref=e16]: Головна
-  - main [ref=e17]:
-    - generic [ref=e18]:
-      - heading "База ресурсів" [level=1] [ref=e19]
-      - paragraph [ref=e20]: Watcher of Realms · база інструментів та ресурсів
-    - generic [ref=e21]:
-      - region "Notifications alt+T"
-      - generic [ref=e22]: Введіть свій нік в грі
-      - generic [ref=e23]:
-        - generic [ref=e24]:
-          - textbox "Завантаження ніків…" [disabled] [ref=e25]
-          - button "Показати список ніків" [disabled] [ref=e26]
-        - button "OK" [disabled] [ref=e29]
-    - generic [ref=e30]:
-      - link "🏰 Вежі → GvG · 48 позицій веж" [ref=e31] [cursor=pointer]:
-        - /url: /towers
-        - generic [ref=e32]: 🏰
-        - generic [ref=e33]:
-          - generic [ref=e34]:
-            - heading "Вежі" [level=2] [ref=e35]
-            - generic [ref=e36]: →
-          - paragraph [ref=e37]: GvG · 48 позицій веж
-        - generic [ref=e38]: →
-      - link "💪 БС та моби → Бойова сила · рівні мобів" [ref=e39] [cursor=pointer]:
-        - /url: /progress
-        - generic [ref=e40]: 💪
-        - generic [ref=e41]:
-          - generic [ref=e42]:
-            - heading "БС та моби" [level=2] [ref=e43]
-            - generic [ref=e44]: →
-          - paragraph [ref=e45]: Бойова сила · рівні мобів
-        - generic [ref=e46]: →
-      - link "🎯 Проходки → База захистів · відео проходок" [ref=e47] [cursor=pointer]:
-        - /url: /walkthroughs
-        - generic [ref=e48]: 🎯
-        - generic [ref=e49]:
-          - generic [ref=e50]:
-            - heading "Проходки" [level=2] [ref=e51]
-            - generic [ref=e52]: →
-          - paragraph [ref=e53]: База захистів · відео проходок
-        - generic [ref=e54]: →
+    - banner [ref=e3]:
+        - generic [ref=e4]:
+            - link "🏰 Ukraine Unlimited База ресурсів" [ref=e5] [cursor=pointer]:
+                - /url: /
+                - generic [ref=e6]: 🏰
+                - generic [ref=e7]:
+                    - generic [ref=e8]: Ukraine Unlimited
+                    - generic [ref=e9]: База ресурсів
+            - generic [ref=e10]:
+                - button "Перемкнути тему" [ref=e11]
+                - link "🏠 Головна" [ref=e14] [cursor=pointer]:
+                    - /url: /
+                    - generic [ref=e15]: 🏠
+                    - generic [ref=e16]: Головна
+    - main [ref=e17]:
+        - generic [ref=e18]:
+            - heading "База ресурсів" [level=1] [ref=e19]
+            - paragraph [ref=e20]: Watcher of Realms · база інструментів та ресурсів
+        - generic [ref=e21]:
+            - region "Notifications alt+T"
+            - generic [ref=e22]: Введіть свій нік в грі
+            - generic [ref=e23]:
+                - generic [ref=e24]:
+                    - textbox "Завантаження ніків…" [disabled] [ref=e25]
+                    - button "Показати список ніків" [disabled] [ref=e26]
+                - button "OK" [disabled] [ref=e29]
+        - generic [ref=e30]:
+            - link "🏰 Вежі → GvG · 48 позицій веж" [ref=e31] [cursor=pointer]:
+                - /url: /towers
+                - generic [ref=e32]: 🏰
+                - generic [ref=e33]:
+                    - generic [ref=e34]:
+                        - heading "Вежі" [level=2] [ref=e35]
+                        - generic [ref=e36]: →
+                    - paragraph [ref=e37]: GvG · 48 позицій веж
+                - generic [ref=e38]: →
+            - link "💪 БС та моби → Бойова сила · рівні мобів" [ref=e39] [cursor=pointer]:
+                - /url: /progress
+                - generic [ref=e40]: 💪
+                - generic [ref=e41]:
+                    - generic [ref=e42]:
+                        - heading "БС та моби" [level=2] [ref=e43]
+                        - generic [ref=e44]: →
+                    - paragraph [ref=e45]: Бойова сила · рівні мобів
+                - generic [ref=e46]: →
+            - link "🎯 Проходки → База захистів · відео проходок" [ref=e47] [cursor=pointer]:
+                - /url: /walkthroughs
+                - generic [ref=e48]: 🎯
+                - generic [ref=e49]:
+                    - generic [ref=e50]:
+                        - heading "Проходки" [level=2] [ref=e51]
+                        - generic [ref=e52]: →
+                    - paragraph [ref=e53]: База захистів · відео проходок
+                - generic [ref=e54]: →

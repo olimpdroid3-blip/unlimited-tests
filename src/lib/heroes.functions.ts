@@ -20,12 +20,14 @@ function extFromUrl(u: string): string {
 }
 
 function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/['’`]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "hero";
+  return (
+    name
+      .toLowerCase()
+      .replace(/['’`]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "hero"
+  );
 }
 
 async function parseHeroesFromFastidious(): Promise<ParsedHero[]> {
@@ -82,7 +84,10 @@ async function translateBatch(names: string[]): Promise<Record<string, string>> 
         body: JSON.stringify({
           model: "google/gemini-2.5-flash-lite",
           messages: [
-            { role: "system", content: "You translate game hero names to Russian. Respond with strict JSON only." },
+            {
+              role: "system",
+              content: "You translate game hero names to Russian. Respond with strict JSON only.",
+            },
             { role: "user", content: prompt },
           ],
           response_format: { type: "json_object" },
@@ -110,12 +115,16 @@ export const syncHeroes = createServerFn({ method: "POST" })
 
     const parsed = await parseHeroesFromFastidious();
     if (parsed.length === 0) {
-      return { added: 0, skipped: 0, remaining: 0, total: 0, message: "Не вдалося отримати список" };
+      return {
+        added: 0,
+        skipped: 0,
+        remaining: 0,
+        total: 0,
+        message: "Не вдалося отримати список",
+      };
     }
 
-    const { data: existing, error: exErr } = await supabaseAdmin
-      .from("heroes")
-      .select("name_en");
+    const { data: existing, error: exErr } = await supabaseAdmin.from("heroes").select("name_en");
     if (exErr) throw exErr;
     const have = new Set((existing ?? []).map((h) => h.name_en));
     const missing = parsed.filter((h) => !have.has(h.name_en));
@@ -138,7 +147,8 @@ export const syncHeroes = createServerFn({ method: "POST" })
           const buf = new Uint8Array(await imgRes.arrayBuffer());
           const ext = extFromUrl(hero.source_icon_url);
           const path = `${slugify(hero.name_en)}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
-          const contentType = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : `image/${ext}`;
+          const contentType =
+            ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : `image/${ext}`;
           const { error: upErr } = await supabaseAdmin.storage
             .from("hero-icons")
             .upload(path, buf, { contentType, upsert: true });

@@ -11,8 +11,7 @@ export const Route = createFileRoute("/videos")({
       { title: "Відео проходок — Ukraine Unlimited" },
       {
         name: "description",
-        content:
-          "Пошук відео проходок GvG за героями. Посилання на оригінальні відео в Telegram.",
+        content: "Пошук відео проходок GvG за героями. Посилання на оригінальні відео в Telegram.",
       },
       { property: "og:title", content: "Відео проходок — Ukraine Unlimited" },
       {
@@ -83,10 +82,7 @@ function VideosPage() {
   });
 
   const bpMap = new Map<string, (number | null)[]>(
-    bpRows.map((r) => [
-      (r.nickname ?? "").trim().toLowerCase(),
-      [r.power1, r.power2, r.power3],
-    ]),
+    bpRows.map((r) => [(r.nickname ?? "").trim().toLowerCase(), [r.power1, r.power2, r.power3]]),
   );
 
   const selected = picks.filter((p): p is string => !!p);
@@ -182,9 +178,7 @@ function VideosPage() {
                 key={i}
                 heroes={heroes}
                 value={v}
-                onChange={(id) =>
-                  setPicks((p) => p.map((x, idx) => (idx === i ? id : x)))
-                }
+                onChange={(id) => setPicks((p) => p.map((x, idx) => (idx === i ? id : x)))}
                 placeholder={`Герой ${i + 1}`}
                 excludeIds={selected}
               />
@@ -226,14 +220,10 @@ function VideosPage() {
           </p>
         )}
 
-        {loading && (
-          <p className="mt-4 text-sm text-muted-foreground">Завантаження…</p>
-        )}
+        {loading && <p className="mt-4 text-sm text-muted-foreground">Завантаження…</p>}
 
         {rows !== null && !loading && rows.length === 0 && (
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Нічого не знайдено
-          </p>
+          <p className="mt-6 text-center text-sm text-muted-foreground">Нічого не знайдено</p>
         )}
 
         {rows && rows.length > 0 && (
@@ -243,7 +233,11 @@ function VideosPage() {
                 key={r.id}
                 row={r}
                 canDelete={mode === "all"}
-                power={bpMap.get(((r.telegram_uploader_custom_title ?? r.telegram_uploader_name) ?? "").trim().toLowerCase())}
+                power={bpMap.get(
+                  (r.telegram_uploader_custom_title ?? r.telegram_uploader_name ?? "")
+                    .trim()
+                    .toLowerCase(),
+                )}
                 onNotes={(n) => patchRow(r.id, n)}
                 onDeleted={() => dropRow(r.id)}
               />
@@ -290,9 +284,7 @@ function VideoCard({
     .map((v) => Number(v).toFixed(1).replace(/\.0$/, ""))
     .join(" | ");
 
-  const heroNames = row.video_heroes
-    .map((v) => v.heroes?.name_ru)
-    .filter((n): n is string => !!n);
+  const heroNames = row.video_heroes.map((v) => v.heroes?.name_ru).filter((n): n is string => !!n);
 
   async function save() {
     setBusy(true);
@@ -310,10 +302,7 @@ function VideoCard({
   async function remove() {
     setBusy(true);
     await supabase.from("video_heroes").delete().eq("video_message_id", row.id);
-    const { error } = await supabase
-      .from("telegram_video_messages")
-      .delete()
-      .eq("id", row.id);
+    const { error } = await supabase.from("telegram_video_messages").delete().eq("id", row.id);
     setBusy(false);
     if (!error) onDeleted();
     setConfirming(false);
@@ -333,9 +322,7 @@ function VideoCard({
           <span className="text-sm font-medium">
             👤 {row.telegram_uploader_custom_title ?? row.telegram_uploader_name}
           </span>
-          {powerText && (
-            <span className="text-sm text-muted-foreground">💪 {powerText}</span>
-          )}
+          {powerText && <span className="text-sm text-muted-foreground">💪 {powerText}</span>}
         </div>
       )}
 
@@ -385,9 +372,7 @@ function VideoCard({
         </div>
       ) : (
         row.notes && (
-          <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
-            📝 {row.notes}
-          </p>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">📝 {row.notes}</p>
         )
       )}
 

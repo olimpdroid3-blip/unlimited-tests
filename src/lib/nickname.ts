@@ -6,7 +6,9 @@ export type NicknameOption = {
 };
 
 export type NicknameSaveResolution =
-  { kind: "empty" } | { kind: "existing"; nickname: string } | { kind: "create"; nickname: string };
+  | { kind: "empty" }
+  | { kind: "existing"; nickname: string }
+  | { kind: "create"; nickname: string };
 
 export function filterNicknameOptions(
   players: readonly NicknameOption[],
