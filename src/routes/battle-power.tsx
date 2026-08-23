@@ -12,12 +12,12 @@ import { getNickCookie } from "@/lib/nickname";
 export const Route = createFileRoute("/battle-power")({
   head: () => ({
     meta: [
-      { title: "Бойова Сила — Ukraine Unlimited" },
+      { title: "Бойова Сила — NoNameClan" },
       {
         name: "description",
-        content: "Збереження бойової сили учасників гільдії Ukraine Unlimited.",
+        content: "Збереження бойової сили учасників гільдії NoNameClan.",
       },
-      { property: "og:title", content: "Бойова Сила — Ukraine Unlimited" },
+      { property: "og:title", content: "Бойова Сила — NoNameClan" },
       {
         property: "og:description",
         content: "Збереження бойової сили учасників гільдії.",

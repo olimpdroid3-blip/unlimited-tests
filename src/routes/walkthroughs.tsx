@@ -7,10 +7,10 @@ import { WALKTHROUGH_SECTIONS } from "@/lib/resource-navigation";
 export const Route = createFileRoute("/walkthroughs")({
   head: () => ({
     meta: [
-      { title: "Проходки — Ukraine Unlimited" },
+      { title: "Проходки — NoNameClan" },
       {
         name: "description",
-        content: "База захистів і відео проходок Ukraine Unlimited.",
+        content: "База захистів і відео проходок NoNameClan.",
       },
     ],
   }),

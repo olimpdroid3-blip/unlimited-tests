@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 
+import logoAsset from "@/assets/nonameclan-logo.png.asset.json";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function AppHeader() {
@@ -7,7 +8,11 @@ export function AppHeader() {
     <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
         <Link to="/" className="flex items-center gap-3 text-foreground">
-          <span className="text-3xl">🏰</span>
+          <img
+            src={logoAsset.url}
+            alt="Логотип альянсу NoNameClan"
+            className="h-10 w-auto shrink-0 rounded-md object-contain sm:h-12"
+          />
           <div className="leading-tight">
             <div className="text-lg font-bold tracking-wide">NoNameClan</div>
             <div className="text-[11px] text-muted-foreground">База ресурсів</div>

@@ -8,12 +8,12 @@ import { supabase } from "@/lib/db";
 export const Route = createFileRoute("/videos")({
   head: () => ({
     meta: [
-      { title: "Відео проходок — Ukraine Unlimited" },
+      { title: "Відео проходок — NoNameClan" },
       {
         name: "description",
         content: "Пошук відео проходок GvG за героями. Посилання на оригінальні відео в Telegram.",
       },
-      { property: "og:title", content: "Відео проходок — Ukraine Unlimited" },
+      { property: "og:title", content: "Відео проходок — NoNameClan" },
       {
         property: "og:description",
         content: "Пошук відео проходок GvG за героями.",
