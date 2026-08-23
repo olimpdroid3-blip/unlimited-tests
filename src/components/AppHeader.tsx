@@ -9,8 +9,9 @@ export function AppHeader() {
         <Link to="/" className="flex items-center gap-3 text-foreground">
           <span className="text-3xl">🏰</span>
           <div className="leading-tight">
-            <div className="text-lg font-bold tracking-wide">Ukraine Unlimited</div>
+            <div className="text-lg font-bold tracking-wide">NoNameClan</div>
             <div className="text-[11px] text-muted-foreground">База ресурсів</div>
+
           </div>
         </Link>
 
