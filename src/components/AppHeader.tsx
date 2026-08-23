@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 
+import logoAsset from "@/assets/nonameclan-logo.png.asset.json";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function AppHeader() {
