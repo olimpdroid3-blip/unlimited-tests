@@ -7,16 +7,16 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-border">
       <div
-        className="relative bg-cover bg-center"
-        style={{ backgroundImage: `url(${bannerAsset.url})` }}
+        className="relative min-h-[84px] bg-cover sm:min-h-[104px]"
+        style={{ backgroundImage: `url(${bannerAsset.url})`, backgroundPosition: "center 62%" }}
       >
         {/* затемнення для читабельності елементів шапки */}
-        <div className="absolute inset-0 bg-[oklch(0.12_0.03_260/0.55)] backdrop-blur-[1px]" />
+        <div className="absolute inset-0 bg-[oklch(0.12_0.03_260/0.35)]" />
 
-        <div className="relative mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:py-4">
+        <div className="relative mx-auto flex min-h-[84px] max-w-5xl items-start justify-between gap-3 px-4 py-3 sm:min-h-[104px] sm:py-4">
           <Link to="/" className="flex min-w-0 flex-col leading-tight">
             <span className="sr-only">NoNameClan</span>
-            <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-[oklch(0.95_0.02_250)] drop-shadow-[0_1px_3px_oklch(0.1_0_0/0.9)]">
+            <span className="text-[10px] font-medium uppercase tracking-[0.22em] text-[oklch(0.95_0.02_250)] drop-shadow-[0_1px_3px_oklch(0.1_0_0/0.9)]">
               База ресурсів
             </span>
           </Link>
