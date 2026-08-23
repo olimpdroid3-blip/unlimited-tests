@@ -22,11 +22,13 @@
 ### Task 1: Generate and validate the workbook fixture
 
 **Files:**
+
 - Create: `src/lib/test-player-data.ts`
 - Create: `src/lib/test-player-data.test.ts`
 - Create: `public/mobs/image1.png` through the referenced workbook image names
 
 **Interfaces:**
+
 - Produces: `TestBattlePowerRow`, `testBattlePowerRows`, `testMobCatalog`, and `testPlayerMobLevels`.
 - Consumes: normalized workbook rows and referenced media from `BD-BS.xlsx`.
 
@@ -39,7 +41,10 @@ test("contains the complete normalized workbook fixture", () => {
   assert.equal(testPlayerMobLevels.length, 606);
   assert.equal(new Set(testBattlePowerRows.map(({ id }) => id)).size, 17);
   assert.equal(new Set(testMobCatalog.map(({ id }) => id)).size, 44);
-  assert.equal(testPlayerMobLevels.every(({ level }) => level >= 1 && level <= 30), true);
+  assert.equal(
+    testPlayerMobLevels.every(({ level }) => level >= 1 && level <= 30),
+    true,
+  );
   assert.equal(testMobCatalog.filter(({ imageUrl }) => imageUrl === null).length, 2);
 });
 ```
@@ -83,10 +88,12 @@ git commit -m "data: add local workbook test fixtures"
 ### Task 2: Layer local mob edits over seeded defaults
 
 **Files:**
+
 - Modify: `src/lib/mob-levels.ts`
 - Modify: `src/lib/mob-levels.test.ts`
 
 **Interfaces:**
+
 - Consumes: `createLocalStorageMobLevelsRepository(storage?, seedLevels?)`.
 - Produces: seeded reads, persisted overrides, and persisted deletion tombstones.
 
@@ -143,10 +150,12 @@ git commit -m "feat: seed local mob level adapter"
 ### Task 3: Add a composite battle-power repository
 
 **Files:**
+
 - Create: `src/lib/battle-power.ts`
 - Create: `src/lib/battle-power.test.ts`
 
 **Interfaces:**
+
 - Produces: `BattlePowerRow`, `BattlePowerInput`, `BattlePowerRemoteSource`, and `createBattlePowerRepository(remote, seedRows, storage?)`.
 - Consumes: test rows whose IDs start with `test-player-` and a Supabase-backed remote source.
 
@@ -154,24 +163,41 @@ git commit -m "feat: seed local mob level adapter"
 
 ```ts
 test("merges test and remote players while preferring an exact nickname match from remote", async () => {
-  const repository = createBattlePowerRepository(remoteRows([{ id: "live", nickname: "Alex" }]), [
-    testRow({ id: "test-player-01", nickname: "Alex" }),
-    testRow({ id: "test-player-02", nickname: "Skye" }),
-  ], createMemoryStorage());
-  assert.deepEqual((await repository.getAll()).map(({ id }) => id), ["live", "test-player-02"]);
+  const repository = createBattlePowerRepository(
+    remoteRows([{ id: "live", nickname: "Alex" }]),
+    [
+      testRow({ id: "test-player-01", nickname: "Alex" }),
+      testRow({ id: "test-player-02", nickname: "Skye" }),
+    ],
+    createMemoryStorage(),
+  );
+  assert.deepEqual(
+    (await repository.getAll()).map(({ id }) => id),
+    ["live", "test-player-02"],
+  );
 });
 
 test("updates a test row locally without calling the remote source", async () => {
   const remote = remoteRows([]);
   const repository = createBattlePowerRepository(remote, [testRow()], createMemoryStorage());
-  await repository.update("test-player-01", { nickname: "Local", power1: 10, power2: null, power3: null, power4: null, power5: null });
+  await repository.update("test-player-01", {
+    nickname: "Local",
+    power1: 10,
+    power2: null,
+    power3: null,
+    power4: null,
+    power5: null,
+  });
   assert.equal((await repository.getAll())[0].nickname, "Local");
 });
 
 test("hides a deleted test row locally", async () => {
   const storage = createMemoryStorage();
   await createBattlePowerRepository(remoteRows([]), [testRow()], storage).remove("test-player-01");
-  assert.deepEqual(await createBattlePowerRepository(remoteRows([]), [testRow()], storage).getAll(), []);
+  assert.deepEqual(
+    await createBattlePowerRepository(remoteRows([]), [testRow()], storage).getAll(),
+    [],
+  );
 });
 ```
 
@@ -201,10 +227,12 @@ git commit -m "feat: merge local test battle power data"
 ### Task 4: Wire fixtures into the mob and battle-power screens
 
 **Files:**
+
 - Modify: `src/lib/mob-levels-ui.ts`
 - Modify: `src/routes/battle-power.tsx`
 
 **Interfaces:**
+
 - Consumes: fixture exports, seeded mob adapter, and composite battle-power repository.
 - Produces: the existing route behavior with local test rows visible and editable.
 
@@ -254,9 +282,11 @@ git commit -m "feat: show workbook players in test views"
 ### Task 5: Browser smoke test
 
 **Files:**
+
 - Modify only if the smoke test exposes a defect; each defect requires a failing regression test first.
 
 **Interfaces:**
+
 - Consumes: built application routes `/battle-power`, `/mob-levels`, and `/mob-levels/edit`.
 - Produces: verified user-visible behavior.
 

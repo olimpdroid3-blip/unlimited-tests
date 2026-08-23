@@ -33,10 +33,12 @@
 ### Task 1: Repository contracts and local-storage adapter
 
 **Files:**
+
 - Create: `src/lib/mob-levels.ts`
 - Create: `src/lib/mob-levels.test.ts`
 
 **Interfaces:**
+
 - Produces: `Mob`, `PlayerMobLevel`, `PlayerMobLevelInput`, `StorageLike`, `MobLevelsRepository`, `MobCatalogRepository`, `createLocalStorageMobLevelsRepository`, `emptyMobCatalogRepository`, `isValidMobLevel`, `ResolvedPlayerMob`, `resolvePlayerMobs`.
 - Consumes: a minimal `StorageLike` object implementing `getItem`, `setItem`, and `removeItem`.
 
@@ -87,7 +89,9 @@ export interface MobLevelsRepository {
   upsertMany(levels: PlayerMobLevelInput[]): Promise<PlayerMobLevel[]>;
   remove(playerId: string, mobId: string): Promise<void>;
 }
-export interface MobCatalogRepository { getAll(): Promise<Mob[]> }
+export interface MobCatalogRepository {
+  getAll(): Promise<Mob[]>;
+}
 ```
 
 Implement `isValidMobLevel(value)` as `Number.isInteger(value) && value >= 1 && value <= 30`. Validate non-empty string IDs and ISO-compatible `updatedAt` values when parsing stored records.
@@ -100,7 +104,9 @@ Implement:
 
 ```ts
 export const emptyMobCatalogRepository: MobCatalogRepository = {
-  async getAll() { return []; },
+  async getAll() {
+    return [];
+  },
 };
 ```
 
@@ -122,10 +128,12 @@ git commit -m "feat: add mob levels local storage adapter"
 ### Task 2: Shared UI data functions and viewer route
 
 **Files:**
+
 - Create: `src/lib/mob-levels-ui.ts`
 - Create: `src/routes/mob-levels.tsx`
 
 **Interfaces:**
+
 - Consumes: `Mob`, `PlayerMobLevel`, `createLocalStorageMobLevelsRepository`, `emptyMobCatalogRepository`, the existing `supabase` client, `AppHeader`.
 - Produces: `/mob-levels`, `PlayerOption`, `loadMobLevelPlayers`.
 
@@ -177,11 +185,13 @@ git commit -m "feat: add mob levels viewer"
 ### Task 3: Editor route and navigation
 
 **Files:**
+
 - Create: `src/routes/mob-levels.edit.tsx`
 - Modify: `src/routes/index.tsx`
 - Modify generated: `src/routeTree.gen.ts`
 
 **Interfaces:**
+
 - Consumes: repositories and helpers from Tasks 1–2.
 - Produces: `/mob-levels/edit`, navigation from the home page, persisted full-draft editing behavior.
 
