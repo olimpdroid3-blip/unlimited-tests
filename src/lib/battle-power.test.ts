@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  calculateAverageBattlePower,
   createBattlePowerRepository,
   findBattlePowerRowByNickname,
   getBattlePowerFormPresentation,
+  getBattlePowerValueTone,
+  sortBattlePowerRows,
   type BattlePowerInput,
   type BattlePowerRemoteSource,
   type BattlePowerRow,
@@ -78,6 +81,81 @@ test("returns no battle-power row when the saved nickname is empty or unknown", 
 
   assert.equal(findBattlePowerRowByNickname(rows, "   "), undefined);
   assert.equal(findBattlePowerRowByNickname(rows, "Unknown"), undefined);
+});
+
+test("highlights battle-power values starting at 150", () => {
+  assert.equal(getBattlePowerValueTone(149.9), "standard");
+  assert.equal(getBattlePowerValueTone(150), "high");
+  assert.equal(getBattlePowerValueTone(155.6), "high");
+  assert.equal(getBattlePowerValueTone(null), "standard");
+});
+
+test("calculates average battle power from filled values only", () => {
+  assert.equal(
+    calculateAverageBattlePower(
+      createRow({ power1: 100, power2: null, power3: 150, power4: null, power5: 200 }),
+    ),
+    150,
+  );
+  assert.equal(
+    calculateAverageBattlePower(
+      createRow({ power1: null, power2: null, power3: null, power4: null, power5: null }),
+    ),
+    null,
+  );
+});
+
+test("sorts battle-power rows by nickname in either direction without mutating the input", () => {
+  const skye = createRow({ id: "skye", nickname: "Skye" });
+  const alex = createRow({ id: "alex", nickname: "Alex" });
+  const rows = [skye, alex];
+
+  assert.deepEqual(
+    sortBattlePowerRows(rows, "nickname", "asc").map(({ id }) => id),
+    ["alex", "skye"],
+  );
+  assert.deepEqual(
+    sortBattlePowerRows(rows, "nickname", "desc").map(({ id }) => id),
+    ["skye", "alex"],
+  );
+  assert.deepEqual(rows, [skye, alex]);
+});
+
+test("sorts by an individual or average battle power and keeps empty values last", () => {
+  const empty = createRow({
+    id: "empty",
+    power1: null,
+    power2: null,
+    power3: null,
+    power4: null,
+    power5: null,
+  });
+  const lower = createRow({
+    id: "lower",
+    power1: 140,
+    power2: 140,
+    power3: 140,
+    power4: 140,
+    power5: 140,
+  });
+  const higher = createRow({
+    id: "higher",
+    power1: 150,
+    power2: 160,
+    power3: 150,
+    power4: 150,
+    power5: 140,
+  });
+  const rows = [empty, lower, higher];
+
+  assert.deepEqual(
+    sortBattlePowerRows(rows, "power2", "asc").map(({ id }) => id),
+    ["lower", "higher", "empty"],
+  );
+  assert.deepEqual(
+    sortBattlePowerRows(rows, "average", "desc").map(({ id }) => id),
+    ["higher", "lower", "empty"],
+  );
 });
 
 test("merges test and remote players while preferring an exact nickname match from remote", async () => {

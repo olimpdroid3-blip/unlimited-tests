@@ -17,6 +17,11 @@ export type BattlePowerRow = {
 
 export type BattlePowerInput = Omit<BattlePowerRow, "id">;
 
+export type BattlePowerSortKey =
+  "nickname" | "power1" | "power2" | "power3" | "power4" | "power5" | "average";
+
+export type BattlePowerSortDirection = "asc" | "desc";
+
 export interface BattlePowerRemoteSource {
   getAll(): Promise<BattlePowerRow[]>;
   create(input: BattlePowerInput): Promise<BattlePowerRow>;
@@ -43,6 +48,41 @@ export function findBattlePowerRowByNickname(
   const nicknameKey = normalizeNickname(nickname);
   if (!nicknameKey) return undefined;
   return rows.find((row) => normalizeNickname(row.nickname) === nicknameKey);
+}
+
+export function getBattlePowerValueTone(value: number | null): "standard" | "high" {
+  return value !== null && value >= 150 ? "high" : "standard";
+}
+
+export function calculateAverageBattlePower(row: BattlePowerRow): number | null {
+  const values = [row.power1, row.power2, row.power3, row.power4, row.power5].filter(
+    (value): value is number => value !== null,
+  );
+  if (values.length === 0) return null;
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+export function sortBattlePowerRows(
+  rows: readonly BattlePowerRow[],
+  sortKey: BattlePowerSortKey,
+  direction: BattlePowerSortDirection,
+): BattlePowerRow[] {
+  return [...rows].sort((left, right) => {
+    if (sortKey === "nickname") {
+      const comparison = compareBattlePowerRows(left, right);
+      return direction === "asc" ? comparison : -comparison;
+    }
+
+    const leftValue = getBattlePowerSortValue(left, sortKey);
+    const rightValue = getBattlePowerSortValue(right, sortKey);
+    if (leftValue === null && rightValue === null) return compareBattlePowerRows(left, right);
+    if (leftValue === null) return 1;
+    if (rightValue === null) return -1;
+
+    const comparison = leftValue - rightValue;
+    if (comparison === 0) return compareBattlePowerRows(left, right);
+    return direction === "asc" ? comparison : -comparison;
+  });
 }
 
 export function createBattlePowerRepository(
@@ -162,6 +202,13 @@ function normalizeRow(row: BattlePowerRow): BattlePowerRow {
     power4: row.power4,
     power5: row.power5,
   };
+}
+
+function getBattlePowerSortValue(
+  row: BattlePowerRow,
+  sortKey: Exclude<BattlePowerSortKey, "nickname">,
+): number | null {
+  return sortKey === "average" ? calculateAverageBattlePower(row) : row[sortKey];
 }
 
 function compareBattlePowerRows(left: BattlePowerRow, right: BattlePowerRow): number {

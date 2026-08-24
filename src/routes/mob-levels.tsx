@@ -89,8 +89,11 @@ function MobLevelsPage() {
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-12 pt-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <Link to="/" className="text-xs text-muted-foreground hover:text-primary">
-              ← На головну
+            <Link
+              to="/progress"
+              className="inline-flex rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs text-secondary-foreground transition hover:bg-accent"
+            >
+              ← Назад
             </Link>
             <h1 className="mt-2 text-2xl font-bold tracking-tight">👾 Рівні мобів</h1>
             <p className="mt-1 text-sm text-muted-foreground">

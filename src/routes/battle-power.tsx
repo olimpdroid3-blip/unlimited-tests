@@ -1,14 +1,28 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Toaster } from "@/components/ui/sonner";
 import {
+  calculateAverageBattlePower,
   findBattlePowerRowByNickname,
   getBattlePowerFormPresentation,
+  getBattlePowerValueTone,
+  sortBattlePowerRows,
   type BattlePowerRow,
+  type BattlePowerSortDirection,
+  type BattlePowerSortKey,
 } from "@/lib/battle-power";
 import { battlePowerRepository } from "@/lib/battle-power-ui";
 import { getNickCookie } from "@/lib/nickname";
@@ -40,7 +54,7 @@ const fmt = (v: number | null) => {
 
 function powerColor(v: number | null): string | undefined {
   if (v === null || v === undefined || Number.isNaN(v)) return undefined;
-  if (v >= 150) return "#D23434"; // тёмно-красний
+  if (getBattlePowerValueTone(v) === "high") return "var(--battle-power-high)";
   if (v >= 145) return "#ED4848"; // червоний
   if (v >= 140) return "#F15D4D"; // світло-червоний
   if (v >= 135) return "#F5891E"; // тьмяно-жовтий
@@ -49,12 +63,22 @@ function powerColor(v: number | null): string | undefined {
 }
 
 const legendItems: { color: string; label: string }[] = [
-  { color: "#D23434", label: "≥150" },
+  { color: "var(--battle-power-high)", label: "≥150" },
   { color: "#ED4848", label: "145–149.9" },
   { color: "#F15D4D", label: "140–144.9" },
   { color: "#F5891E", label: "135–139.9" },
   { color: "#F9D017", label: "130–134.9" },
   { color: "#34A835", label: "<130" },
+];
+
+const sortOptions: { value: BattlePowerSortKey; label: string }[] = [
+  { value: "nickname", label: "Ім’я" },
+  { value: "power1", label: "БС #1" },
+  { value: "power2", label: "БС #2" },
+  { value: "power3", label: "БС #3" },
+  { value: "power4", label: "БС #4" },
+  { value: "power5", label: "БС #5" },
+  { value: "average", label: "Середній БС" },
 ];
 
 function BattlePowerPage() {
@@ -66,6 +90,8 @@ function BattlePowerPage() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<BattlePowerSortKey>("nickname");
+  const [sortDirection, setSortDirection] = useState<BattlePowerSortDirection>("asc");
 
   useEffect(() => {
     const cookieNickname = getNickCookie();
@@ -79,6 +105,10 @@ function BattlePowerPage() {
   });
   const formPresentation = getBattlePowerFormPresentation(open, editingId);
   const savedBattlePowerRow = findBattlePowerRowByNickname(data, savedNickname);
+  const sortedData = useMemo(
+    () => sortBattlePowerRows(data, sortKey, sortDirection),
+    [data, sortDirection, sortKey],
+  );
 
   const openEdit = (r: BattlePowerRow) => {
     setNick(r.nickname);
@@ -204,23 +234,61 @@ function BattlePowerPage() {
       <Toaster position="top-center" />
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-3 pb-10 pt-6">
+        <Link
+          to="/progress"
+          className="inline-flex rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs text-secondary-foreground transition hover:bg-accent"
+        >
+          ← Назад
+        </Link>
         <h1 className="text-center text-xl font-bold tracking-tight sm:text-2xl">💪 Бойова Сила</h1>
         <p className="mt-1 text-center text-xs text-muted-foreground">
           Збереження бойової сили учасників
         </p>
 
         {!open && (
-          <button
-            onClick={openOwnForm}
-            disabled={isLoading}
-            className="mt-4 w-full cursor-pointer rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 active:scale-[0.99] disabled:cursor-wait disabled:opacity-60"
-          >
-            {isLoading
-              ? "Завантаження…"
-              : savedBattlePowerRow
-                ? "✏️ Редагувати свій БС"
-                : "➕ Додати свій БС"}
-          </button>
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <button
+              onClick={openOwnForm}
+              disabled={isLoading}
+              className="w-full cursor-pointer rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 active:scale-[0.99] disabled:cursor-wait disabled:opacity-60"
+            >
+              {isLoading
+                ? "Завантаження…"
+                : savedBattlePowerRow
+                  ? "✏️ Редагувати свій БС"
+                  : "➕ Додати свій БС"}
+            </button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-full cursor-pointer rounded-xl border border-border bg-secondary px-4 py-3 text-sm font-semibold text-secondary-foreground transition hover:bg-accent active:scale-[0.99]">
+                  ⇅ Сортування
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Сортувати за</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={sortKey}
+                  onValueChange={(value) => setSortKey(value as BattlePowerSortKey)}
+                >
+                  {sortOptions.map((option) => (
+                    <DropdownMenuRadioItem key={option.value} value={option.value}>
+                      {option.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Напрямок</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={sortDirection}
+                  onValueChange={(value) => setSortDirection(value as BattlePowerSortDirection)}
+                >
+                  <DropdownMenuRadioItem value="asc">За зростанням</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="desc">За спаданням</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         )}
 
         {formPresentation === "inline" && (
@@ -249,66 +317,90 @@ function BattlePowerPage() {
           </div>
         )}
 
-        <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-card/60">
-          <table className="w-full border-collapse text-[11px] sm:text-xs">
+        <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card/60">
+          <table className="w-full table-fixed border-collapse text-[10px] min-[360px]:text-[11px] sm:text-base">
+            <colgroup>
+              <col style={{ width: "30%" }} />
+              {[1, 2, 3, 4, 5, 6].map((column) => (
+                <col key={column} style={{ width: "11.6667%" }} />
+              ))}
+            </colgroup>
             <thead>
               <tr className="border-b border-border text-muted-foreground">
-                <th className="px-2 py-2 text-left font-semibold">Гравець</th>
-                <th className="px-1 py-2 text-center font-semibold">БС #1</th>
-                <th className="px-1 py-2 text-center font-semibold">БС #2</th>
-                <th className="px-1 py-2 text-center font-semibold">БС #3</th>
-                <th className="px-1 py-2 text-center font-semibold">БС #4</th>
-                <th className="px-1 py-2 text-center font-semibold">БС #5</th>
+                <th className="px-1 py-2 text-left font-semibold sm:px-2">Гравець</th>
+                <th className="px-0.5 py-2 text-center font-semibold sm:px-1">БС #1</th>
+                <th className="px-0.5 py-2 text-center font-semibold sm:px-1">БС #2</th>
+                <th className="px-0.5 py-2 text-center font-semibold sm:px-1">БС #3</th>
+                <th className="px-0.5 py-2 text-center font-semibold sm:px-1">БС #4</th>
+                <th className="px-0.5 py-2 text-center font-semibold sm:px-1">БС #5</th>
+                <th className="px-0.5 py-2 text-center font-semibold sm:px-1">
+                  <span className="sm:hidden">Сер.</span>
+                  <span className="hidden sm:inline">Середній БС</span>
+                </th>
               </tr>
             </thead>
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={6} className="p-4 text-center text-xs text-muted-foreground">
+                  <td colSpan={7} className="p-4 text-center text-xs text-muted-foreground">
                     Завантаження…
                   </td>
                 </tr>
               )}
               {!isLoading && data.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-4 text-center text-xs text-muted-foreground">
+                  <td colSpan={7} className="p-4 text-center text-xs text-muted-foreground">
                     Записів поки немає
                   </td>
                 </tr>
               )}
-              {data.map((r) => (
-                <tr key={r.id} className="border-b border-border/50 last:border-0">
-                  <td className="px-2 py-2">
-                    <div className="flex items-center gap-1">
-                      <span className="truncate font-bold">{r.nickname}</span>
-                      <button
-                        onClick={() => openEdit(r)}
-                        aria-label="Редагувати"
-                        className="shrink-0 cursor-pointer rounded-md px-1 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => setDeleteId(r.id)}
-                        aria-label="Видалити"
-                        className="shrink-0 cursor-pointer rounded-md px-1 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
-                  {[r.power1, r.power2, r.power3, r.power4, r.power5].map((p, i) => (
-                    <td key={i} className="px-1 py-2 text-center">
-                      <span
-                        className="font-mono font-semibold tabular-nums"
-                        style={p == null ? undefined : { color: powerColor(p) }}
-                      >
-                        {fmt(p)}
-                      </span>
+              {sortedData.map((r) => {
+                const averagePower = calculateAverageBattlePower(r);
+                const displayedPowers = [
+                  r.power1,
+                  r.power2,
+                  r.power3,
+                  r.power4,
+                  r.power5,
+                  averagePower,
+                ];
+
+                return (
+                  <tr key={r.id} className="border-b border-border/50 last:border-0">
+                    <td className="px-1 py-2 sm:px-2">
+                      <div className="flex min-w-0 items-center gap-0.5 sm:gap-1">
+                        <span className="min-w-0 flex-1 truncate font-bold" title={r.nickname}>
+                          {r.nickname}
+                        </span>
+                        <button
+                          onClick={() => openEdit(r)}
+                          aria-label={`Редагувати ${r.nickname}`}
+                          className="shrink-0 cursor-pointer rounded-md px-0.5 py-1 text-[10px] font-medium text-muted-foreground transition hover:bg-primary/10 hover:text-primary sm:px-1 sm:text-[11px]"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => setDeleteId(r.id)}
+                          aria-label={`Видалити ${r.nickname}`}
+                          className="shrink-0 cursor-pointer rounded-md px-0.5 py-1 text-[10px] font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive sm:px-1 sm:text-[11px]"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </td>
-                  ))}
-                </tr>
-              ))}
+                    {displayedPowers.map((power, index) => (
+                      <td key={index} className="px-0.5 py-2 text-center sm:px-1">
+                        <span
+                          className="font-mono font-semibold tabular-nums"
+                          style={power == null ? undefined : { color: powerColor(power) }}
+                        >
+                          {fmt(power)}
+                        </span>
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
