@@ -1,8 +1,8 @@
 import { supabase } from "@/lib/db";
 import { createBattlePowerRepository, type BattlePowerRemoteSource } from "@/lib/battle-power";
-import { testBattlePowerRows } from "@/lib/test-player-data";
 
-const battlePowerColumns = "id,nickname,power1,power2,power3,power4,power5";
+const battlePowerColumns =
+  "id,nickname,power1,power2,power3,power4,power5,power1_crowned,power2_crowned,power3_crowned,power4_crowned,power5_crowned";
 
 const supabaseBattlePowerSource: BattlePowerRemoteSource = {
   async getAll() {
@@ -38,7 +38,4 @@ const supabaseBattlePowerSource: BattlePowerRemoteSource = {
   },
 };
 
-export const battlePowerRepository = createBattlePowerRepository(
-  supabaseBattlePowerSource,
-  testBattlePowerRows,
-);
+export const battlePowerRepository = createBattlePowerRepository(supabaseBattlePowerSource);

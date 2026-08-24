@@ -1,11 +1,29 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import * as resourceNavigation from "./resource-navigation.ts";
 import {
   LANDING_SECTIONS,
   PLAYER_PROGRESS_SECTIONS,
   WALKTHROUGH_SECTIONS,
 } from "./resource-navigation.ts";
+
+test("returns each resource page to its direct parent section", () => {
+  const resourceBackLinks = (
+    resourceNavigation as typeof resourceNavigation & {
+      RESOURCE_BACK_LINKS?: Record<string, { label: string; to: string }>;
+    }
+  ).RESOURCE_BACK_LINKS;
+
+  assert.deepEqual(resourceBackLinks, {
+    "/progress": { label: "На головну", to: "/" },
+    "/walkthroughs": { label: "На головну", to: "/" },
+    "/battle-power": { label: "Назад", to: "/progress" },
+    "/mob-levels": { label: "Назад", to: "/progress" },
+    "/defenses": { label: "Назад", to: "/walkthroughs" },
+    "/videos": { label: "Назад", to: "/walkthroughs" },
+  });
+});
 
 test("groups battle power and mob levels under the БС та моби landing section", () => {
   assert.deepEqual(

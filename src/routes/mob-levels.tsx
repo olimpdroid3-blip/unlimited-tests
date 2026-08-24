@@ -19,6 +19,7 @@ import {
   mobCatalogRepository,
   mobLevelsRepository,
 } from "@/lib/mob-levels-ui";
+import { RESOURCE_BACK_LINKS } from "@/lib/resource-navigation";
 
 type MobLevelsSearch = {
   playerId?: string;
@@ -90,10 +91,10 @@ function MobLevelsPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <Link
-              to="/progress"
+              to={RESOURCE_BACK_LINKS["/mob-levels"].to}
               className="inline-flex rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs text-secondary-foreground transition hover:bg-accent"
             >
-              ← Назад
+              ← {RESOURCE_BACK_LINKS["/mob-levels"].label}
             </Link>
             <h1 className="mt-2 text-2xl font-bold tracking-tight">👾 Рівні мобів</h1>
             <p className="mt-1 text-sm text-muted-foreground">

@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { AppHeader } from "@/components/AppHeader";
 import { HeroPicker, type HeroOption } from "@/components/HeroPicker";
 import { supabase } from "@/lib/db";
+import { RESOURCE_BACK_LINKS } from "@/lib/resource-navigation";
 
 export const Route = createFileRoute("/videos")({
   head: () => ({
@@ -166,7 +167,13 @@ function VideosPage() {
       <AppHeader />
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-12 pt-6">
-        <h1 className="text-xl font-bold sm:text-2xl">🎥 Відео проходок</h1>
+        <Link
+          to={RESOURCE_BACK_LINKS["/videos"].to}
+          className="inline-flex rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs text-secondary-foreground transition hover:bg-accent"
+        >
+          ← {RESOURCE_BACK_LINKS["/videos"].label}
+        </Link>
+        <h1 className="mt-2 text-xl font-bold sm:text-2xl">🎥 Відео проходок</h1>
         <p className="mt-1 text-xs text-muted-foreground">
           Пошук проіндексованих відео з Telegram. Відео залишаються в Telegram.
         </p>

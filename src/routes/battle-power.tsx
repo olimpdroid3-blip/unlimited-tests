@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { toast } from "sonner";
+import { Calculator, Crown } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import {
   DropdownMenu,
@@ -13,8 +14,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Toaster } from "@/components/ui/sonner";
 import {
+  calculateAwakenedBattlePower,
   calculateAverageBattlePower,
   findBattlePowerRowByNickname,
   getBattlePowerFormPresentation,
@@ -23,9 +32,11 @@ import {
   type BattlePowerRow,
   type BattlePowerSortDirection,
   type BattlePowerSortKey,
+  type AwakeningLevel,
 } from "@/lib/battle-power";
 import { battlePowerRepository } from "@/lib/battle-power-ui";
 import { getNickCookie } from "@/lib/nickname";
+import { RESOURCE_BACK_LINKS } from "@/lib/resource-navigation";
 
 export const Route = createFileRoute("/battle-power")({
   head: () => ({
@@ -81,12 +92,19 @@ const sortOptions: { value: BattlePowerSortKey; label: string }[] = [
   { value: "average", label: "Середній БС" },
 ];
 
+const awakeningLevels: AwakeningLevel[] = ["A0", "A1", "A2", "A3", "A4", "A5"];
+const emptyCrowns = () => [false, false, false, false, false];
+
 function BattlePowerPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [nick, setNick] = useState("");
   const [savedNickname, setSavedNickname] = useState("");
   const [powers, setPowers] = useState<string[]>(["", "", "", "", ""]);
+  const [crowns, setCrowns] = useState<boolean[]>(emptyCrowns);
+  const [calculatorIndex, setCalculatorIndex] = useState<number | null>(null);
+  const [calculatorBase, setCalculatorBase] = useState("");
+  const [awakeningLevel, setAwakeningLevel] = useState<AwakeningLevel>("A0");
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -109,6 +127,10 @@ function BattlePowerPage() {
     () => sortBattlePowerRows(data, sortKey, sortDirection),
     [data, sortDirection, sortKey],
   );
+  const calculatorResult = calculateAwakenedBattlePower(
+    calculatorBase.trim() === "" ? null : Number(calculatorBase),
+    awakeningLevel,
+  );
 
   const openEdit = (r: BattlePowerRow) => {
     setNick(r.nickname);
@@ -118,6 +140,13 @@ function BattlePowerPage() {
       r.power3?.toString() ?? "",
       r.power4?.toString() ?? "",
       r.power5?.toString() ?? "",
+    ]);
+    setCrowns([
+      r.power1_crowned,
+      r.power2_crowned,
+      r.power3_crowned,
+      r.power4_crowned,
+      r.power5_crowned,
     ]);
     setEditingId(r.id);
     setOpen(true);
@@ -135,6 +164,7 @@ function BattlePowerPage() {
 
     setNick(cookieNickname);
     setPowers(["", "", "", "", ""]);
+    setCrowns(emptyCrowns());
     setEditingId(null);
     setOpen(true);
   };
@@ -144,11 +174,37 @@ function BattlePowerPage() {
     setPowers((p) => p.map((x, idx) => (idx === i ? v : x)));
   };
 
+  const toggleCrown = (index: number) => {
+    setCrowns((current) =>
+      current.map((isCrowned, crownIndex) => (crownIndex === index ? !isCrowned : isCrowned)),
+    );
+  };
+
+  const openCalculator = (index: number) => {
+    setCalculatorIndex(index);
+    setCalculatorBase(powers[index]);
+    setAwakeningLevel("A0");
+  };
+
+  const setCalculatorBaseValue = (raw: string) => {
+    setCalculatorBase(raw.replace(/,/g, ".").replace(/[^0-9.]/g, ""));
+  };
+
+  const insertCalculatorResult = () => {
+    if (calculatorIndex === null || calculatorResult === null) return;
+    setPower(calculatorIndex, calculatorResult.toString());
+    setCrowns((current) =>
+      current.map((isCrowned, index) => (index === calculatorIndex ? true : isCrowned)),
+    );
+    setCalculatorIndex(null);
+  };
+
   const num = (v: string) => (v.trim() === "" ? null : Number(v));
 
   const closeForm = () => {
     setOpen(false);
     setEditingId(null);
+    setCalculatorIndex(null);
   };
 
   const handleSave = async () => {
@@ -165,6 +221,11 @@ function BattlePowerPage() {
       power3: num(powers[2]),
       power4: num(powers[3]),
       power5: num(powers[4]),
+      power1_crowned: crowns[0],
+      power2_crowned: crowns[1],
+      power3_crowned: crowns[2],
+      power4_crowned: crowns[3],
+      power5_crowned: crowns[4],
     };
     if (editingId) {
       try {
@@ -189,6 +250,7 @@ function BattlePowerPage() {
     }
     setOpen(false);
     setPowers(["", "", "", "", ""]);
+    setCrowns(emptyCrowns());
     setEditingId(null);
     qc.invalidateQueries({ queryKey: ["battle_power"] });
   };
@@ -217,15 +279,43 @@ function BattlePowerPage() {
     />
   );
   const powerInputs = powers.map((power, index) => (
-    <input
-      key={index}
-      value={power}
-      inputMode="decimal"
-      onChange={(e) => setPower(index, e.target.value)}
-      placeholder={`БС ${index + 1}`}
-      aria-label={`БС ${index + 1}`}
-      className="w-full min-w-0 rounded-lg border border-border bg-input px-3 py-2.5 text-sm outline-none focus:border-primary"
-    />
+    <div key={index} className="relative min-w-0">
+      <input
+        value={power}
+        inputMode="decimal"
+        onChange={(e) => setPower(index, e.target.value)}
+        placeholder={`БС ${index + 1}`}
+        aria-label={`БС ${index + 1}`}
+        className="w-full min-w-0 rounded-lg border border-border bg-input py-2.5 pl-3 pr-14 text-sm outline-none focus:border-primary"
+      />
+      <div className="absolute inset-y-0 right-1 flex items-center gap-0.5">
+        <button
+          type="button"
+          onClick={() => openCalculator(index)}
+          aria-label={`Відкрити калькулятор для БС ${index + 1}`}
+          title="Калькулятор"
+          className="flex size-6 cursor-pointer items-center justify-center rounded text-muted-foreground transition hover:bg-accent hover:text-foreground"
+        >
+          <Calculator className="size-3.5" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleCrown(index)}
+          aria-label={`${crowns[index] ? "Зняти" : "Додати"} корону для БС ${index + 1}`}
+          aria-pressed={crowns[index]}
+          title={crowns[index] ? "Зняти корону" : "Додати корону"}
+          className={`flex size-6 cursor-pointer items-center justify-center rounded transition hover:bg-accent ${
+            crowns[index] ? "text-amber-500" : "text-muted-foreground"
+          }`}
+        >
+          <Crown
+            className="size-3.5"
+            fill={crowns[index] ? "currentColor" : "none"}
+            aria-hidden="true"
+          />
+        </button>
+      </div>
+    </div>
   ));
 
   return (
@@ -235,10 +325,10 @@ function BattlePowerPage() {
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-3 pb-10 pt-6">
         <Link
-          to="/progress"
+          to={RESOURCE_BACK_LINKS["/battle-power"].to}
           className="inline-flex rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs text-secondary-foreground transition hover:bg-accent"
         >
-          ← Назад
+          ← {RESOURCE_BACK_LINKS["/battle-power"].label}
         </Link>
         <h1 className="text-center text-xl font-bold tracking-tight sm:text-2xl">💪 Бойова Сила</h1>
         <p className="mt-1 text-center text-xs text-muted-foreground">
@@ -296,7 +386,7 @@ function BattlePowerPage() {
             <div className="flex min-w-max items-center gap-1.5">
               <div className="w-28">{nicknameInput}</div>
               {powerInputs.map((input, index) => (
-                <div key={index} className="w-20">
+                <div key={index} className="w-28">
                   {input}
                 </div>
               ))}
@@ -364,6 +454,14 @@ function BattlePowerPage() {
                   r.power5,
                   averagePower,
                 ];
+                const displayedCrowns = [
+                  r.power1_crowned,
+                  r.power2_crowned,
+                  r.power3_crowned,
+                  r.power4_crowned,
+                  r.power5_crowned,
+                  false,
+                ];
 
                 return (
                   <tr key={r.id} className="border-b border-border/50 last:border-0">
@@ -390,12 +488,21 @@ function BattlePowerPage() {
                     </td>
                     {displayedPowers.map((power, index) => (
                       <td key={index} className="px-0.5 py-2 text-center sm:px-1">
-                        <span
-                          className="font-mono font-semibold tabular-nums"
-                          style={power == null ? undefined : { color: powerColor(power) }}
-                        >
-                          {fmt(power)}
-                        </span>
+                        <div className="flex flex-col items-center justify-center leading-none">
+                          {displayedCrowns[index] && (
+                            <Crown
+                              className="mb-0.5 size-3 text-amber-500 sm:size-3.5"
+                              fill="currentColor"
+                              aria-label="Значення з пробудою"
+                            />
+                          )}
+                          <span
+                            className="font-mono font-semibold tabular-nums"
+                            style={power == null ? undefined : { color: powerColor(power) }}
+                          >
+                            {fmt(power)}
+                          </span>
+                        </div>
                       </td>
                     ))}
                   </tr>
@@ -457,6 +564,94 @@ function BattlePowerPage() {
                 Скасувати
               </button>
             </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root
+        open={calculatorIndex !== null}
+        onOpenChange={(isOpen) => !isOpen && setCalculatorIndex(null)}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-[70] w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=open]:zoom-in-95">
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                aria-label="Закрити калькулятор"
+                className="absolute right-3 top-3 flex size-8 cursor-pointer items-center justify-center rounded-full text-xl leading-none text-muted-foreground transition hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                ×
+              </button>
+            </Dialog.Close>
+            <Dialog.Title className="flex items-center gap-2 text-base font-semibold">
+              <Calculator className="size-5" aria-hidden="true" />
+              Калькулятор БС #{calculatorIndex === null ? "" : calculatorIndex + 1}
+            </Dialog.Title>
+            <Dialog.Description className="mt-1 text-sm text-muted-foreground">
+              Введіть базову БС та виберіть рівень пробуди.
+            </Dialog.Description>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <label className="grid gap-1.5 text-sm font-medium">
+                Базова БС
+                <input
+                  value={calculatorBase}
+                  inputMode="decimal"
+                  onChange={(event) => setCalculatorBaseValue(event.target.value)}
+                  placeholder="Наприклад, 139.1"
+                  aria-label="Базова БС"
+                  className="w-full min-w-0 rounded-lg border border-border bg-input px-3 py-2.5 text-sm outline-none focus:border-primary"
+                />
+              </label>
+              <div className="grid gap-1.5 text-sm font-medium">
+                <span>Пробуда</span>
+                <Select
+                  value={awakeningLevel}
+                  onValueChange={(value) => setAwakeningLevel(value as AwakeningLevel)}
+                >
+                  <SelectTrigger
+                    aria-label="Рівень пробуди"
+                    className="h-[42px] rounded-lg border-border bg-input px-3 py-2.5 text-sm shadow-none focus:ring-primary data-[state=open]:border-primary"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    side="bottom"
+                    align="start"
+                    sideOffset={6}
+                    className="z-[80] rounded-xl border-border p-1 shadow-xl"
+                  >
+                    {awakeningLevels.map((level, index) => (
+                      <SelectItem
+                        key={level}
+                        value={level}
+                        className="cursor-pointer rounded-lg py-2.5 pl-3 pr-9 data-[state=checked]:bg-primary/10 data-[state=checked]:font-semibold data-[state=checked]:text-primary"
+                      >
+                        {level} — {(1.1 + index * 0.01).toFixed(2)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-border bg-secondary/60 px-4 py-3 text-center">
+              <div className="text-xs text-muted-foreground">Результат</div>
+              <div className="mt-1 text-2xl font-bold tabular-nums">
+                {calculatorResult === null ? "—" : fmt(calculatorResult)}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={insertCalculatorResult}
+              disabled={calculatorResult === null}
+              className="mt-4 w-full cursor-pointer rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Підставити
+            </button>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
