@@ -34,6 +34,25 @@ const fmt = (v: number | null) => {
   return Number(n.toFixed(1)).toString();
 };
 
+function powerColor(v: number | null): string | undefined {
+  if (v === null || v === undefined || Number.isNaN(v)) return undefined;
+  if (v >= 150) return "#D23434"; // тёмно-красний
+  if (v >= 145) return "#ED4848"; // червоний
+  if (v >= 140) return "#F15D4D"; // світло-червоний
+  if (v >= 135) return "#F5891E"; // тьмяно-жовтий
+  if (v >= 130) return "#F9D017"; // жовтий
+  return "#34A835"; // зелений (<130)
+}
+
+const legendItems: { color: string; label: string }[] = [
+  { color: "#D23434", label: "≥150" },
+  { color: "#ED4848", label: "145–149.9" },
+  { color: "#F15D4D", label: "140–144.9" },
+  { color: "#F5891E", label: "135–139.9" },
+  { color: "#F9D017", label: "130–134.9" },
+  { color: "#34A835", label: "<130" },
+];
+
 function BattlePowerPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
