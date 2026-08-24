@@ -110,14 +110,6 @@ function MobLevelsPage() {
           </Link>
         </div>
 
-        <div className="mt-6 flex justify-start">
-          <Link
-            to="/mobs"
-            className="rounded-lg border border-border bg-secondary px-3 py-2 text-sm font-medium text-secondary-foreground transition hover:bg-accent"
-          >
-            🗂 Всі моби
-          </Link>
-        </div>
 
         <section className="mt-5 rounded-2xl border border-border bg-card/60 p-4">
           <PlayerSelectField
