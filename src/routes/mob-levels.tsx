@@ -101,13 +101,32 @@ function MobLevelsPage() {
               Перегляд мобів і рівнів кожного учасника.
             </p>
           </div>
-          <Link
-            to="/mob-levels/edit"
-            search={{ playerId: selectedPlayerId }}
-            className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
-          >
-            ✏️ Редагувати рівні
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              to="/mob-levels/edit"
+              search={{ playerId: selectedPlayerId }}
+              className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
+            >
+              ✏️ Редагувати рівні
+            </Link>
+            {selectedPlayerId ? (
+              <Link
+                to="/mob-levels/scan"
+                search={{ playerId: selectedPlayerId }}
+                className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
+              >
+                📷 Завантажити скріншот
+              </Link>
+            ) : (
+              <span
+                aria-disabled="true"
+                title="Спочатку оберіть гравця"
+                className="cursor-not-allowed rounded-lg border border-border bg-secondary px-3 py-2 text-sm font-medium text-muted-foreground opacity-60"
+              >
+                📷 Завантажити скріншот
+              </span>
+            )}
+          </div>
         </div>
 
         <section className="mt-5 rounded-2xl border border-border bg-card/60 p-4">

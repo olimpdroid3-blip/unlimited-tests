@@ -19,6 +19,7 @@ import { Route as DefensesRouteImport } from './routes/defenses'
 import { Route as BattlePowerRouteImport } from './routes/battle-power'
 import { Route as ArchiveRouteImport } from './routes/archive'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MobLevelsScanRouteImport } from './routes/mob-levels_.scan'
 import { Route as MobLevelsEditRouteImport } from './routes/mob-levels_.edit'
 import { Route as ApiTelegramGvgVideoSetupRouteImport } from './routes/api/telegram/gvg-video-setup'
 import { Route as ApiPublicTelegramGvgVideoWebhookRouteImport } from './routes/api/public/telegram/gvg-video-webhook'
@@ -73,6 +74,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MobLevelsScanRoute = MobLevelsScanRouteImport.update({
+  id: '/mob-levels_/scan',
+  path: '/mob-levels/scan',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MobLevelsEditRoute = MobLevelsEditRouteImport.update({
   id: '/mob-levels_/edit',
   path: '/mob-levels/edit',
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/videos': typeof VideosRoute
   '/walkthroughs': typeof WalkthroughsRoute
   '/mob-levels/edit': typeof MobLevelsEditRoute
+  '/mob-levels/scan': typeof MobLevelsScanRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -118,6 +125,7 @@ export interface FileRoutesByTo {
   '/videos': typeof VideosRoute
   '/walkthroughs': typeof WalkthroughsRoute
   '/mob-levels/edit': typeof MobLevelsEditRoute
+  '/mob-levels/scan': typeof MobLevelsScanRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/videos': typeof VideosRoute
   '/walkthroughs': typeof WalkthroughsRoute
   '/mob-levels_/edit': typeof MobLevelsEditRoute
+  '/mob-levels_/scan': typeof MobLevelsScanRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/videos'
     | '/walkthroughs'
     | '/mob-levels/edit'
+    | '/mob-levels/scan'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/videos'
     | '/walkthroughs'
     | '/mob-levels/edit'
+    | '/mob-levels/scan'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   id:
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/videos'
     | '/walkthroughs'
     | '/mob-levels_/edit'
+    | '/mob-levels_/scan'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   fileRoutesById: FileRoutesById
@@ -197,6 +209,7 @@ export interface RootRouteChildren {
   VideosRoute: typeof VideosRoute
   WalkthroughsRoute: typeof WalkthroughsRoute
   MobLevelsEditRoute: typeof MobLevelsEditRoute
+  MobLevelsScanRoute: typeof MobLevelsScanRoute
   ApiTelegramGvgVideoSetupRoute: typeof ApiTelegramGvgVideoSetupRoute
   ApiPublicTelegramGvgVideoWebhookRoute: typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -273,6 +286,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mob-levels_/scan': {
+      id: '/mob-levels_/scan'
+      path: '/mob-levels/scan'
+      fullPath: '/mob-levels/scan'
+      preLoaderRoute: typeof MobLevelsScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mob-levels_/edit': {
       id: '/mob-levels_/edit'
       path: '/mob-levels/edit'
@@ -309,6 +329,7 @@ const rootRouteChildren: RootRouteChildren = {
   VideosRoute: VideosRoute,
   WalkthroughsRoute: WalkthroughsRoute,
   MobLevelsEditRoute: MobLevelsEditRoute,
+  MobLevelsScanRoute: MobLevelsScanRoute,
   ApiTelegramGvgVideoSetupRoute: ApiTelegramGvgVideoSetupRoute,
   ApiPublicTelegramGvgVideoWebhookRoute: ApiPublicTelegramGvgVideoWebhookRoute,
 }
