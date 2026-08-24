@@ -239,6 +239,15 @@ function MobLevelsPage() {
             )}
           </section>
         )}
+
+        <div className="mt-8 flex justify-start">
+          <Link
+            to="/mobs"
+            className="rounded-lg border border-border bg-secondary px-3 py-2 text-sm font-medium text-secondary-foreground transition hover:bg-accent"
+          >
+            🗂 Всі моби
+          </Link>
+        </div>
       </main>
     </div>
   );
