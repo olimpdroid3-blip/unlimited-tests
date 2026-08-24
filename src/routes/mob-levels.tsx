@@ -110,7 +110,6 @@ function MobLevelsPage() {
           </Link>
         </div>
 
-
         <section className="mt-5 rounded-2xl border border-border bg-card/60 p-4">
           <PlayerSelectField
             id="mob-level-player"
