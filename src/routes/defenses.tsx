@@ -108,7 +108,9 @@ function DefensesPage() {
     queryFn: async (): Promise<BattlePowerRow[]> => {
       const { data, error } = await supabase
         .from("battle_power")
-        .select("id,nickname,power1,power2,power3,power4,power5")
+        .select(
+          "id,nickname,power1,power2,power3,power4,power5,power1_crowned,power2_crowned,power3_crowned,power4_crowned,power5_crowned",
+        )
         .order("nickname");
       if (error) throw error;
       return data ?? [];
