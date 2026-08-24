@@ -38,6 +38,25 @@ const fmt = (v: number | null) => {
   return Number(n.toFixed(1)).toString();
 };
 
+function powerColor(v: number | null): string | undefined {
+  if (v === null || v === undefined || Number.isNaN(v)) return undefined;
+  if (v >= 150) return "#D23434"; // тёмно-красний
+  if (v >= 145) return "#ED4848"; // червоний
+  if (v >= 140) return "#F15D4D"; // світло-червоний
+  if (v >= 135) return "#F5891E"; // тьмяно-жовтий
+  if (v >= 130) return "#F9D017"; // жовтий
+  return "#34A835"; // зелений (<130)
+}
+
+const legendItems: { color: string; label: string }[] = [
+  { color: "#D23434", label: "≥150" },
+  { color: "#ED4848", label: "145–149.9" },
+  { color: "#F15D4D", label: "140–144.9" },
+  { color: "#F5891E", label: "135–139.9" },
+  { color: "#F9D017", label: "130–134.9" },
+  { color: "#34A835", label: "<130" },
+];
+
 function BattlePowerPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -230,47 +249,79 @@ function BattlePowerPage() {
           </div>
         )}
 
-        <div className="mt-4 divide-y divide-border rounded-xl border border-border bg-card/60">
-          {isLoading && (
-            <div className="p-4 text-center text-xs text-muted-foreground">Завантаження…</div>
-          )}
-          {!isLoading && data.length === 0 && (
-            <div className="p-4 text-center text-xs text-muted-foreground">Записів поки немає</div>
-          )}
-          {data.map((r) => (
-            <div
-              key={r.id}
-              className="flex flex-wrap items-center gap-x-1 gap-y-0.5 px-2 py-2 text-[11px] sm:text-xs"
-            >
-              <span className="font-bold">{r.nickname}</span>
-              {[r.power1, r.power2, r.power3, r.power4].map((p, i) => (
-                <span
-                  key={i}
-                  className="font-mono font-semibold tabular-nums text-muted-foreground"
-                >
-                  {fmt(p)}
-                </span>
+        <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-card/60">
+          <table className="w-full border-collapse text-[11px] sm:text-xs">
+            <thead>
+              <tr className="border-b border-border text-muted-foreground">
+                <th className="px-2 py-2 text-left font-semibold">Гравець</th>
+                <th className="px-1 py-2 text-center font-semibold">БС #1</th>
+                <th className="px-1 py-2 text-center font-semibold">БС #2</th>
+                <th className="px-1 py-2 text-center font-semibold">БС #3</th>
+                <th className="px-1 py-2 text-center font-semibold">БС #4</th>
+                <th className="px-1 py-2 text-center font-semibold">БС #5</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading && (
+                <tr>
+                  <td colSpan={6} className="p-4 text-center text-xs text-muted-foreground">
+                    Завантаження…
+                  </td>
+                </tr>
+              )}
+              {!isLoading && data.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-4 text-center text-xs text-muted-foreground">
+                    Записів поки немає
+                  </td>
+                </tr>
+              )}
+              {data.map((r) => (
+                <tr key={r.id} className="border-b border-border/50 last:border-0">
+                  <td className="px-2 py-2">
+                    <div className="flex items-center gap-1">
+                      <span className="truncate font-bold">{r.nickname}</span>
+                      <button
+                        onClick={() => openEdit(r)}
+                        aria-label="Редагувати"
+                        className="shrink-0 cursor-pointer rounded-md px-1 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => setDeleteId(r.id)}
+                        aria-label="Видалити"
+                        className="shrink-0 cursor-pointer rounded-md px-1 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                  {[r.power1, r.power2, r.power3, r.power4, r.power5].map((p, i) => (
+                    <td key={i} className="px-1 py-2 text-center">
+                      <span
+                        className="font-mono font-semibold tabular-nums"
+                        style={p == null ? undefined : { color: powerColor(p) }}
+                      >
+                        {fmt(p)}
+                      </span>
+                    </td>
+                  ))}
+                </tr>
               ))}
-              <span className="inline-flex items-center gap-x-1">
-                <span className="font-mono font-semibold tabular-nums text-muted-foreground">
-                  {fmt(r.power5)}
-                </span>
-                <button
-                  onClick={() => openEdit(r)}
-                  aria-label="Редагувати"
-                  className="shrink-0 cursor-pointer rounded-md px-1 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
-                >
-                  ✏️
-                </button>
-                <button
-                  onClick={() => setDeleteId(r.id)}
-                  aria-label="Видалити"
-                  className="shrink-0 cursor-pointer rounded-md px-1 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-                >
-                  🗑️
-                </button>
-              </span>
-            </div>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1.5 rounded-xl border border-border bg-card/60 px-3 py-3 text-[10px] sm:text-[11px]">
+          {legendItems.map((item) => (
+            <span key={item.label} className="inline-flex items-center gap-1.5">
+              <span
+                className="inline-block size-2.5 rounded-full"
+                style={{ backgroundColor: item.color }}
+              />
+              <span className="text-muted-foreground">{item.label}</span>
+            </span>
           ))}
         </div>
       </main>
