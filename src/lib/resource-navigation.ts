@@ -14,6 +14,15 @@ export type ResourceSection = {
   subtitle: string;
 };
 
+export const RESOURCE_BACK_LINKS = {
+  "/progress": { label: "На головну", to: "/" },
+  "/walkthroughs": { label: "На головну", to: "/" },
+  "/battle-power": { label: "Назад", to: "/progress" },
+  "/mob-levels": { label: "Назад", to: "/progress" },
+  "/defenses": { label: "Назад", to: "/walkthroughs" },
+  "/videos": { label: "Назад", to: "/walkthroughs" },
+} as const;
+
 export const LANDING_SECTIONS: ResourceSection[] = [
   {
     to: "/towers",

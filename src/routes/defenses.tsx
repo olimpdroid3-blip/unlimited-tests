@@ -16,6 +16,7 @@ import {
 } from "@/lib/defenses";
 import { syncHeroes } from "@/lib/heroes.functions";
 import type { Mob, PlayerMobLevel } from "@/lib/mob-levels";
+import { RESOURCE_BACK_LINKS } from "@/lib/resource-navigation";
 
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
@@ -139,8 +140,11 @@ function DefensesPage() {
 
       <main className="mx-auto w-full max-w-3xl px-3 pb-10 pt-4 sm:px-4">
         <div className="mb-4">
-          <Link to="/" className="text-xs text-muted-foreground transition hover:text-primary">
-            ← На головну
+          <Link
+            to={RESOURCE_BACK_LINKS["/defenses"].to}
+            className="inline-flex rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs text-secondary-foreground transition hover:bg-accent"
+          >
+            ← {RESOURCE_BACK_LINKS["/defenses"].label}
           </Link>
           <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold tracking-tight">
             <span>🛡</span>
