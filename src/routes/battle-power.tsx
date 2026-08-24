@@ -5,7 +5,11 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { Toaster } from "@/components/ui/sonner";
-import { getBattlePowerFormPresentation, type BattlePowerRow } from "@/lib/battle-power";
+import {
+  findBattlePowerRowByNickname,
+  getBattlePowerFormPresentation,
+  type BattlePowerRow,
+} from "@/lib/battle-power";
 import { battlePowerRepository } from "@/lib/battle-power-ui";
 import { getNickCookie } from "@/lib/nickname";
 
@@ -38,13 +42,16 @@ function BattlePowerPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [nick, setNick] = useState("");
+  const [savedNickname, setSavedNickname] = useState("");
   const [powers, setPowers] = useState<string[]>(["", "", "", "", ""]);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
-    setNick(getNickCookie());
+    const cookieNickname = getNickCookie();
+    setNick(cookieNickname);
+    setSavedNickname(cookieNickname);
   }, []);
 
   const { data = [], isLoading } = useQuery({
@@ -52,13 +59,7 @@ function BattlePowerPage() {
     queryFn: () => battlePowerRepository.getAll(),
   });
   const formPresentation = getBattlePowerFormPresentation(open, editingId);
-
-  const openForm = () => {
-    setNick(getNickCookie());
-    setPowers(["", "", "", "", ""]);
-    setEditingId(null);
-    setOpen(true);
-  };
+  const savedBattlePowerRow = findBattlePowerRowByNickname(data, savedNickname);
 
   const openEdit = (r: BattlePowerRow) => {
     setNick(r.nickname);
@@ -70,6 +71,22 @@ function BattlePowerPage() {
       r.power5?.toString() ?? "",
     ]);
     setEditingId(r.id);
+    setOpen(true);
+  };
+
+  const openOwnForm = () => {
+    const cookieNickname = getNickCookie();
+    const existingRow = findBattlePowerRowByNickname(data, cookieNickname);
+    setSavedNickname(cookieNickname);
+
+    if (existingRow) {
+      openEdit(existingRow);
+      return;
+    }
+
+    setNick(cookieNickname);
+    setPowers(["", "", "", "", ""]);
+    setEditingId(null);
     setOpen(true);
   };
 
@@ -175,10 +192,15 @@ function BattlePowerPage() {
 
         {!open && (
           <button
-            onClick={openForm}
-            className="mt-4 w-full cursor-pointer rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 active:scale-[0.99]"
+            onClick={openOwnForm}
+            disabled={isLoading}
+            className="mt-4 w-full cursor-pointer rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 active:scale-[0.99] disabled:cursor-wait disabled:opacity-60"
           >
-            ➕ Додати свій БС
+            {isLoading
+              ? "Завантаження…"
+              : savedBattlePowerRow
+                ? "✏️ Редагувати свій БС"
+                : "➕ Додати свій БС"}
           </button>
         )}
 

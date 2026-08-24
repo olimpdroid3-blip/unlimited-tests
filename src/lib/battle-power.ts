@@ -36,6 +36,15 @@ export function getBattlePowerFormPresentation(
   return editingId ? "dialog" : "inline";
 }
 
+export function findBattlePowerRowByNickname(
+  rows: readonly BattlePowerRow[],
+  nickname: string,
+): BattlePowerRow | undefined {
+  const nicknameKey = normalizeNickname(nickname);
+  if (!nicknameKey) return undefined;
+  return rows.find((row) => normalizeNickname(row.nickname) === nicknameKey);
+}
+
 export function createBattlePowerRepository(
   remoteSource: BattlePowerRemoteSource,
   seedRows: readonly BattlePowerRow[],

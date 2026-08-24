@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   createBattlePowerRepository,
+  findBattlePowerRowByNickname,
   getBattlePowerFormPresentation,
   type BattlePowerInput,
   type BattlePowerRemoteSource,
@@ -63,6 +64,20 @@ test("shows additions inline and edits in a dialog", () => {
   assert.equal(getBattlePowerFormPresentation(false, null), "hidden");
   assert.equal(getBattlePowerFormPresentation(true, null), "inline");
   assert.equal(getBattlePowerFormPresentation(true, "player-01"), "dialog");
+});
+
+test("finds the saved battle-power row without case or surrounding-space sensitivity", () => {
+  const alex = createRow({ id: "player-alex", nickname: "Alex" });
+  const skye = createRow({ id: "player-skye", nickname: "Skye" });
+
+  assert.equal(findBattlePowerRowByNickname([alex, skye], "  aLeX  "), alex);
+});
+
+test("returns no battle-power row when the saved nickname is empty or unknown", () => {
+  const rows = [createRow({ nickname: "Alex" })];
+
+  assert.equal(findBattlePowerRowByNickname(rows, "   "), undefined);
+  assert.equal(findBattlePowerRowByNickname(rows, "Unknown"), undefined);
 });
 
 test("merges test and remote players while preferring an exact nickname match from remote", async () => {
