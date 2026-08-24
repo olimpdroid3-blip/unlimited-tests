@@ -488,16 +488,18 @@ function BattlePowerPage() {
                     </td>
                     {displayedPowers.map((power, index) => (
                       <td key={index} className="px-0.5 py-2 text-center sm:px-1">
-                        <div className="flex flex-col items-center justify-center leading-none">
-                          {displayedCrowns[index] && (
-                            <Crown
-                              className="mb-0.5 size-3 text-amber-500 sm:size-3.5"
-                              fill="currentColor"
-                              aria-label="Значення з пробудою"
-                            />
-                          )}
+                        <div className="flex flex-col items-center justify-end leading-none">
+                          <span className="flex h-3 items-center sm:h-3.5">
+                            {displayedCrowns[index] && (
+                              <Crown
+                                className="size-3 text-amber-500 sm:size-3.5"
+                                fill="currentColor"
+                                aria-label="Значення з пробудою"
+                              />
+                            )}
+                          </span>
                           <span
-                            className="font-mono font-semibold tabular-nums"
+                            className="mt-0.5 font-mono font-semibold tabular-nums"
                             style={power == null ? undefined : { color: powerColor(power) }}
                           >
                             {fmt(power)}
