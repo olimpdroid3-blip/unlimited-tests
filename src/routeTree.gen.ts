@@ -13,6 +13,7 @@ import { Route as WalkthroughsRouteImport } from './routes/walkthroughs'
 import { Route as VideosRouteImport } from './routes/videos'
 import { Route as TowersRouteImport } from './routes/towers'
 import { Route as ProgressRouteImport } from './routes/progress'
+import { Route as MobsRouteImport } from './routes/mobs'
 import { Route as MobLevelsRouteImport } from './routes/mob-levels'
 import { Route as DefensesRouteImport } from './routes/defenses'
 import { Route as BattlePowerRouteImport } from './routes/battle-power'
@@ -40,6 +41,11 @@ const TowersRoute = TowersRouteImport.update({
 const ProgressRoute = ProgressRouteImport.update({
   id: '/progress',
   path: '/progress',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MobsRoute = MobsRouteImport.update({
+  id: '/mobs',
+  path: '/mobs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MobLevelsRoute = MobLevelsRouteImport.update({
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/battle-power': typeof BattlePowerRoute
   '/defenses': typeof DefensesRoute
   '/mob-levels': typeof MobLevelsRoute
+  '/mobs': typeof MobsRoute
   '/progress': typeof ProgressRoute
   '/towers': typeof TowersRoute
   '/videos': typeof VideosRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/battle-power': typeof BattlePowerRoute
   '/defenses': typeof DefensesRoute
   '/mob-levels': typeof MobLevelsRoute
+  '/mobs': typeof MobsRoute
   '/progress': typeof ProgressRoute
   '/towers': typeof TowersRoute
   '/videos': typeof VideosRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/battle-power': typeof BattlePowerRoute
   '/defenses': typeof DefensesRoute
   '/mob-levels': typeof MobLevelsRoute
+  '/mobs': typeof MobsRoute
   '/progress': typeof ProgressRoute
   '/towers': typeof TowersRoute
   '/videos': typeof VideosRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/battle-power'
     | '/defenses'
     | '/mob-levels'
+    | '/mobs'
     | '/progress'
     | '/towers'
     | '/videos'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/battle-power'
     | '/defenses'
     | '/mob-levels'
+    | '/mobs'
     | '/progress'
     | '/towers'
     | '/videos'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/battle-power'
     | '/defenses'
     | '/mob-levels'
+    | '/mobs'
     | '/progress'
     | '/towers'
     | '/videos'
@@ -179,6 +191,7 @@ export interface RootRouteChildren {
   BattlePowerRoute: typeof BattlePowerRoute
   DefensesRoute: typeof DefensesRoute
   MobLevelsRoute: typeof MobLevelsRoute
+  MobsRoute: typeof MobsRoute
   ProgressRoute: typeof ProgressRoute
   TowersRoute: typeof TowersRoute
   VideosRoute: typeof VideosRoute
@@ -216,6 +229,13 @@ declare module '@tanstack/react-router' {
       path: '/progress'
       fullPath: '/progress'
       preLoaderRoute: typeof ProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mobs': {
+      id: '/mobs'
+      path: '/mobs'
+      fullPath: '/mobs'
+      preLoaderRoute: typeof MobsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mob-levels': {
@@ -283,6 +303,7 @@ const rootRouteChildren: RootRouteChildren = {
   BattlePowerRoute: BattlePowerRoute,
   DefensesRoute: DefensesRoute,
   MobLevelsRoute: MobLevelsRoute,
+  MobsRoute: MobsRoute,
   ProgressRoute: ProgressRoute,
   TowersRoute: TowersRoute,
   VideosRoute: VideosRoute,
