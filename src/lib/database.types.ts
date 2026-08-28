@@ -357,6 +357,8 @@ export type Database = {
           breached: boolean;
           nickname: string | null;
           notes: string | null;
+          screenshot_path: string | null;
+          screenshot_url: string | null;
           tower_id: string;
           updated_at: string;
         };
@@ -365,6 +367,8 @@ export type Database = {
           breached?: boolean;
           nickname?: string | null;
           notes?: string | null;
+          screenshot_path?: string | null;
+          screenshot_url?: string | null;
           tower_id: string;
           updated_at?: string;
         };
@@ -373,6 +377,8 @@ export type Database = {
           breached?: boolean;
           nickname?: string | null;
           notes?: string | null;
+          screenshot_path?: string | null;
+          screenshot_url?: string | null;
           tower_id?: string;
           updated_at?: string;
         };
@@ -387,6 +393,7 @@ export type Database = {
           nickname: string | null;
           notes: string | null;
           original_updated_at: string | null;
+          screenshot_url: string | null;
           tower_id: string;
         };
         Insert: {
@@ -397,6 +404,7 @@ export type Database = {
           nickname?: string | null;
           notes?: string | null;
           original_updated_at?: string | null;
+          screenshot_url?: string | null;
           tower_id: string;
         };
         Update: {
@@ -407,6 +415,7 @@ export type Database = {
           nickname?: string | null;
           notes?: string | null;
           original_updated_at?: string | null;
+          screenshot_url?: string | null;
           tower_id?: string;
         };
         Relationships: [];
