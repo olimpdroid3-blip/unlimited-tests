@@ -41,13 +41,7 @@ export function TowerModal({
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [runCode, setRunCode] = useState("");
-  const [heroSlots, setHeroSlots] = useState<Array<string | null>>([
-    null,
-    null,
-    null,
-    null,
-    null,
-  ]);
+  const [heroSlots, setHeroSlots] = useState<Array<string | null>>([null, null, null, null, null]);
   const [savingDefense, setSavingDefense] = useState(false);
 
   const { data: heroes = [] } = useQuery({
