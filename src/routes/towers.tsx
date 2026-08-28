@@ -25,6 +25,8 @@ type Tower = {
   awakenings: string | null;
   notes: string | null;
   breached?: boolean | null;
+  screenshot_url?: string | null;
+  screenshot_path?: string | null;
 };
 
 const COLUMNS = [
@@ -83,11 +85,20 @@ function HomePage() {
         awakenings: t.awakenings,
         notes: t.notes,
         breached: !!t.breached,
+        // Tower screenshots are wiped along with the records; only copies
+        // already saved into the defenses database survive.
+        screenshot_url: null,
       }));
       const { error: archErr } = await supabase.from("towers_archive").insert(archiveRows);
       if (archErr) {
         setBusy(false);
         return;
+      }
+      const screenshotPaths = towers
+        .map((t) => t.screenshot_path)
+        .filter((path): path is string => Boolean(path));
+      if (screenshotPaths.length > 0) {
+        await supabase.storage.from("defense-screenshots").remove(screenshotPaths);
       }
       const { error: delErr } = await supabase.from("towers").delete().neq("tower_id", "");
       if (delErr) {
