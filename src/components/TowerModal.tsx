@@ -183,6 +183,26 @@ export function TowerModal({
     }
   };
 
+  const [sendingTg, setSendingTg] = useState(false);
+
+  const handleNotify = async () => {
+    const nick = nickname.trim();
+    if (!nick) return toast.error("Спочатку вкажіть нік");
+    setSendingTg(true);
+    try {
+      const result = await notifyTower({ data: { nickname: nick, towerId } });
+      if (result.ok) {
+        toast.success("Повідомлення надіслано в Telegram");
+      } else {
+        toast.error("Не вдалося надіслати повідомлення");
+      }
+    } catch {
+      toast.error("Не вдалося надіслати повідомлення");
+    } finally {
+      setSendingTg(false);
+    }
+  };
+
   const handleDelete = async () => {
     setBusy(true);
     if (existing?.screenshot_path) {
@@ -346,18 +366,32 @@ export function TowerModal({
               </div>
             </div>
           ) : (
-            <div className="mt-5 grid grid-cols-3 gap-2">
+            <div className="mt-5 flex gap-2">
               <button
                 disabled={busy}
                 onClick={handleSave}
-                className="col-span-2 rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+                className="flex-1 rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
               >
                 💾 Зберегти
               </button>
               <button
+                type="button"
+                disabled={busy || sendingTg}
+                onClick={handleNotify}
+                title="Надіслати в Telegram"
+                aria-label="Надіслати в Telegram"
+                className="flex w-11 shrink-0 items-center justify-center rounded-lg bg-[#229ED9] px-2 py-2.5 transition hover:opacity-90 active:scale-95 disabled:opacity-50"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white" aria-hidden="true">
+                  <path d="M9.04 15.31l-.38 5.32c.54 0 .78-.23 1.06-.5l2.55-2.44 5.28 3.87c.97.53 1.65.25 1.91-.9l3.46-16.2c.31-1.42-.51-1.98-1.45-1.63L2.7 10.8c-1.39.54-1.37 1.32-.24 1.67l4.8 1.5 11.13-7.02c.52-.35 1 .16.61.5L9.04 15.31z" />
+                </svg>
+              </button>
+              <button
                 disabled={busy || !existing}
                 onClick={() => setConfirmDelete(true)}
-                className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm font-medium text-destructive transition hover:bg-destructive/20 disabled:opacity-40"
+                title="Видалити запис"
+                aria-label="Видалити запис"
+                className="flex w-11 shrink-0 items-center justify-center rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-2.5 text-sm font-medium text-destructive transition hover:bg-destructive/20 disabled:opacity-40"
               >
                 🗑
               </button>
