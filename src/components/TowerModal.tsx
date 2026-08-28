@@ -184,10 +184,7 @@ export function TowerModal({
     }
   };
 
-  const [sendingTg, setSendingTg] = useState(false);
-
   const handleNotify = async () => {
-    // sendingTg state declared with the other hooks above
     const nick = nickname.trim();
     if (!nick) return toast.error("Спочатку вкажіть нік");
     setSendingTg(true);
