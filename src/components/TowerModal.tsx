@@ -1,8 +1,11 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/db";
 import { toast } from "sonner";
 import { getNickCookie } from "@/lib/nickname";
+import { fileToDataUrl, uploadScreenshot } from "@/lib/screenshot-upload";
+import { HeroPicker, type HeroOption } from "@/components/HeroPicker";
 
 type Tower = {
   tower_id: string;
@@ -10,6 +13,8 @@ type Tower = {
   awakenings: string | null;
   notes: string | null;
   breached?: boolean | null;
+  screenshot_url?: string | null;
+  screenshot_path?: string | null;
 };
 
 export function TowerModal({
@@ -32,6 +37,31 @@ export function TowerModal({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [cookieNick, setCookieNick] = useState("");
   const [breached, setBreached] = useState(false);
+  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
+  const [runCode, setRunCode] = useState("");
+  const [heroSlots, setHeroSlots] = useState<Array<string | null>>([
+    null,
+    null,
+    null,
+    null,
+    null,
+  ]);
+  const [savingDefense, setSavingDefense] = useState(false);
+
+  const { data: heroes = [] } = useQuery({
+    queryKey: ["heroes"],
+    enabled: open,
+    queryFn: async (): Promise<HeroOption[]> => {
+      const { data, error } = await supabase
+        .from("heroes")
+        .select("id, name_en, name_ru, icon_url")
+        .order("name_ru");
+      if (error) throw error;
+      return (data ?? []) as HeroOption[];
+    },
+  });
 
   useEffect(() => {
     if (open) {
@@ -41,11 +71,19 @@ export function TowerModal({
       setAwakenings(existing?.awakenings ?? "");
       setNotes(existing?.notes ?? "");
       setBreached(!!existing?.breached);
+      setScreenshotUrl(existing?.screenshot_url ?? null);
+      setScreenshotPreview(null);
+      setScreenshotFile(null);
+      setRunCode("");
+      setHeroSlots([null, null, null, null, null]);
       setConfirmDelete(false);
     }
   }, [open, existing]);
 
   if (!towerId) return null;
+
+  const chosenHeroes = heroSlots.filter((v): v is string => !!v);
+  const shownImage = screenshotPreview ?? screenshotUrl;
 
   const toggleBreached = async () => {
     const next = !breached;
@@ -67,23 +105,94 @@ export function TowerModal({
 
   const handleSave = async () => {
     setBusy(true);
-    const { error } = await supabase.from("towers").upsert({
-      tower_id: towerId,
-      nickname: nickname.trim() || null,
-      awakenings: awakenings.trim() || null,
-      notes: notes.trim() || null,
-      breached,
-      updated_at: new Date().toISOString(),
-    });
-    setBusy(false);
-    if (error) return toast.error("Помилка збереження");
-    toast.success("Збережено");
-    onChanged();
-    onOpenChange(false);
+    try {
+      let url = screenshotUrl;
+      let path = existing?.screenshot_path ?? null;
+      if (screenshotFile) {
+        const uploaded = await uploadScreenshot("defense-screenshots", screenshotFile, "tower");
+        url = uploaded.url;
+        path = uploaded.path;
+      }
+      const { error } = await supabase.from("towers").upsert({
+        tower_id: towerId,
+        nickname: nickname.trim() || null,
+        awakenings: awakenings.trim() || null,
+        notes: notes.trim() || null,
+        breached,
+        screenshot_url: url,
+        screenshot_path: path,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      toast.success("Збережено");
+      onChanged();
+      onOpenChange(false);
+    } catch {
+      toast.error("Помилка збереження");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSaveDefense = async () => {
+    if (chosenHeroes.length < 1) return toast.error("Оберіть хоча б одного героя");
+    setSavingDefense(true);
+    try {
+      // Reuse the already-saved tower screenshot, or upload the freshly picked file.
+      let url = screenshotUrl;
+      if (!url && screenshotFile) {
+        url = (await uploadScreenshot("defense-screenshots", screenshotFile, "tower")).url;
+        setScreenshotUrl(url);
+      }
+
+      let playerId: string | null = null;
+      const nick = nickname.trim();
+      if (nick) {
+        const { data: player } = await supabase
+          .from("battle_power")
+          .select("id")
+          .ilike("nickname", nick)
+          .maybeSingle();
+        playerId = player?.id ?? null;
+      }
+
+      const { data: created, error } = await supabase
+        .from("defenses")
+        .insert({
+          screenshot_url: url,
+          run_code: runCode.trim() || null,
+          player_id: playerId,
+          comment: `Вежа ${towerId}${notes.trim() ? ` — ${notes.trim()}` : ""}`,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+
+      const { error: hErr } = await supabase.from("defense_heroes").insert(
+        chosenHeroes.map((heroId, index) => ({
+          defense_id: created.id,
+          hero_id: heroId,
+          position: index + 1,
+        })),
+      );
+      if (hErr) throw hErr;
+
+      toast.success("Код проходки збережено в базі захистів");
+      setRunCode("");
+      setHeroSlots([null, null, null, null, null]);
+    } catch (e) {
+      console.error(e);
+      toast.error("Не вдалося зберегти проходку");
+    } finally {
+      setSavingDefense(false);
+    }
   };
 
   const handleDelete = async () => {
     setBusy(true);
+    if (existing?.screenshot_path) {
+      await supabase.storage.from("defense-screenshots").remove([existing.screenshot_path]);
+    }
     const { error } = await supabase.from("towers").delete().eq("tower_id", towerId);
     setBusy(false);
     if (error) return toast.error("Помилка видалення");
@@ -96,7 +205,7 @@ export function TowerModal({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2 duration-200">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2 duration-200">
           <div className="flex items-start justify-between gap-2">
             <Dialog.Title className="text-lg font-semibold text-foreground">
               🏰 Башня {towerId}
@@ -145,7 +254,81 @@ export function TowerModal({
                 placeholder="Стратегія, склад..."
               />
             </Field>
+
+            <Field label="📷 Скріншот розстановки">
+              <div className="space-y-2">
+                {shownImage && (
+                  <div className="overflow-hidden rounded-lg border border-border bg-black/20">
+                    <img
+                      src={shownImage}
+                      alt={`Розстановка вежі ${towerId}`}
+                      loading="lazy"
+                      className="mx-auto block max-h-56 w-full object-contain"
+                    />
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0] || null;
+                    setScreenshotFile(f);
+                    setScreenshotPreview(f ? await fileToDataUrl(f) : null);
+                  }}
+                  className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:text-secondary-foreground hover:file:bg-accent"
+                />
+                {shownImage && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScreenshotFile(null);
+                      setScreenshotPreview(null);
+                      setScreenshotUrl(null);
+                    }}
+                    className="text-xs text-muted-foreground underline transition hover:text-destructive"
+                  >
+                    Прибрати скріншот
+                  </button>
+                )}
+              </div>
+            </Field>
           </div>
+
+          {breached && (
+            <div className="mt-4 space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-3">
+              <div className="text-xs font-semibold uppercase tracking-wider text-primary">
+                🛡 Додати до бази захистів
+              </div>
+              <input
+                value={runCode}
+                onChange={(e) => setRunCode(e.target.value)}
+                className="w-full rounded-lg border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary"
+                placeholder="Код проходки <GVG>...</GVG>"
+              />
+              <div className="space-y-2">
+                {heroSlots.map((value, index) => (
+                  <HeroPicker
+                    key={index}
+                    heroes={heroes}
+                    value={value}
+                    placeholder={`Герой ${index + 1}`}
+                    excludeIds={heroSlots.filter((v, i): v is string => !!v && i !== index)}
+                    onChange={(id) =>
+                      setHeroSlots((prev) => prev.map((v, i) => (i === index ? id : v)))
+                    }
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                disabled={savingDefense || chosenHeroes.length === 0}
+                onClick={handleSaveDefense}
+                className="w-full rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
+              >
+                💾 Зберегти код проходки
+              </button>
+            </div>
+          )}
 
           {confirmDelete ? (
             <div className="mt-5 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
