@@ -22,6 +22,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as MobLevelsScanRouteImport } from './routes/mob-levels_.scan'
 import { Route as MobLevelsEditRouteImport } from './routes/mob-levels_.edit'
 import { Route as ApiTelegramGvgVideoSetupRouteImport } from './routes/api/telegram/gvg-video-setup'
+import { Route as ApiTelegramGvgPinTowersRouteImport } from './routes/api/telegram/gvg-pin-towers'
 import { Route as ApiPublicTelegramGvgVideoWebhookRouteImport } from './routes/api/public/telegram/gvg-video-webhook'
 
 const WalkthroughsRoute = WalkthroughsRouteImport.update({
@@ -90,6 +91,11 @@ const ApiTelegramGvgVideoSetupRoute =
     path: '/api/telegram/gvg-video-setup',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiTelegramGvgPinTowersRoute = ApiTelegramGvgPinTowersRouteImport.update({
+  id: '/api/telegram/gvg-pin-towers',
+  path: '/api/telegram/gvg-pin-towers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTelegramGvgVideoWebhookRoute =
   ApiPublicTelegramGvgVideoWebhookRouteImport.update({
     id: '/api/public/telegram/gvg-video-webhook',
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/walkthroughs': typeof WalkthroughsRoute
   '/mob-levels/edit': typeof MobLevelsEditRoute
   '/mob-levels/scan': typeof MobLevelsScanRoute
+  '/api/telegram/gvg-pin-towers': typeof ApiTelegramGvgPinTowersRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/walkthroughs': typeof WalkthroughsRoute
   '/mob-levels/edit': typeof MobLevelsEditRoute
   '/mob-levels/scan': typeof MobLevelsScanRoute
+  '/api/telegram/gvg-pin-towers': typeof ApiTelegramGvgPinTowersRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/walkthroughs': typeof WalkthroughsRoute
   '/mob-levels_/edit': typeof MobLevelsEditRoute
   '/mob-levels_/scan': typeof MobLevelsScanRoute
+  '/api/telegram/gvg-pin-towers': typeof ApiTelegramGvgPinTowersRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/walkthroughs'
     | '/mob-levels/edit'
     | '/mob-levels/scan'
+    | '/api/telegram/gvg-pin-towers'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/walkthroughs'
     | '/mob-levels/edit'
     | '/mob-levels/scan'
+    | '/api/telegram/gvg-pin-towers'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   id:
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/walkthroughs'
     | '/mob-levels_/edit'
     | '/mob-levels_/scan'
+    | '/api/telegram/gvg-pin-towers'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   fileRoutesById: FileRoutesById
@@ -210,6 +222,7 @@ export interface RootRouteChildren {
   WalkthroughsRoute: typeof WalkthroughsRoute
   MobLevelsEditRoute: typeof MobLevelsEditRoute
   MobLevelsScanRoute: typeof MobLevelsScanRoute
+  ApiTelegramGvgPinTowersRoute: typeof ApiTelegramGvgPinTowersRoute
   ApiTelegramGvgVideoSetupRoute: typeof ApiTelegramGvgVideoSetupRoute
   ApiPublicTelegramGvgVideoWebhookRoute: typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -307,6 +320,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTelegramGvgVideoSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/telegram/gvg-pin-towers': {
+      id: '/api/telegram/gvg-pin-towers'
+      path: '/api/telegram/gvg-pin-towers'
+      fullPath: '/api/telegram/gvg-pin-towers'
+      preLoaderRoute: typeof ApiTelegramGvgPinTowersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/telegram/gvg-video-webhook': {
       id: '/api/public/telegram/gvg-video-webhook'
       path: '/api/public/telegram/gvg-video-webhook'
@@ -330,6 +350,7 @@ const rootRouteChildren: RootRouteChildren = {
   WalkthroughsRoute: WalkthroughsRoute,
   MobLevelsEditRoute: MobLevelsEditRoute,
   MobLevelsScanRoute: MobLevelsScanRoute,
+  ApiTelegramGvgPinTowersRoute: ApiTelegramGvgPinTowersRoute,
   ApiTelegramGvgVideoSetupRoute: ApiTelegramGvgVideoSetupRoute,
   ApiPublicTelegramGvgVideoWebhookRoute: ApiPublicTelegramGvgVideoWebhookRoute,
 }

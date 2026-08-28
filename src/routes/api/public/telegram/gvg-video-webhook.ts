@@ -133,6 +133,12 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
         const chatId = message.chat.id;
         const threadId = resolveThreadId(message);
 
+        // Keep the pinned "Вежі" message alive in its dedicated topic.
+        const pin = await import("@/lib/gvg-pinned-towers.server");
+        if (chatId === pin.PIN_CHAT_ID && (threadId ?? 0) === pin.PIN_THREAD_ID) {
+          await pin.ensurePinnedTowersMessage();
+        }
+
         const { supabaseAdmin } = await import("@/lib/db.server");
 
         const { data: source, error: sourceError } = await supabaseAdmin
