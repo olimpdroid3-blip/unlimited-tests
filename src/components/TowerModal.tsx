@@ -44,6 +44,7 @@ export function TowerModal({
   const [runCode, setRunCode] = useState("");
   const [heroSlots, setHeroSlots] = useState<Array<string | null>>([null, null, null, null, null]);
   const [savingDefense, setSavingDefense] = useState(false);
+  const [sendingTg, setSendingTg] = useState(false);
 
   const { data: heroes = [] } = useQuery({
     queryKey: ["heroes"],
@@ -186,6 +187,7 @@ export function TowerModal({
   const [sendingTg, setSendingTg] = useState(false);
 
   const handleNotify = async () => {
+    // sendingTg state declared with the other hooks above
     const nick = nickname.trim();
     if (!nick) return toast.error("Спочатку вкажіть нік");
     setSendingTg(true);
