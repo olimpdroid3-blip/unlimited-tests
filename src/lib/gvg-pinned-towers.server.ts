@@ -5,8 +5,8 @@ export const PIN_CHAT_ID = -1003978316922;
 export const PIN_THREAD_ID = 8;
 export const TOWERS_URL = "https://unlimited-tests.lovable.app/towers";
 
-const PIN_TEXT = "🏰 Вежі — Зеркала\n\nВідкрий таблицю веж, щоб подивитись або внести проходку.";
-const BUTTON_TEXT = "🏰 Вежі — Зеркала";
+const PIN_TEXT = "🏰 Вежі — Дзеркала\n\nВідкрий таблицю веж, щоб подивитись або внести проходку.";
+const BUTTON_TEXT = "🏰 Вежі — Дзеркала";
 
 const STATE_BUCKET = "defense-screenshots";
 const STATE_PATH = "bot-state/pinned-towers.json";
