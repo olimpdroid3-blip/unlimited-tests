@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/db.server";
 import { isMirrorRow, MIRROR_PREFIX } from "@/lib/mirror-order";
 import { deleteTelegramMessage } from "@/lib/gvg-tower-notify.server";
 import { drainBotMessages, trackBotMessage } from "@/lib/gvg-bot-messages.server";
+import { TOWERS_URL } from "@/lib/gvg-pinned-towers.server";
 
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
@@ -11,7 +12,12 @@ const THREAD_ID = 8;
 const escape = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-type TowerRow = { tower_id: string; nickname: string | null; screenshot_url: string | null };
+type TowerRow = {
+  tower_id: string;
+  nickname: string | null;
+  screenshot_url: string | null;
+  breached: boolean | null;
+};
 
 function towerSortKey(id: string): number[] {
   return id.split(".").map((n) => Number(n) || 0);
@@ -33,7 +39,7 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
 
   const { data, error } = await supabaseAdmin
     .from("towers")
-    .select("tower_id, nickname, screenshot_url");
+    .select("tower_id, nickname, screenshot_url, breached");
   if (error) {
     console.error("[tower-list] towers fetch failed", error.message);
     return { ok: false, error: error.message };
@@ -41,7 +47,7 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
 
   const rows = (data ?? []) as TowerRow[];
   const filled = rows
-    .filter((r) => !isMirrorRow(r.tower_id) && (r.nickname || r.screenshot_url))
+    .filter((r) => !isMirrorRow(r.tower_id) && !r.breached && (r.nickname || r.screenshot_url))
     .sort((a, b) => compareTowerIds(a.tower_id, b.tower_id));
   const ordered = rows
     .filter((r) => isMirrorRow(r.tower_id))
@@ -73,6 +79,7 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
       text,
       disable_notification: true,
       disable_web_page_preview: true,
+      reply_markup: { inline_keyboard: [[{ text: "🏰 Вежі — Дзеркала", url: TOWERS_URL }]] },
     }),
   });
   const json = (await res.json().catch(() => ({}))) as {
