@@ -7,6 +7,7 @@ import { getNickCookie } from "@/lib/nickname";
 import { notifyTower } from "@/lib/tower-notify.functions";
 import { fileToDataUrl, uploadScreenshot } from "@/lib/screenshot-upload";
 import { HeroPicker, type HeroOption } from "@/components/HeroPicker";
+import { mirrorRowId } from "@/lib/mirror-order";
 
 type Tower = {
   tower_id: string;
@@ -120,6 +121,8 @@ export function TowerModal({
         updated_at: new Date().toISOString(),
       });
       if (error) throw error;
+      // Filling the tower fulfils any pending mirror order.
+      await supabase.from("towers").delete().eq("tower_id", mirrorRowId(towerId));
       toast.success("Збережено");
       onChanged();
       onOpenChange(false);
@@ -207,6 +210,7 @@ export function TowerModal({
     if (existing?.screenshot_path) {
       await supabase.storage.from("defense-screenshots").remove([existing.screenshot_path]);
     }
+    await supabase.from("towers").delete().eq("tower_id", mirrorRowId(towerId));
     const { error } = await supabase.from("towers").delete().eq("tower_id", towerId);
     setBusy(false);
     if (error) return toast.error("Помилка видалення");
