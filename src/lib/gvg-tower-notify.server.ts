@@ -33,7 +33,7 @@ export async function notifyTowerToTelegram(
 export async function notifyMirrorOrderToTelegram(
   nickname: string,
   towerId: string,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; messageId?: number }> {
   const token = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
   if (!token) return { ok: false, error: "TELEGRAM_GVG_VIDEO_BOT_TOKEN is not configured" };
 
@@ -52,9 +52,33 @@ export async function notifyMirrorOrderToTelegram(
       disable_web_page_preview: true,
     }),
   });
-  const json = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+  const json = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    description?: string;
+    result?: { message_id?: number };
+  };
   if (!json.ok) {
     console.error(`[mirror-notify] sendMessage failed [${res.status}] ${json.description ?? ""}`);
+    return { ok: false, error: json.description ?? "telegram-error" };
+  }
+  return { ok: true, messageId: json.result?.message_id };
+}
+
+// Deletes a bot message (e.g. a mirror-order notification) from the pinned topic.
+export async function deleteTelegramMessage(
+  messageId: number,
+): Promise<{ ok: boolean; error?: string }> {
+  const token = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
+  if (!token) return { ok: false, error: "TELEGRAM_GVG_VIDEO_BOT_TOKEN is not configured" };
+
+  const res = await fetch(`https://api.telegram.org/bot${token}/deleteMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: CHAT_ID, message_id: messageId }),
+  });
+  const json = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+  if (!json.ok) {
+    console.error(`[tg-delete] deleteMessage failed [${res.status}] ${json.description ?? ""}`);
     return { ok: false, error: json.description ?? "telegram-error" };
   }
   return { ok: true };
