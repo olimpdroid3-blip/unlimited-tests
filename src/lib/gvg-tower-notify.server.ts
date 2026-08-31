@@ -27,3 +27,35 @@ export async function notifyTowerToTelegram(
   }
   return { ok: true };
 }
+
+// Mirror order notification. Telegram does not support arbitrary text colors,
+// so the "замовив дзеркало" part is emphasised in bold with a red marker.
+export async function notifyMirrorOrderToTelegram(
+  nickname: string,
+  towerId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const token = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
+  if (!token) return { ok: false, error: "TELEGRAM_GVG_VIDEO_BOT_TOKEN is not configured" };
+
+  const escape = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: CHAT_ID,
+      message_thread_id: THREAD_ID,
+      parse_mode: "HTML",
+      text: `🏰 Вежа ${escape(towerId)} — ${escape(nickname)} 🔴<b>замовив дзеркало</b>`,
+      disable_notification: true,
+      disable_web_page_preview: true,
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+  if (!json.ok) {
+    console.error(`[mirror-notify] sendMessage failed [${res.status}] ${json.description ?? ""}`);
+    return { ok: false, error: json.description ?? "telegram-error" };
+  }
+  return { ok: true };
+}
