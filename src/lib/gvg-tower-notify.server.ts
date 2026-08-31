@@ -1,4 +1,6 @@
 // Sends a short technical message about a tower to the pinned Telegram topic.
+import { trackBotMessage } from "@/lib/gvg-bot-messages.server";
+
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
 
