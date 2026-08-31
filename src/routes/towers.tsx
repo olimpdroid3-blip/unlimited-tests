@@ -5,6 +5,8 @@ import { supabase } from "@/lib/db";
 import { AppHeader } from "@/components/AppHeader";
 import { Toaster } from "@/components/ui/sonner";
 import { TowerModal } from "@/components/TowerModal";
+import { MirrorOrderModal } from "@/components/MirrorOrderModal";
+import { isMirrorRow, MIRROR_PREFIX } from "@/lib/mirror-order";
 import * as Dialog from "@radix-ui/react-dialog";
 
 export const Route = createFileRoute("/towers")({
@@ -71,6 +73,7 @@ function HomePage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mirrorOpen, setMirrorOpen] = useState(false);
 
   const { data: towers = [], refetch } = useQuery({
     queryKey: ["towers"],
@@ -81,7 +84,11 @@ function HomePage() {
     },
   });
 
-  const map = new Map(towers.map((t) => [t.tower_id, t]));
+  const realTowers = towers.filter((t) => !isMirrorRow(t.tower_id));
+  const mirrorRequested = new Set(
+    towers.filter((t) => isMirrorRow(t.tower_id)).map((t) => t.tower_id.slice(MIRROR_PREFIX.length)),
+  );
+  const map = new Map(realTowers.map((t) => [t.tower_id, t]));
   const existing = selected ? map.get(selected) : undefined;
 
   const openTower = (id: string) => {
@@ -92,7 +99,7 @@ function HomePage() {
   const handleClearAll = async () => {
     setBusy(true);
     if (towers.length > 0) {
-      const archiveRows = towers.map((t) => ({
+      const archiveRows = realTowers.map((t) => ({
         tower_id: t.tower_id,
         nickname: t.nickname,
         awakenings: t.awakenings,
@@ -107,7 +114,7 @@ function HomePage() {
         setBusy(false);
         return;
       }
-      const screenshotPaths = towers
+      const screenshotPaths = realTowers
         .map((t) => t.screenshot_path)
         .filter((path): path is string => Boolean(path));
       if (screenshotPaths.length > 0) {
@@ -164,6 +171,7 @@ function HomePage() {
                       const tower = map.get(id);
                       const active = !!tower;
                       const breached = !!tower?.breached;
+                      const mirror = mirrorRequested.has(id);
                       return (
                         <button
                           key={id}
@@ -171,6 +179,7 @@ function HomePage() {
                           className={[
                             "relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-semibold transition-all duration-200 active:scale-95 sm:gap-2 sm:rounded-lg sm:px-3 sm:py-1.5 sm:text-sm",
                             "border",
+                            mirror ? "animate-mirror-blink" : "",
                             breached
                               ? "border-tower-breached/40 bg-tower-breached text-tower-breached-foreground shadow-[0_0_14px_-6px_var(--tower-breached)]"
                               : active
@@ -201,6 +210,14 @@ function HomePage() {
 
         {/* Bottom actions */}
         <div className="mt-4 flex flex-col gap-2">
+          <button
+            onClick={() => setMirrorOpen(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-mirror/40 bg-mirror/10 px-4 py-3 text-sm font-semibold text-mirror transition hover:bg-mirror/20"
+          >
+            <span>🪞</span>
+            <span>Замовити Дзеркало</span>
+          </button>
+
           <Link
             to="/archive"
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-card/50 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/10"
@@ -219,6 +236,12 @@ function HomePage() {
 
         </div>
       </main>
+
+      <MirrorOrderModal
+        open={mirrorOpen}
+        onOpenChange={setMirrorOpen}
+        onChanged={() => refetch()}
+      />
 
       <TowerModal
         towerId={selected}
