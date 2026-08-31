@@ -135,8 +135,16 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
 
         // Keep the pinned "Вежі" message alive in its dedicated topic.
         const pin = await import("@/lib/gvg-pinned-towers.server");
-        if (chatId === pin.PIN_CHAT_ID && (threadId ?? 0) === pin.PIN_THREAD_ID) {
+        const isTowerTopic = chatId === pin.PIN_CHAT_ID && (threadId ?? 0) === pin.PIN_THREAD_ID;
+        if (isTowerTopic) {
           await pin.ensurePinnedTowersMessage();
+        }
+
+        // Custom "/+" command: list active towers, then clean up old bot messages.
+        if (isTowerTopic && (message.text ?? "").trim() === "/+") {
+          const mod = await import("@/lib/gvg-tower-list.server");
+          const result = await mod.handleTowerListCommand();
+          return Response.json({ ok: true, handled: "tower-list", result });
         }
 
         const { supabaseAdmin } = await import("@/lib/db.server");

@@ -1,4 +1,6 @@
 // Sends a short technical message about a tower to the pinned Telegram topic.
+import { trackBotMessage } from "@/lib/gvg-bot-messages.server";
+
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
 
@@ -20,11 +22,16 @@ export async function notifyTowerToTelegram(
       disable_web_page_preview: true,
     }),
   });
-  const json = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+  const json = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    description?: string;
+    result?: { message_id?: number };
+  };
   if (!json.ok) {
     console.error(`[tower-notify] sendMessage failed [${res.status}] ${json.description ?? ""}`);
     return { ok: false, error: json.description ?? "telegram-error" };
   }
+  if (json.result?.message_id) await trackBotMessage(json.result.message_id, "tower");
   return { ok: true };
 }
 
@@ -61,6 +68,7 @@ export async function notifyMirrorOrderToTelegram(
     console.error(`[mirror-notify] sendMessage failed [${res.status}] ${json.description ?? ""}`);
     return { ok: false, error: json.description ?? "telegram-error" };
   }
+  if (json.result?.message_id) await trackBotMessage(json.result.message_id, "mirror");
   return { ok: true, messageId: json.result?.message_id };
 }
 
