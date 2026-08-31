@@ -36,21 +36,6 @@ const COLUMNS = [
   { num: 4, label: "IV", color: "text-col-iv" },
 ] as const;
 
-const ROWS: Array<[number, number]> = [
-  [1, 1],
-  [1, 2],
-  [2, 1],
-  [2, 2],
-  [3, 1],
-  [3, 2],
-  [4, 1],
-  [4, 2],
-  [5, 1],
-  [5, 2],
-  [6, 1],
-  [6, 2],
-];
-
 // Pairs of towers grouped visually: (r.1) + (r.2) in a bordered frame.
 const PAIRS: Array<[[number, number], [number, number]]> = [
   [
