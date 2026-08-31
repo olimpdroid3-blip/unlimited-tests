@@ -36,19 +36,32 @@ const COLUMNS = [
   { num: 4, label: "IV", color: "text-col-iv" },
 ] as const;
 
-const ROWS: Array<[number, number]> = [
-  [1, 1],
-  [1, 2],
-  [2, 1],
-  [2, 2],
-  [3, 1],
-  [3, 2],
-  [4, 1],
-  [4, 2],
-  [5, 1],
-  [5, 2],
-  [6, 1],
-  [6, 2],
+// Pairs of towers grouped visually: (r.1) + (r.2) in a bordered frame.
+const PAIRS: Array<[[number, number], [number, number]]> = [
+  [
+    [1, 1],
+    [1, 2],
+  ],
+  [
+    [2, 1],
+    [2, 2],
+  ],
+  [
+    [3, 1],
+    [3, 2],
+  ],
+  [
+    [4, 1],
+    [4, 2],
+  ],
+  [
+    [5, 1],
+    [5, 2],
+  ],
+  [
+    [6, 1],
+    [6, 2],
+  ],
 ];
 
 function HomePage() {
@@ -141,39 +154,46 @@ function HomePage() {
                 {col.label}
               </div>
               <div className="flex flex-col gap-1.5">
-                {ROWS.map(([r, s]) => {
-                  const id = `${col.num}.${r}.${s}`;
-                  const tower = map.get(id);
-                  const active = !!tower;
-                  const breached = !!tower?.breached;
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => openTower(id)}
-                      className={[
-                        "relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-semibold transition-all duration-200 active:scale-95 sm:gap-2 sm:rounded-lg sm:px-3 sm:py-1.5 sm:text-sm",
-                        "border",
-                        breached
-                          ? "border-tower-breached/40 bg-tower-breached text-tower-breached-foreground shadow-[0_0_14px_-6px_var(--tower-breached)]"
-                          : active
-                            ? "border-tower-active/40 bg-tower-active text-tower-active-foreground shadow-[0_0_14px_-6px_var(--tower-active)]"
-                            : "border-border bg-tower-idle text-tower-idle-text hover:text-foreground",
-                      ].join(" ")}
-                    >
-                      <span
-                        className={[
-                          "h-2 w-2 shrink-0 rounded-full sm:h-2.5 sm:w-2.5",
-                          breached
-                            ? "bg-tower-breached-foreground"
-                            : active
-                              ? "bg-tower-active-foreground"
-                              : "bg-muted-foreground/60",
-                        ].join(" ")}
-                      />
-                      <span className="font-mono tracking-wide">{id}</span>
-                    </button>
-                  );
-                })}
+                {PAIRS.map((pair, pIdx) => (
+                  <div
+                    key={pIdx}
+                    className="flex flex-col gap-1 rounded-lg border-2 border-border/50 p-1 sm:gap-1.5 sm:p-1.5"
+                  >
+                    {pair.map(([r, s]) => {
+                      const id = `${col.num}.${r}.${s}`;
+                      const tower = map.get(id);
+                      const active = !!tower;
+                      const breached = !!tower?.breached;
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => openTower(id)}
+                          className={[
+                            "relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-semibold transition-all duration-200 active:scale-95 sm:gap-2 sm:rounded-lg sm:px-3 sm:py-1.5 sm:text-sm",
+                            "border",
+                            breached
+                              ? "border-tower-breached/40 bg-tower-breached text-tower-breached-foreground shadow-[0_0_14px_-6px_var(--tower-breached)]"
+                              : active
+                                ? "border-tower-active/40 bg-tower-active text-tower-active-foreground shadow-[0_0_14px_-6px_var(--tower-active)]"
+                                : "border-border bg-tower-idle text-tower-idle-text hover:text-foreground",
+                          ].join(" ")}
+                        >
+                          <span
+                            className={[
+                              "h-2 w-2 shrink-0 rounded-full sm:h-2.5 sm:w-2.5",
+                              breached
+                                ? "bg-tower-breached-foreground"
+                                : active
+                                  ? "bg-tower-active-foreground"
+                                  : "bg-muted-foreground/60",
+                            ].join(" ")}
+                          />
+                          <span className="font-mono tracking-wide">{id}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </div>
           ))}
@@ -197,10 +217,6 @@ function HomePage() {
             <span>Видалити всі записи</span>
           </button>
 
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-card/40 px-4 py-2.5 text-xs text-muted-foreground">
-            <span className="text-base text-primary">ℹ</span>
-            <span>Максимум 12 записів у кожному стовпчику</span>
-          </div>
         </div>
       </main>
 
