@@ -197,10 +197,6 @@ function HomePage() {
             <span>Видалити всі записи</span>
           </button>
 
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-card/40 px-4 py-2.5 text-xs text-muted-foreground">
-            <span className="text-base text-primary">ℹ</span>
-            <span>Максимум 12 записів у кожному стовпчику</span>
-          </div>
         </div>
       </main>
 
