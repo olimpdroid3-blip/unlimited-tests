@@ -4,10 +4,24 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/db";
 import { toast } from "sonner";
 import { getNickCookie } from "@/lib/nickname";
-import { notifyTower } from "@/lib/tower-notify.functions";
+import { notifyTower, deleteTowerMessage } from "@/lib/tower-notify.functions";
 import { fileToDataUrl, uploadScreenshot } from "@/lib/screenshot-upload";
 import { HeroPicker, type HeroOption } from "@/components/HeroPicker";
 import { mirrorRowId } from "@/lib/mirror-order";
+
+// Reads the mirror-order marker row and, if it carries a Telegram message id
+// (stored as "tg:<id>" in notes), asks the bot to delete that message.
+async function deleteMirrorOrderMessage(towerId: string) {
+  const { data } = await supabase
+    .from("towers")
+    .select("notes")
+    .eq("tower_id", mirrorRowId(towerId))
+    .maybeSingle();
+  const match = data?.notes?.match(/^tg:(\d+)$/);
+  if (match) {
+    await deleteTowerMessage({ data: { messageId: Number(match[1]) } }).catch(() => {});
+  }
+}
 
 type Tower = {
   tower_id: string;
@@ -121,7 +135,9 @@ export function TowerModal({
         updated_at: new Date().toISOString(),
       });
       if (error) throw error;
-      // Filling the tower fulfils any pending mirror order.
+      // Filling the tower fulfils any pending mirror order: remove the bot's
+      // "замовив дзеркало" message and the marker row.
+      await deleteMirrorOrderMessage(towerId);
       await supabase.from("towers").delete().eq("tower_id", mirrorRowId(towerId));
       toast.success("Збережено");
       onChanged();
@@ -210,6 +226,7 @@ export function TowerModal({
     if (existing?.screenshot_path) {
       await supabase.storage.from("defense-screenshots").remove([existing.screenshot_path]);
     }
+    await deleteMirrorOrderMessage(towerId);
     await supabase.from("towers").delete().eq("tower_id", mirrorRowId(towerId));
     const { error } = await supabase.from("towers").delete().eq("tower_id", towerId);
     setBusy(false);
