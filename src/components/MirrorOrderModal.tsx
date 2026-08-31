@@ -54,14 +54,18 @@ export function MirrorOrderModal({
         if (error) throw error;
       }
 
+      const res = await notifyMirrorOrder({ data: { nickname: nickname.trim(), towerId } });
+
       const { error: mErr } = await supabase.from("towers").upsert({
         tower_id: mirrorRowId(towerId),
         nickname: nickname.trim(),
+        // The mirror row stores the bot's Telegram message id in `notes`
+        // so it can be deleted once the tower is filled in.
+        notes: res.ok && res.messageId ? `tg:${res.messageId}` : null,
         updated_at: new Date().toISOString(),
       });
       if (mErr) throw mErr;
 
-      const res = await notifyMirrorOrder({ data: { nickname: nickname.trim(), towerId } });
       if (!res.ok) toast.error("Замовлення збережено, але Telegram не відповів");
       else toast.success("Дзеркало замовлено");
 
