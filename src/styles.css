@@ -134,6 +134,9 @@
   --col-iv: oklch(0.72 0.16 310);
 
   --battle-power-high: oklch(0.78 0.14 205);
+
+  --mirror: oklch(0.86 0.2 135);
+  --color-mirror: var(--mirror);
 }
 
 @layer base {
@@ -158,5 +161,28 @@
     transition-property: color, background-color, border-color, outline-color, fill, stroke;
     transition-duration: 180ms;
     transition-timing-function: ease;
+  }
+}
+
+@keyframes mirror-blink {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--mirror) 0%, transparent);
+    border-color: color-mix(in oklch, var(--mirror) 45%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 14px 2px color-mix(in oklch, var(--mirror) 45%, transparent);
+    border-color: var(--mirror);
+  }
+}
+
+.animate-mirror-blink {
+  animation: mirror-blink 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-mirror-blink {
+    animation: none;
+    border-color: var(--mirror);
   }
 }
