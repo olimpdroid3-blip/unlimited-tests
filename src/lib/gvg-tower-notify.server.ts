@@ -83,6 +83,7 @@ export async function notifyMirrorOrderToTelegram(
       text: `🏰 Вежа ${escape(towerId)} — ${escape(nickname)} 🔴<b>замовив дзеркало</b>`,
       disable_notification: true,
       disable_web_page_preview: true,
+      reply_markup: TOWERS_KEYBOARD,
     }),
   });
   const json = (await res.json().catch(() => ({}))) as {
@@ -94,7 +95,10 @@ export async function notifyMirrorOrderToTelegram(
     console.error(`[mirror-notify] sendMessage failed [${res.status}] ${json.description ?? ""}`);
     return { ok: false, error: json.description ?? "telegram-error" };
   }
-  if (json.result?.message_id) await trackBotMessage(json.result.message_id, "mirror");
+  if (json.result?.message_id) {
+    await clearOldTowerButtons(json.result.message_id);
+    await trackBotMessage(json.result.message_id, "mirror");
+  }
   return { ok: true, messageId: json.result?.message_id };
 }
 
