@@ -42,6 +42,7 @@ export async function notifyTowerToTelegram(
       text: `🏰 Вежа ${towerId} — ${nickname}`,
       disable_notification: true,
       disable_web_page_preview: true,
+      reply_markup: TOWERS_KEYBOARD,
     }),
   });
   const json = (await res.json().catch(() => ({}))) as {
