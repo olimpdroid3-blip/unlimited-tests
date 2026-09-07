@@ -54,7 +54,10 @@ export async function notifyTowerToTelegram(
     console.error(`[tower-notify] sendMessage failed [${res.status}] ${json.description ?? ""}`);
     return { ok: false, error: json.description ?? "telegram-error" };
   }
-  if (json.result?.message_id) await trackBotMessage(json.result.message_id, "tower");
+  if (json.result?.message_id) {
+    await clearOldTowerButtons(json.result.message_id);
+    await trackBotMessage(json.result.message_id, "tower");
+  }
   return { ok: true };
 }
 
