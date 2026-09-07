@@ -38,6 +38,12 @@ export async function trackBotMessage(messageId: number, kind: BotMessageKind): 
   await writeState(state);
 }
 
+/** Ids of all tracked bot messages, oldest first. */
+export async function listBotMessages(): Promise<number[]> {
+  const state = await readState();
+  return state.messages.map((m) => m.message_id);
+}
+
 /** Returns tracked ids and clears the list except for the ids in `keep`. */
 export async function drainBotMessages(keep: number[] = []): Promise<number[]> {
   const state = await readState();

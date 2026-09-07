@@ -1,8 +1,30 @@
 // Sends a short technical message about a tower to the pinned Telegram topic.
-import { trackBotMessage } from "@/lib/gvg-bot-messages.server";
+import { listBotMessages, trackBotMessage } from "@/lib/gvg-bot-messages.server";
+import { TOWERS_URL } from "@/lib/gvg-pinned-towers.server";
 
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
+
+// The towers button must sit under the latest bot message only.
+export const TOWERS_KEYBOARD = {
+  inline_keyboard: [[{ text: "🏰 Вежі — Дзеркала", url: TOWERS_URL }]],
+};
+
+/** Removes the button from every older tracked bot message. */
+export async function clearOldTowerButtons(exceptId?: number): Promise<void> {
+  const token = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
+  if (!token) return;
+  const ids = await listBotMessages();
+  for (const id of ids) {
+    if (id === exceptId) continue;
+    await fetch(`https://api.telegram.org/bot${token}/editMessageReplyMarkup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: CHAT_ID, message_id: id, reply_markup: {} }),
+    }).catch(() => undefined);
+  }
+}
+
 
 export async function notifyTowerToTelegram(
   nickname: string,
@@ -20,6 +42,7 @@ export async function notifyTowerToTelegram(
       text: `🏰 Вежа ${towerId} — ${nickname}`,
       disable_notification: true,
       disable_web_page_preview: true,
+      reply_markup: TOWERS_KEYBOARD,
     }),
   });
   const json = (await res.json().catch(() => ({}))) as {
@@ -31,7 +54,10 @@ export async function notifyTowerToTelegram(
     console.error(`[tower-notify] sendMessage failed [${res.status}] ${json.description ?? ""}`);
     return { ok: false, error: json.description ?? "telegram-error" };
   }
-  if (json.result?.message_id) await trackBotMessage(json.result.message_id, "tower");
+  if (json.result?.message_id) {
+    await clearOldTowerButtons(json.result.message_id);
+    await trackBotMessage(json.result.message_id, "tower");
+  }
   return { ok: true };
 }
 
@@ -57,6 +83,7 @@ export async function notifyMirrorOrderToTelegram(
       text: `🏰 Вежа ${escape(towerId)} — ${escape(nickname)} 🔴<b>замовив дзеркало</b>`,
       disable_notification: true,
       disable_web_page_preview: true,
+      reply_markup: TOWERS_KEYBOARD,
     }),
   });
   const json = (await res.json().catch(() => ({}))) as {
@@ -68,7 +95,10 @@ export async function notifyMirrorOrderToTelegram(
     console.error(`[mirror-notify] sendMessage failed [${res.status}] ${json.description ?? ""}`);
     return { ok: false, error: json.description ?? "telegram-error" };
   }
-  if (json.result?.message_id) await trackBotMessage(json.result.message_id, "mirror");
+  if (json.result?.message_id) {
+    await clearOldTowerButtons(json.result.message_id);
+    await trackBotMessage(json.result.message_id, "mirror");
+  }
   return { ok: true, messageId: json.result?.message_id };
 }
 
