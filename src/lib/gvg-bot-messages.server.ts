@@ -59,3 +59,10 @@ export async function drainBotMessages(keep: number[] = []): Promise<number[]> {
   await writeState({ messages: remaining });
   return toDelete;
 }
+
+/** Replaces the tracked list with exactly these ids (no read-modify-write race). */
+export async function setBotMessages(ids: number[], kind: BotMessageKind): Promise<void> {
+  await writeState({
+    messages: ids.map((message_id) => ({ message_id, kind, at: new Date().toISOString() })),
+  });
+}
