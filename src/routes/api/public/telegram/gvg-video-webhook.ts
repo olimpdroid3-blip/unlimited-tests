@@ -140,6 +140,14 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
           await pin.ensurePinnedTowersMessage();
         }
 
+        // Keep the pinned "БС" message alive in its dedicated topic (and do
+        // nothing else there).
+        const bpPin = await import("@/lib/gvg-pinned-bp.server");
+        if (chatId === bpPin.BP_CHAT_ID && (threadId ?? 0) === bpPin.BP_THREAD_ID) {
+          await bpPin.ensurePinnedBpMessage();
+          return Response.json({ ok: true, handled: "pinned-bp" });
+        }
+
         // Custom "/+" command: list active towers, then clean up old bot messages.
         if (isTowerTopic && (message.text ?? "").trim() === "/+") {
           const mod = await import("@/lib/gvg-tower-list.server");
