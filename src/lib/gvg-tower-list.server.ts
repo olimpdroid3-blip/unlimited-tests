@@ -95,10 +95,12 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
   const newId = json.result.message_id;
   // Delete every previously tracked bot message, keep only the fresh list.
   const stale = await drainBotMessages([newId]);
+  console.log(`[tower-list] deleting ${stale.length} stale bot messages`);
   for (const id of stale) {
     await deleteTelegramMessage(id);
   }
-  await trackBotMessage(newId, "list");
+  // Single authoritative write so a stale read can never resurrect old ids.
+  await setBotMessages([newId], "list");
 
   return { ok: true };
 }
