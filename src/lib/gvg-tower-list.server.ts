@@ -3,7 +3,7 @@
 import { supabaseAdmin } from "@/lib/db.server";
 import { isMirrorRow, MIRROR_PREFIX } from "@/lib/mirror-order";
 import { deleteTelegramMessage } from "@/lib/gvg-tower-notify.server";
-import { drainBotMessages, trackBotMessage } from "@/lib/gvg-bot-messages.server";
+import { drainBotMessages, setBotMessages } from "@/lib/gvg-bot-messages.server";
 import { TOWERS_URL } from "@/lib/gvg-pinned-towers.server";
 
 const CHAT_ID = -1003978316922;
