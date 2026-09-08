@@ -10,11 +10,17 @@ export type BotMessageKind = "tower" | "mirror" | "list";
 type TrackedMessage = { message_id: number; kind: BotMessageKind; at: string };
 type State = { messages: TrackedMessage[] };
 
+// Storage downloads go through a CDN cache, which used to return a stale list
+// of tracked messages. Read through a signed URL with cache busting instead.
 async function readState(): Promise<State> {
-  const { data, error } = await supabaseAdmin.storage.from(STATE_BUCKET).download(STATE_PATH);
-  if (error || !data) return { messages: [] };
   try {
-    const parsed = JSON.parse(await data.text()) as State;
+    const { data, error } = await supabaseAdmin.storage
+      .from(STATE_BUCKET)
+      .createSignedUrl(STATE_PATH, 60);
+    if (error || !data?.signedUrl) return { messages: [] };
+    const res = await fetch(`${data.signedUrl}&_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return { messages: [] };
+    const parsed = (await res.json()) as State;
     return { messages: Array.isArray(parsed.messages) ? parsed.messages : [] };
   } catch {
     return { messages: [] };
