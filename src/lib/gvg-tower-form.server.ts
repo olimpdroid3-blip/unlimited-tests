@@ -490,15 +490,45 @@ async function submitForm(form: TowerForm): Promise<void> {
   await wipeForm(marked);
 }
 
-/** Handles the workflow inline buttons (callback_data prefixed with "tw|"). */
+/**
+ * Handles the pinned panel buttons ("tower:add" / "tower:list") and the
+ * workflow inline buttons (callback_data prefixed with "tw|").
+ */
 export async function handleTowerFormCallback(cb: {
   id: string;
   data?: string;
   from?: { id?: number };
   message?: { chat?: { id?: number }; message_thread_id?: number };
 }): Promise<boolean> {
-  const parts = (cb.data ?? "").split("|");
+  const data = (cb.data ?? "").trim();
+
+  if (data === CB_TOWER_ADD || data === CB_TOWER_LIST) {
+    const panelChatId = cb.message?.chat?.id ?? null;
+    // The pinned panel lives only in the towers chat.
+    if (panelChatId !== TOWER_CHAT_ID) {
+      await answer(cb.id);
+      return true;
+    }
+    if (data === CB_TOWER_LIST) {
+      await answer(cb.id);
+      await sweepExpiredForms();
+      await handleTowerListCommand();
+      return true;
+    }
+    const userId = cb.from?.id;
+    if (!userId) {
+      await answer(cb.id);
+      return true;
+    }
+    // Same workflow as the old reply-keyboard button, without a trigger message.
+    await answer(cb.id);
+    await startTowerForm(panelChatId, userId);
+    return true;
+  }
+
+  const parts = data.split("|");
   if (parts[0] !== "tw") return false;
+
   const [, action, shortId] = parts;
   if (!shortId) {
     await answer(cb.id);
