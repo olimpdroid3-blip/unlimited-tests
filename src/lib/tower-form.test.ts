@@ -5,8 +5,13 @@ import { normalizeTowerId } from "./mirror-order.ts";
 import {
   BTN_ADD,
   BTN_LIST,
+  BTN_MIRRORS,
   buildSummary,
+  buildTowerPanelKeyboard,
   canConfirm,
+  CB_TOWER_ADD,
+  CB_TOWER_LIST,
+  REMOVE_REPLY_KEYBOARD,
   collectFormMessageIds,
   isFormExpired,
   isTowerWorkflowThread,
@@ -66,11 +71,30 @@ test("thread 4 is update-only and never accepts the button captions", () => {
   }
 });
 
-test("reply keyboard has two persistent buttons in one row", () => {
-  assert.deepEqual(TOWER_REPLY_KEYBOARD.keyboard, [[{ text: BTN_ADD }, { text: BTN_LIST }]]);
-  assert.equal(TOWER_REPLY_KEYBOARD.resize_keyboard, true);
-  assert.equal(TOWER_REPLY_KEYBOARD.is_persistent, true);
+test("pinned panel has exactly three buttons in one row", () => {
+  const kb = buildTowerPanelKeyboard("https://example.com/towers");
+  assert.equal(kb.inline_keyboard.length, 1);
+  assert.deepEqual(kb.inline_keyboard[0], [
+    { text: BTN_ADD, callback_data: CB_TOWER_ADD },
+    { text: BTN_LIST, callback_data: CB_TOWER_LIST },
+    { text: BTN_MIRRORS, url: "https://example.com/towers" },
+  ]);
 });
+
+test("panel callback data is stable and distinct from the form prefix", () => {
+  assert.equal(CB_TOWER_ADD, "tower:add");
+  assert.equal(CB_TOWER_LIST, "tower:list");
+  for (const data of [CB_TOWER_ADD, CB_TOWER_LIST]) {
+    assert.equal(data.split("|")[0] === "tw", false);
+    assert.ok(Buffer.byteLength(data) <= 64);
+  }
+});
+
+test("the legacy reply keyboard can still be removed from old clients", () => {
+  assert.deepEqual(REMOVE_REPLY_KEYBOARD, { remove_keyboard: true });
+  assert.deepEqual(TOWER_REPLY_KEYBOARD.keyboard, [[{ text: BTN_ADD }, { text: BTN_LIST }]]);
+});
+
 
 test("non-admins cannot start the form", () => {
   assert.equal(resolveAdminNickname({ status: "member", custom_title: "Fakra" }).ok, false);
