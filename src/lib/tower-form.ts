@@ -10,23 +10,24 @@ export const TOWER_UPDATE_THREAD_ID = 4;
 export const BTN_ADD = "➕ Додати";
 export const BTN_LIST = "🏰 Всі вежі";
 export const BTN_MIRRORS = "Вежі — Дзеркала";
+/** Third reply-keyboard button: gives the link to the mirrors page. */
+export const BTN_MIRROR_KB = "🪞 Дзеркало";
 
 /** Callback data of the pinned inline control panel. */
 export const CB_TOWER_ADD = "tower:add";
 export const CB_TOWER_LIST = "tower:list";
 
 /**
- * Legacy reply keyboard. Telegram Android hides it after leaving/re-entering a
- * forum topic, so the pinned inline panel replaced it. Kept only so the old
- * keyboard can be removed from clients that still show it.
+ * Permanent bottom reply keyboard for the towers topic. It is re-sent with
+ * every fresh tower list so clients that dropped it get it back. It is never
+ * removed by the bot.
  */
 export const TOWER_REPLY_KEYBOARD = {
-  keyboard: [[{ text: BTN_ADD }, { text: BTN_LIST }]],
+  keyboard: [[{ text: BTN_ADD }, { text: BTN_LIST }], [{ text: BTN_MIRROR_KB }]],
   resize_keyboard: true,
   is_persistent: true,
 };
 
-export const REMOVE_REPLY_KEYBOARD = { remove_keyboard: true };
 
 /**
  * The permanent tower control panel: three inline buttons in one row.
