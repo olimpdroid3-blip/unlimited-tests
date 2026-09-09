@@ -249,7 +249,21 @@ export function TowerModal({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content className={`fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2 duration-200 ${lightboxOpen ? "pointer-events-none" : ""}`}>
+        <Dialog.Content
+          onInteractOutside={(e) => {
+            // The lightbox overlay is a sibling of this content inside the same
+            // portal; Radix would otherwise treat taps on it as "outside" and
+            // dismiss the whole tower modal. Suppress that while it's open.
+            if (lightboxOpen) e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            // Let Escape close the lightbox first, not the modal.
+            if (lightboxOpen) {
+              e.preventDefault();
+              setLightboxOpen(false);
+            }
+          }}
+          className={`fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2 duration-200 ${lightboxOpen ? "pointer-events-none" : ""}`}>
           <div className="flex items-start justify-between gap-2">
             <Dialog.Title className="text-lg font-semibold text-foreground">
               🏰 Башня {towerId}
@@ -497,39 +511,29 @@ export function TowerModal({
             role="dialog"
             aria-modal="true"
             aria-label={`Скріншот розстановки вежі ${towerId}`}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              if (e.target === e.currentTarget) setLightboxOpen(false);
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              // Close only when tapping the backdrop (target === currentTarget).
-              if (e.target === e.currentTarget) setLightboxOpen(false);
-            }}
-            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-2 sm:p-6"
+            // Any tap outside the picture closes the lightbox. We close on
+            // click (not pointerdown): the lightbox is still mounted when the
+            // click fires, so the event cannot leak to the tower dialog's
+            // overlay below and accidentally close the whole modal. The inner
+            // image wrapper stops propagation so taps directly on the picture
+            // do nothing.
+            onClick={() => setLightboxOpen(false)}
+            className="pointer-events-auto fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-2 sm:p-6"
             style={{ touchAction: "manipulation" }}
           >
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setLightboxOpen(false);
-              }}
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                setLightboxOpen(false);
-              }}
-              aria-label="Закрити перегляд"
-              className="mb-3 flex min-h-14 w-full max-w-md touch-manipulation select-none items-center justify-center gap-2 rounded-xl bg-white/15 px-6 py-4 text-lg font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-white/25 active:scale-95"
-            >
-              <span className="text-2xl leading-none">×</span>
-              <span>Закрити</span>
-            </button>
             <div
-              className="relative flex max-h-full max-w-full items-center justify-center"
-              onPointerDown={(e) => e.stopPropagation()}
+              className="relative flex max-h-full max-w-full flex-col items-center"
               onClick={(e) => e.stopPropagation()}
             >
+              <button
+                type="button"
+                onClick={() => setLightboxOpen(false)}
+                aria-label="Закрити перегляд"
+                className="mb-3 flex min-h-14 w-full touch-manipulation select-none items-center justify-center gap-2 rounded-xl bg-white/15 px-6 py-4 text-lg font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-white/25 active:scale-95"
+              >
+                <span className="text-2xl leading-none">×</span>
+                <span>Закрити</span>
+              </button>
               <img
                 src={shownImage}
                 alt={`Розстановка вежі ${towerId}`}
