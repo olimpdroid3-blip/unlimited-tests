@@ -485,6 +485,30 @@ export function TowerModal({
             </button>
           </Dialog.Close>
         </Dialog.Content>
+        {lightboxOpen && shownImage && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Скріншот розстановки вежі ${towerId}`}
+            onClick={() => setLightboxOpen(false)}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-2 sm:p-6"
+          >
+            <img
+              src={shownImage}
+              alt={`Розстановка вежі ${towerId}`}
+              onClick={(e) => e.stopPropagation()}
+              className="max-h-full max-w-full object-contain"
+            />
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(false)}
+              aria-label="Закрити перегляд"
+              className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-xl text-white transition hover:bg-black/80"
+            >
+              ×
+            </button>
+          </div>
+        )}
       </Dialog.Portal>
     </Dialog.Root>
   );
