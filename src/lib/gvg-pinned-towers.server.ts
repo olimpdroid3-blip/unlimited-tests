@@ -6,9 +6,9 @@ export const PIN_CHAT_ID = -1003978316922;
 export const PIN_THREAD_ID = 8;
 export const TOWERS_URL = "https://unlimited-tests.lovable.app/towers";
 
-// Telegram requires non-empty text; keep it to a single glyph so the pinned
-// panel is just the three buttons.
-const PIN_TEXT = "🏰";
+// Telegram requires non-empty text. An invisible separator keeps the pinned
+// panel visually limited to the three buttons.
+const PIN_TEXT = "\u2063";
 
 const STATE_BUCKET = "defense-screenshots";
 const STATE_PATH = "bot-state/pinned-towers.json";
@@ -89,11 +89,14 @@ async function unpin(messageId: number): Promise<void> {
 }
 
 async function pin(messageId: number): Promise<void> {
-  await call("pinChatMessage", {
+  const result = await call("pinChatMessage", {
     chat_id: PIN_CHAT_ID,
     message_id: messageId,
     disable_notification: true,
   });
+  if (!result.ok) {
+    throw new Error(`Could not pin towers panel: ${result.description ?? "unknown"}`);
+  }
 }
 
 let lastCheck = 0;
