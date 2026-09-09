@@ -10,7 +10,11 @@ export const TOWERS_URL = "https://unlimited-tests.lovable.app/towers";
 // panel is just the three buttons.
 const PIN_TEXT = "🏰";
 
+const STATE_BUCKET = "defense-screenshots";
+const STATE_PATH = "bot-state/pinned-towers.json";
+
 type PinState = { chat_id: number; thread_id: number; message_id: number; updated_at: string };
+
 
 
 function api(path: string): string {
@@ -59,7 +63,7 @@ async function writeState(state: PinState): Promise<void> {
   if (error) console.error("[gvg-pin] state write failed", error.message);
 }
 
-const keyboard = { inline_keyboard: [[{ text: BUTTON_TEXT, url: TOWERS_URL }]] };
+const keyboard = buildTowerPanelKeyboard(TOWERS_URL);
 
 /** Returns true when the stored message still exists in the topic. */
 async function messageExists(messageId: number): Promise<boolean> {
