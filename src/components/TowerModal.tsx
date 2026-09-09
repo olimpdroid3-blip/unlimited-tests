@@ -518,7 +518,7 @@ export function TowerModal({
             // image wrapper stops propagation so taps directly on the picture
             // do nothing.
             onClick={() => setLightboxOpen(false)}
-            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-2 sm:p-6"
+            className="pointer-events-auto fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-2 sm:p-6"
             style={{ touchAction: "manipulation" }}
           >
             <div
