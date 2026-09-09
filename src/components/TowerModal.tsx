@@ -68,6 +68,7 @@ export function TowerModal({
   const [mobSlots, setMobSlots] = useState<Array<string | null>>([null, null, null, null, null]);
   const [savingDefense, setSavingDefense] = useState(false);
   const [sendingTg, setSendingTg] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const { data: heroes = [] } = useQuery({
     queryKey: ["heroes"],
@@ -480,12 +481,14 @@ export function TowerModal({
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  // Not a <label>: nested interactive elements (thumbnail, buttons) must not
+  // implicitly activate a wrapped file input.
   return (
-    <label className="block">
+    <div className="block">
       <div className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
       {children}
-    </label>
+    </div>
   );
 }
