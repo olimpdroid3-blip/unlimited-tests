@@ -28,10 +28,9 @@ import {
 } from "@/lib/tower-form";
 
 const STATE_BUCKET = "defense-screenshots";
-const STATE_PATH = "bot-state/tower-forms.json";
+// One state object per workflow, so parallel forms never clash.
+const STATE_DIR = "bot-state/tower-forms";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
-
-type FormState = { forms: TowerForm[] };
 
 /* ---------------- Telegram API ---------------- */
 
@@ -90,59 +89,117 @@ async function answer(callbackId: string, text?: string): Promise<void> {
   await tg("answerCallbackQuery", { callback_query_id: callbackId, text: text ?? "" });
 }
 
-/* ---------------- State ---------------- */
+/* ---------------- State ----------------
+ * One JSON object per workflow: bot-state/tower-forms/<user_id>__<form_id>.json
+ * Two admins filling the form at the same time write different objects, so
+ * concurrent workflows can never overwrite each other.
+ */
 
-async function readState(): Promise<FormState> {
+function formPath(form: Pick<TowerForm, "id" | "user_id">): string {
+  return `${STATE_DIR}/${form.user_id}__${form.id}.json`;
+}
+
+async function listFormFiles(): Promise<string[]> {
+  const { data, error } = await supabaseAdmin.storage.from(STATE_BUCKET).list(STATE_DIR, {
+    limit: 200,
+  });
+  if (error) {
+    console.error("[tower-form] state list failed", error.message);
+    return [];
+  }
+  return (data ?? []).map((f) => f.name).filter((n) => n.endsWith(".json"));
+}
+
+async function readFormFile(name: string): Promise<TowerForm | null> {
   try {
     const { data, error } = await supabaseAdmin.storage
       .from(STATE_BUCKET)
-      .createSignedUrl(STATE_PATH, 60);
-    if (error || !data?.signedUrl) return { forms: [] };
+      .createSignedUrl(`${STATE_DIR}/${name}`, 60);
+    if (error || !data?.signedUrl) return null;
     const res = await fetch(`${data.signedUrl}&_=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) return { forms: [] };
-    const parsed = (await res.json()) as FormState;
-    return { forms: Array.isArray(parsed.forms) ? parsed.forms : [] };
+    if (!res.ok) return null;
+    const parsed = (await res.json()) as TowerForm;
+    return parsed && typeof parsed.id === "string" ? parsed : null;
   } catch {
-    return { forms: [] };
+    return null;
   }
 }
 
-async function writeState(state: FormState): Promise<void> {
+async function saveForm(form: TowerForm): Promise<void> {
   const { error } = await supabaseAdmin.storage
     .from(STATE_BUCKET)
-    .upload(STATE_PATH, new Blob([JSON.stringify(state)], { type: "application/json" }), {
+    .upload(formPath(form), new Blob([JSON.stringify(form)], { type: "application/json" }), {
       upsert: true,
       contentType: "application/json",
     });
   if (error) console.error("[tower-form] state write failed", error.message);
 }
 
-/** Live forms only; expired ones are dropped (TTL auto-cancel). */
+async function dropForm(form: Pick<TowerForm, "id" | "user_id">): Promise<void> {
+  const { error } = await supabaseAdmin.storage.from(STATE_BUCKET).remove([formPath(form)]);
+  if (error) console.error("[tower-form] state remove failed", error.message);
+}
+
+/**
+ * TTL auto-cancel: an abandoned form is treated exactly like "❌ Скасувати" —
+ * its own screenshot and its own messages are removed, then the state file.
+ * Nothing outside that single workflow is touched.
+ */
+async function expireForm(form: TowerForm): Promise<void> {
+  await removeUploadedScreenshot(form);
+  for (const id of collectFormMessageIds(form)) {
+    await del(form.chat_id, id);
+  }
+  await dropForm(form);
+}
+
+/** Reads every live form, auto-cancelling expired ones on the way. */
 async function loadForms(): Promise<TowerForm[]> {
-  const state = await readState();
-  const live = state.forms.filter((f) => !isFormExpired(f));
-  if (live.length !== state.forms.length) await writeState({ forms: live });
+  const names = await listFormFiles();
+  const live: TowerForm[] = [];
+  for (const name of names) {
+    const form = await readFormFile(name);
+    if (!form) continue;
+    if (isFormExpired(form)) {
+      await expireForm(form);
+      continue;
+    }
+    live.push(form);
+  }
   return live;
 }
 
-async function saveForm(form: TowerForm): Promise<void> {
-  const forms = await loadForms();
-  await writeState({ forms: [...forms.filter((f) => f.id !== form.id), form] });
-}
-
-async function dropForm(id: string): Promise<void> {
-  const forms = await loadForms();
-  await writeState({ forms: forms.filter((f) => f.id !== id) });
-}
-
 async function findFormByUser(userId: number): Promise<TowerForm | null> {
-  const forms = await loadForms();
-  return forms.find((f) => f.user_id === userId) ?? null;
+  const names = (await listFormFiles()).filter((n) => n.startsWith(`${userId}__`));
+  for (const name of names) {
+    const form = await readFormFile(name);
+    if (!form) continue;
+    if (isFormExpired(form)) {
+      await expireForm(form);
+      continue;
+    }
+    return form;
+  }
+  return null;
 }
 
 async function findFormById(shortId: string): Promise<TowerForm | null> {
-  const forms = await loadForms();
-  return forms.find((f) => f.id.startsWith(shortId)) ?? null;
+  const names = (await listFormFiles()).filter((n) => n.includes(`__${shortId}`));
+  for (const name of names) {
+    const form = await readFormFile(name);
+    if (!form) continue;
+    if (isFormExpired(form)) {
+      await expireForm(form);
+      continue;
+    }
+    if (form.id.startsWith(shortId)) return form;
+  }
+  return null;
+}
+
+/** Best-effort sweep so abandoned forms never linger in Storage. */
+async function sweepExpiredForms(): Promise<void> {
+  await loadForms();
 }
 
 /* ---------------- Helpers ---------------- */
@@ -181,7 +238,7 @@ async function wipeForm(form: TowerForm): Promise<void> {
   for (const id of collectFormMessageIds(form)) {
     await del(form.chat_id, id);
   }
-  await dropForm(form.id);
+  await dropForm(form);
 }
 
 async function removeUploadedScreenshot(form: TowerForm): Promise<void> {
@@ -329,6 +386,8 @@ export async function handleTowerWorkflowMessage(message: {
 
   if (text === BTN_LIST) {
     if (message.message_id) await del(chatId, message.message_id);
+    // Good moment to auto-cancel any abandoned form.
+    await sweepExpiredForms();
     await handleTowerListCommand();
     return true;
   }
@@ -489,10 +548,10 @@ export async function handleTowerFormCallback(cb: {
 
 /** Sends a one-off message that installs the persistent reply keyboard. */
 export async function installTowerKeyboard(): Promise<{ ok: boolean; message_id: number | null }> {
-  const id = await send(
-    TOWER_CHAT_ID,
-    "🏰 Керування вежами: скористайтесь кнопками нижче.",
-    TOWER_REPLY_KEYBOARD,
-  );
+  // Telegram can only attach a reply keyboard to a message, so this sends the
+  // smallest possible carrier — and it is deleted right away, the keyboard
+  // stays because it is chat-level and persistent.
+  const id = await send(TOWER_CHAT_ID, "🏰", TOWER_REPLY_KEYBOARD);
+  if (id) await del(TOWER_CHAT_ID, id);
   return { ok: id !== null, message_id: id };
 }
