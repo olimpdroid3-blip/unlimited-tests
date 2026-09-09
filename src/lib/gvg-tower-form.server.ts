@@ -11,6 +11,8 @@ import {
   BTN_LIST,
   buildSummary,
   canConfirm,
+  CB_TOWER_ADD,
+  CB_TOWER_LIST,
   CANCELLED_TEXT,
   collectFormMessageIds,
   FORM_TTL_MS,
@@ -22,7 +24,7 @@ import {
   STEP_POSITION_TEXT,
   STEP_SCREENSHOT_TEXT,
   TOWER_CHAT_ID,
-  TOWER_REPLY_KEYBOARD,
+  REMOVE_REPLY_KEYBOARD,
   TOWER_WORK_THREAD_ID,
   type TowerForm,
 } from "@/lib/tower-form";
@@ -294,18 +296,25 @@ async function storeTelegramPhoto(
 
 /* ---------------- Workflow ---------------- */
 
-async function startForm(
+/**
+ * Starts the step-by-step add form. Called both from the (legacy) reply
+ * keyboard text button and from the pinned inline panel, where there is no
+ * trigger message to clean up.
+ */
+export async function startTowerForm(
   chatId: number,
   userId: number,
-  triggerMessageId: number | undefined,
+  triggerMessageId?: number,
 ): Promise<void> {
+
   const member = await tg<{ status?: string; custom_title?: string }>("getChatMember", {
     chat_id: chatId,
     user_id: userId,
   });
   const resolved = resolveAdminNickname(member.ok ? member.result : null);
   if (!resolved.ok) {
-    const warnId = await send(chatId, resolved.error, TOWER_REPLY_KEYBOARD);
+    const warnId = await send(chatId, resolved.error);
+
     // Keep the topic tidy: the refusal and the tap disappear shortly after.
     if (triggerMessageId) await del(chatId, triggerMessageId);
     if (warnId) setTimeout(() => void del(chatId, warnId), 15_000);
@@ -340,10 +349,11 @@ async function startForm(
   };
   await saveForm(form);
 
-  // First message re-installs the persistent reply keyboard, the second one
-  // carries the step prompt with its inline "Скасувати" button.
-  const greetId = await send(chatId, `👤 ${resolved.nickname}`, { ...TOWER_REPLY_KEYBOARD });
+  // Greeting confirms whose form it is; the next message carries the step
+  // prompt with its inline "Скасувати" button.
+  const greetId = await send(chatId, `👤 ${resolved.nickname}`);
   form = await trackBot(form, greetId);
+
   const promptId = await send(chatId, STEP_POSITION_TEXT, keyboardFor("position", id.slice(0, 8)));
   await trackBot(form, promptId);
 }
@@ -393,7 +403,7 @@ export async function handleTowerWorkflowMessage(message: {
   }
 
   if (text === BTN_ADD) {
-    await startForm(chatId, userId, message.message_id);
+    await startTowerForm(chatId, userId, message.message_id);
     return true;
   }
 
@@ -482,15 +492,45 @@ async function submitForm(form: TowerForm): Promise<void> {
   await wipeForm(marked);
 }
 
-/** Handles the workflow inline buttons (callback_data prefixed with "tw|"). */
+/**
+ * Handles the pinned panel buttons ("tower:add" / "tower:list") and the
+ * workflow inline buttons (callback_data prefixed with "tw|").
+ */
 export async function handleTowerFormCallback(cb: {
   id: string;
   data?: string;
   from?: { id?: number };
   message?: { chat?: { id?: number }; message_thread_id?: number };
 }): Promise<boolean> {
-  const parts = (cb.data ?? "").split("|");
+  const data = (cb.data ?? "").trim();
+
+  if (data === CB_TOWER_ADD || data === CB_TOWER_LIST) {
+    const panelChatId = cb.message?.chat?.id ?? null;
+    // The pinned panel lives only in the towers chat.
+    if (panelChatId !== TOWER_CHAT_ID) {
+      await answer(cb.id);
+      return true;
+    }
+    if (data === CB_TOWER_LIST) {
+      await answer(cb.id);
+      await sweepExpiredForms();
+      await handleTowerListCommand();
+      return true;
+    }
+    const userId = cb.from?.id;
+    if (!userId) {
+      await answer(cb.id);
+      return true;
+    }
+    // Same workflow as the old reply-keyboard button, without a trigger message.
+    await answer(cb.id);
+    await startTowerForm(panelChatId, userId);
+    return true;
+  }
+
+  const parts = data.split("|");
   if (parts[0] !== "tw") return false;
+
   const [, action, shortId] = parts;
   if (!shortId) {
     await answer(cb.id);
@@ -546,12 +586,25 @@ export async function handleTowerFormCallback(cb: {
   return true;
 }
 
-/** Manual fallback: re-installs the persistent reply keyboard in the topic. */
+/**
+ * Maintenance endpoint: makes sure the pinned inline panel exists and clears
+ * the obsolete reply keyboard from clients that still show it. The carrier of
+ * ReplyKeyboardRemove is deleted right away, so no garbage stays in the topic.
+ */
 export async function installTowerKeyboard(): Promise<{ ok: boolean; message_id: number | null }> {
-  // The reliable carrier is the fresh "🏰 Вежі" list itself, which always
-  // carries TOWER_REPLY_KEYBOARD — no throwaway "send and delete" message,
-  // so no chat garbage and the keyboard can't vanish with a deleted carrier.
-  const { handleTowerListCommand } = await import("@/lib/gvg-tower-list.server");
-  const result = await handleTowerListCommand();
-  return { ok: result.ok, message_id: null };
+  const { ensurePinnedTowersMessage } = await import("@/lib/gvg-pinned-towers.server");
+  const pinned = await ensurePinnedTowersMessage(true);
+
+  const res = await tg<{ message_id?: number }>("sendMessage", {
+    chat_id: TOWER_CHAT_ID,
+    message_thread_id: TOWER_WORK_THREAD_ID,
+    text: "🏰",
+    disable_notification: true,
+    reply_markup: REMOVE_REPLY_KEYBOARD,
+  });
+  const carrier = res.result?.message_id ?? null;
+  if (carrier) await del(TOWER_CHAT_ID, carrier);
+
+  return { ok: pinned.message_id !== null, message_id: pinned.message_id };
 }
+

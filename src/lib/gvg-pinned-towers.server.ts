@@ -1,17 +1,21 @@
-// Keeps a single pinned message with a link to the "Вежі" page inside one forum topic.
+// Keeps a single pinned control panel (inline buttons only) in one forum topic.
 import { supabaseAdmin } from "@/lib/db.server";
+import { buildTowerPanelKeyboard } from "@/lib/tower-form";
 
 export const PIN_CHAT_ID = -1003978316922;
 export const PIN_THREAD_ID = 8;
 export const TOWERS_URL = "https://unlimited-tests.lovable.app/towers";
 
-const PIN_TEXT = "🏰 Вежі — Дзеркала\n\nВідкрий таблицю веж, щоб подивитись або внести проходку.";
-const BUTTON_TEXT = "🏰 Вежі — Дзеркала";
+// Telegram requires non-empty text; keep it to a single glyph so the pinned
+// panel is just the three buttons.
+const PIN_TEXT = "🏰";
 
 const STATE_BUCKET = "defense-screenshots";
 const STATE_PATH = "bot-state/pinned-towers.json";
 
 type PinState = { chat_id: number; thread_id: number; message_id: number; updated_at: string };
+
+
 
 function api(path: string): string {
   const token = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
@@ -59,13 +63,18 @@ async function writeState(state: PinState): Promise<void> {
   if (error) console.error("[gvg-pin] state write failed", error.message);
 }
 
-const keyboard = { inline_keyboard: [[{ text: BUTTON_TEXT, url: TOWERS_URL }]] };
+const keyboard = buildTowerPanelKeyboard(TOWERS_URL);
 
-/** Returns true when the stored message still exists in the topic. */
+/**
+ * Returns true when the stored message still exists. Also upgrades an older
+ * panel in place (text + buttons) instead of pinning a second message.
+ */
 async function messageExists(messageId: number): Promise<boolean> {
-  const res = await call("editMessageReplyMarkup", {
+  const res = await call("editMessageText", {
     chat_id: PIN_CHAT_ID,
     message_id: messageId,
+    text: PIN_TEXT,
+    disable_web_page_preview: true,
     reply_markup: keyboard,
   });
   if (res.ok) return true;
@@ -73,6 +82,7 @@ async function messageExists(messageId: number): Promise<boolean> {
   // "message is not modified" means the message is alive and already correct.
   return d.includes("not modified");
 }
+
 
 async function pin(messageId: number): Promise<void> {
   await call("pinChatMessage", {
