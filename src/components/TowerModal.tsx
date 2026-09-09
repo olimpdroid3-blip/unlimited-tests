@@ -497,23 +497,42 @@ export function TowerModal({
             role="dialog"
             aria-modal="true"
             aria-label={`Скріншот розстановки вежі ${towerId}`}
-            onClick={() => setLightboxOpen(false)}
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-2 sm:p-6"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              // Close only when tapping the backdrop (target === currentTarget).
+              if (e.target === e.currentTarget) setLightboxOpen(false);
+            }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-2 sm:p-6"
+            style={{ touchAction: "manipulation" }}
           >
-            <img
-              src={shownImage}
-              alt={`Розстановка вежі ${towerId}`}
+            <div
+              className="relative flex max-h-full max-w-full items-center justify-center"
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
-              className="max-h-full max-w-full object-contain"
-            />
-            <button
-              type="button"
-              onClick={() => setLightboxOpen(false)}
-              aria-label="Закрити перегляд"
-              className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-xl text-white transition hover:bg-black/80"
             >
-              ×
-            </button>
+              <img
+                src={shownImage}
+                alt={`Розстановка вежі ${towerId}`}
+                className="max-h-[100dvh] max-w-[100vw] object-contain"
+                draggable={false}
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxOpen(false);
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                aria-label="Закрити перегляд"
+                className="absolute right-2 top-2 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-black/70 text-3xl leading-none text-white shadow-lg transition hover:bg-black/90"
+              >
+                ×
+              </button>
+            </div>
           </div>
         )}
       </Dialog.Portal>
