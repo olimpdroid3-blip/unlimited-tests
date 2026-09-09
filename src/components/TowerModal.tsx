@@ -68,6 +68,7 @@ export function TowerModal({
   const [mobSlots, setMobSlots] = useState<Array<string | null>>([null, null, null, null, null]);
   const [savingDefense, setSavingDefense] = useState(false);
   const [sendingTg, setSendingTg] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const { data: heroes = [] } = useQuery({
     queryKey: ["heroes"],
@@ -320,14 +321,24 @@ export function TowerModal({
             <Field label="📷 Скріншот розстановки">
               <div className="space-y-2">
                 {shownImage && (
-                  <div className="overflow-hidden rounded-lg border border-border bg-black/20">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setLightboxOpen(true);
+                    }}
+                    title="Збільшити скріншот"
+                    aria-label="Збільшити скріншот"
+                    className="block w-full cursor-zoom-in overflow-hidden rounded-lg border border-border bg-black/20"
+                  >
                     <img
                       src={shownImage}
                       alt={`Розстановка вежі ${towerId}`}
                       loading="lazy"
                       className="mx-auto block max-h-56 w-full object-contain"
                     />
-                  </div>
+                  </button>
                 )}
                 <input
                   type="file"
@@ -474,18 +485,44 @@ export function TowerModal({
             </button>
           </Dialog.Close>
         </Dialog.Content>
+        {lightboxOpen && shownImage && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Скріншот розстановки вежі ${towerId}`}
+            onClick={() => setLightboxOpen(false)}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-2 sm:p-6"
+          >
+            <img
+              src={shownImage}
+              alt={`Розстановка вежі ${towerId}`}
+              onClick={(e) => e.stopPropagation()}
+              className="max-h-full max-w-full object-contain"
+            />
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(false)}
+              aria-label="Закрити перегляд"
+              className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-xl text-white transition hover:bg-black/80"
+            >
+              ×
+            </button>
+          </div>
+        )}
       </Dialog.Portal>
     </Dialog.Root>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  // Not a <label>: nested interactive elements (thumbnail, buttons) must not
+  // implicitly activate a wrapped file input.
   return (
-    <label className="block">
+    <div className="block">
       <div className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
       {children}
-    </label>
+    </div>
   );
 }
