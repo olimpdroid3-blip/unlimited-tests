@@ -586,12 +586,25 @@ export async function handleTowerFormCallback(cb: {
   return true;
 }
 
-/** Manual fallback: re-installs the persistent reply keyboard in the topic. */
+/**
+ * Maintenance endpoint: makes sure the pinned inline panel exists and clears
+ * the obsolete reply keyboard from clients that still show it. The carrier of
+ * ReplyKeyboardRemove is deleted right away, so no garbage stays in the topic.
+ */
 export async function installTowerKeyboard(): Promise<{ ok: boolean; message_id: number | null }> {
-  // The reliable carrier is the fresh "🏰 Вежі" list itself, which always
-  // carries TOWER_REPLY_KEYBOARD — no throwaway "send and delete" message,
-  // so no chat garbage and the keyboard can't vanish with a deleted carrier.
-  const { handleTowerListCommand } = await import("@/lib/gvg-tower-list.server");
-  const result = await handleTowerListCommand();
-  return { ok: result.ok, message_id: null };
+  const { ensurePinnedTowersMessage } = await import("@/lib/gvg-pinned-towers.server");
+  const pinned = await ensurePinnedTowersMessage(true);
+
+  const res = await tg<{ message_id?: number }>("sendMessage", {
+    chat_id: TOWER_CHAT_ID,
+    message_thread_id: TOWER_WORK_THREAD_ID,
+    text: "🏰",
+    disable_notification: true,
+    reply_markup: REMOVE_REPLY_KEYBOARD,
+  });
+  const carrier = res.result?.message_id ?? null;
+  if (carrier) await del(TOWER_CHAT_ID, carrier);
+
+  return { ok: pinned.message_id !== null, message_id: pinned.message_id };
 }
+
