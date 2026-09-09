@@ -107,6 +107,13 @@ export function TowerModal({
     }
   }, [open, existing]);
 
+  useEffect(() => {
+    if (lightboxOpen) {
+      (document.activeElement as HTMLElement | null)?.blur();
+    }
+  }, [lightboxOpen]);
+
+
   if (!towerId) return null;
 
   const chosenHeroes = heroSlots.filter((v): v is string => !!v);
@@ -242,7 +249,7 @@ export function TowerModal({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2 duration-200">
+        <Dialog.Content className={`fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2 duration-200 ${lightboxOpen ? "pointer-events-none" : ""}`}>
           <div className="flex items-start justify-between gap-2">
             <Dialog.Title className="text-lg font-semibold text-foreground">
               🏰 Башня {towerId}
@@ -490,23 +497,42 @@ export function TowerModal({
             role="dialog"
             aria-modal="true"
             aria-label={`Скріншот розстановки вежі ${towerId}`}
-            onClick={() => setLightboxOpen(false)}
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-2 sm:p-6"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              // Close only when tapping the backdrop (target === currentTarget).
+              if (e.target === e.currentTarget) setLightboxOpen(false);
+            }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-2 sm:p-6"
+            style={{ touchAction: "manipulation" }}
           >
-            <img
-              src={shownImage}
-              alt={`Розстановка вежі ${towerId}`}
+            <div
+              className="relative flex max-h-full max-w-full items-center justify-center"
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
-              className="max-h-full max-w-full object-contain"
-            />
-            <button
-              type="button"
-              onClick={() => setLightboxOpen(false)}
-              aria-label="Закрити перегляд"
-              className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-xl text-white transition hover:bg-black/80"
             >
-              ×
-            </button>
+              <img
+                src={shownImage}
+                alt={`Розстановка вежі ${towerId}`}
+                className="max-h-[100dvh] max-w-[100vw] object-contain"
+                draggable={false}
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxOpen(false);
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                aria-label="Закрити перегляд"
+                className="absolute right-2 top-2 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-black/70 text-3xl leading-none text-white shadow-lg transition hover:bg-black/90"
+              >
+                ×
+              </button>
+            </div>
           </div>
         )}
       </Dialog.Portal>
