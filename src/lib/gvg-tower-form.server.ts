@@ -24,7 +24,10 @@ import {
   STEP_POSITION_TEXT,
   STEP_SCREENSHOT_TEXT,
   TOWER_CHAT_ID,
-  REMOVE_REPLY_KEYBOARD,
+  BTN_MIRROR_KB,
+  BTN_MIRRORS,
+  TOWER_REPLY_KEYBOARD,
+
   TOWER_WORK_THREAD_ID,
   type TowerForm,
 } from "@/lib/tower-form";
@@ -407,6 +410,18 @@ export async function handleTowerWorkflowMessage(message: {
     return true;
   }
 
+  // Reply-keyboard buttons cannot carry a URL, so answer with an inline link.
+  if (text === BTN_MIRROR_KB) {
+    if (message.message_id) await del(chatId, message.message_id);
+    const { TOWERS_URL } = await import("@/lib/gvg-pinned-towers.server");
+    await send(chatId, BTN_MIRROR_KB, {
+      inline_keyboard: [[{ text: BTN_MIRRORS, url: TOWERS_URL }]],
+    });
+    return true;
+  }
+
+
+
   let form = await findFormByUser(userId);
   if (!form) return false;
 
@@ -587,24 +602,17 @@ export async function handleTowerFormCallback(cb: {
 }
 
 /**
- * Maintenance endpoint: makes sure the pinned inline panel exists and clears
- * the obsolete reply keyboard from clients that still show it. The carrier of
- * ReplyKeyboardRemove is deleted right away, so no garbage stays in the topic.
+ * Maintenance endpoint: makes sure the pinned inline panel exists and that the
+ * bottom reply keyboard is present again. The keyboard rides on a fresh tower
+ * list, so no throwaway service message is created.
  */
 export async function installTowerKeyboard(): Promise<{ ok: boolean; message_id: number | null }> {
   const { ensurePinnedTowersMessage } = await import("@/lib/gvg-pinned-towers.server");
   const pinned = await ensurePinnedTowersMessage(true);
 
-  const res = await tg<{ message_id?: number }>("sendMessage", {
-    chat_id: TOWER_CHAT_ID,
-    message_thread_id: TOWER_WORK_THREAD_ID,
-    text: "🏰",
-    disable_notification: true,
-    reply_markup: REMOVE_REPLY_KEYBOARD,
-  });
-  const carrier = res.result?.message_id ?? null;
-  if (carrier) await del(TOWER_CHAT_ID, carrier);
+  await handleTowerListCommand();
 
   return { ok: pinned.message_id !== null, message_id: pinned.message_id };
 }
+
 

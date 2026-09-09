@@ -11,7 +11,7 @@ import {
   canConfirm,
   CB_TOWER_ADD,
   CB_TOWER_LIST,
-  REMOVE_REPLY_KEYBOARD,
+  BTN_MIRROR_KB,
   collectFormMessageIds,
   isFormExpired,
   isTowerWorkflowThread,
@@ -90,10 +90,16 @@ test("panel callback data is stable and distinct from the form prefix", () => {
   }
 });
 
-test("the legacy reply keyboard can still be removed from old clients", () => {
-  assert.deepEqual(REMOVE_REPLY_KEYBOARD, { remove_keyboard: true });
-  assert.deepEqual(TOWER_REPLY_KEYBOARD.keyboard, [[{ text: BTN_ADD }, { text: BTN_LIST }]]);
+test("the bottom reply keyboard has three persistent buttons", () => {
+  assert.deepEqual(TOWER_REPLY_KEYBOARD.keyboard, [
+    [{ text: BTN_ADD }, { text: BTN_LIST }],
+    [{ text: BTN_MIRROR_KB }],
+  ]);
+  assert.equal(TOWER_REPLY_KEYBOARD.resize_keyboard, true);
+  assert.equal(TOWER_REPLY_KEYBOARD.is_persistent, true);
+  assert.equal("one_time_keyboard" in TOWER_REPLY_KEYBOARD, false);
 });
+
 
 
 test("non-admins cannot start the form", () => {
