@@ -180,3 +180,59 @@ export async function removeTowerRequest(
 
   return { ok: !error, existed: true };
 }
+
+export type PlacedTowerInput = {
+  towerId: string;
+  nickname: string;
+  screenshotUrl?: string | null;
+  screenshotPath?: string | null;
+  comment?: string | null;
+};
+
+/**
+ * Puts a REAL tower on test (the Telegram "➕ Додати" action): upserts the
+ * normal `towers` row exactly like the website save does — no "M:" marker,
+ * no mirror request. Any pending mirror request for the same tower is closed,
+ * mirroring the website behaviour when a tower gets filled in.
+ */
+export async function upsertPlacedTower(
+  input: PlacedTowerInput,
+): Promise<{ ok: boolean; telegramOk: boolean; error?: string }> {
+  const towerId = input.towerId;
+  const nickname = input.nickname.trim();
+  if (!towerId || !nickname) return { ok: false, telegramOk: false, error: "invalid-input" };
+
+  const { data: existing } = await supabaseAdmin
+    .from("towers")
+    .select("placed, breached, testing, destroyed, removed, nickname, previous_nickname, notes")
+    .eq("tower_id", towerId)
+    .maybeSingle();
+
+  // Reuse the shared status model so flags never drift from the website.
+  const update = getTowerSaveUpdate(existing ?? undefined, nickname, { placeAgain: true });
+
+  const { error } = await supabaseAdmin.from("towers").upsert({
+    tower_id: towerId,
+    ...update,
+    notes: input.comment?.trim() || null,
+    ...(input.screenshotUrl || input.screenshotPath
+      ? {
+          screenshot_url: input.screenshotUrl ?? null,
+          screenshot_path: input.screenshotPath ?? null,
+        }
+      : {}),
+    updated_at: new Date().toISOString(),
+  });
+  if (error) {
+    console.error("[tower-placed] upsert failed", error.message);
+    return { ok: false, telegramOk: false, error: error.message };
+  }
+
+  // A filled tower fulfils any open mirror request for the same position.
+  await removeTowerRequest(towerId).catch(() => undefined);
+
+  const notify = await notifyTowerUpdate("add", towerId, nickname).catch(() => ({
+    ok: false as const,
+  }));
+  return { ok: true, telegramOk: notify.ok === true };
+}
