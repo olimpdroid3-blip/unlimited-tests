@@ -546,12 +546,12 @@ export async function handleTowerFormCallback(cb: {
   return true;
 }
 
-/** Sends a one-off message that installs the persistent reply keyboard. */
+/** Manual fallback: re-installs the persistent reply keyboard in the topic. */
 export async function installTowerKeyboard(): Promise<{ ok: boolean; message_id: number | null }> {
-  // Telegram can only attach a reply keyboard to a message, so this sends the
-  // smallest possible carrier — and it is deleted right away, the keyboard
-  // stays because it is chat-level and persistent.
-  const id = await send(TOWER_CHAT_ID, "🏰", TOWER_REPLY_KEYBOARD);
-  if (id) await del(TOWER_CHAT_ID, id);
-  return { ok: id !== null, message_id: id };
+  // The reliable carrier is the fresh "🏰 Вежі" list itself, which always
+  // carries TOWER_REPLY_KEYBOARD — no throwaway "send and delete" message,
+  // so no chat garbage and the keyboard can't vanish with a deleted carrier.
+  const { handleTowerListCommand } = await import("@/lib/gvg-tower-list.server");
+  const result = await handleTowerListCommand();
+  return { ok: result.ok, message_id: null };
 }
