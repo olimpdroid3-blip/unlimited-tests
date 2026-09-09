@@ -107,6 +107,13 @@ export function TowerModal({
     }
   }, [open, existing]);
 
+  useEffect(() => {
+    if (lightboxOpen) {
+      (document.activeElement as HTMLElement | null)?.blur();
+    }
+  }, [lightboxOpen]);
+
+
   if (!towerId) return null;
 
   const chosenHeroes = heroSlots.filter((v): v is string => !!v);
