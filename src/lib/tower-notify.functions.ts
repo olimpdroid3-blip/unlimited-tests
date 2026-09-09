@@ -17,3 +17,36 @@ export const notifyMirrorOrder = createServerFn({ method: "POST" })
 export const deleteTowerMessage = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ messageId: z.number().int().positive() }).parse(data))
   .handler(async ({ data }) => deleteTelegramMessage(data.messageId));
+
+/** Shared request creation used by the website form (Telegram uses it directly). */
+export const submitTowerRequest = createServerFn({ method: "POST" })
+  .inputValidator((data) =>
+    z
+      .object({
+        towerId: z.string().min(1),
+        nickname: z.string().min(1),
+        screenshotUrl: z.string().nullable().optional(),
+        screenshotPath: z.string().nullable().optional(),
+        comment: z.string().nullable().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { createTowerRequest } = await import("@/lib/gvg-tower-requests.server");
+    return createTowerRequest({
+      towerId: data.towerId,
+      nickname: data.nickname.trim(),
+      screenshotUrl: data.screenshotUrl ?? null,
+      screenshotPath: data.screenshotPath ?? null,
+      comment: data.comment ?? null,
+      source: "web",
+    });
+  });
+
+/** Shared removal: drops the marker row, deletes the Telegram update, posts "➖". */
+export const dropTowerRequest = createServerFn({ method: "POST" })
+  .inputValidator((data) => z.object({ towerId: z.string().min(1) }).parse(data))
+  .handler(async ({ data }) => {
+    const { removeTowerRequest } = await import("@/lib/gvg-tower-requests.server");
+    return removeTowerRequest(data.towerId);
+  });

@@ -22,6 +22,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as MobLevelsScanRouteImport } from './routes/mob-levels_.scan'
 import { Route as MobLevelsEditRouteImport } from './routes/mob-levels_.edit'
 import { Route as ApiTelegramGvgVideoSetupRouteImport } from './routes/api/telegram/gvg-video-setup'
+import { Route as ApiTelegramGvgTowerKeyboardRouteImport } from './routes/api/telegram/gvg-tower-keyboard'
 import { Route as ApiTelegramGvgPinTowersRouteImport } from './routes/api/telegram/gvg-pin-towers'
 import { Route as ApiTelegramGvgPinBpRouteImport } from './routes/api/telegram/gvg-pin-bp'
 import { Route as ApiPublicTelegramGvgVideoWebhookRouteImport } from './routes/api/public/telegram/gvg-video-webhook'
@@ -92,6 +93,12 @@ const ApiTelegramGvgVideoSetupRoute =
     path: '/api/telegram/gvg-video-setup',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiTelegramGvgTowerKeyboardRoute =
+  ApiTelegramGvgTowerKeyboardRouteImport.update({
+    id: '/api/telegram/gvg-tower-keyboard',
+    path: '/api/telegram/gvg-tower-keyboard',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiTelegramGvgPinTowersRoute = ApiTelegramGvgPinTowersRouteImport.update({
   id: '/api/telegram/gvg-pin-towers',
   path: '/api/telegram/gvg-pin-towers',
@@ -124,6 +131,7 @@ export interface FileRoutesByFullPath {
   '/mob-levels/scan': typeof MobLevelsScanRoute
   '/api/telegram/gvg-pin-bp': typeof ApiTelegramGvgPinBpRoute
   '/api/telegram/gvg-pin-towers': typeof ApiTelegramGvgPinTowersRoute
+  '/api/telegram/gvg-tower-keyboard': typeof ApiTelegramGvgTowerKeyboardRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -142,6 +150,7 @@ export interface FileRoutesByTo {
   '/mob-levels/scan': typeof MobLevelsScanRoute
   '/api/telegram/gvg-pin-bp': typeof ApiTelegramGvgPinBpRoute
   '/api/telegram/gvg-pin-towers': typeof ApiTelegramGvgPinTowersRoute
+  '/api/telegram/gvg-tower-keyboard': typeof ApiTelegramGvgTowerKeyboardRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -161,6 +170,7 @@ export interface FileRoutesById {
   '/mob-levels_/scan': typeof MobLevelsScanRoute
   '/api/telegram/gvg-pin-bp': typeof ApiTelegramGvgPinBpRoute
   '/api/telegram/gvg-pin-towers': typeof ApiTelegramGvgPinTowersRoute
+  '/api/telegram/gvg-tower-keyboard': typeof ApiTelegramGvgTowerKeyboardRoute
   '/api/telegram/gvg-video-setup': typeof ApiTelegramGvgVideoSetupRoute
   '/api/public/telegram/gvg-video-webhook': typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/mob-levels/scan'
     | '/api/telegram/gvg-pin-bp'
     | '/api/telegram/gvg-pin-towers'
+    | '/api/telegram/gvg-tower-keyboard'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/mob-levels/scan'
     | '/api/telegram/gvg-pin-bp'
     | '/api/telegram/gvg-pin-towers'
+    | '/api/telegram/gvg-tower-keyboard'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   id:
@@ -217,6 +229,7 @@ export interface FileRouteTypes {
     | '/mob-levels_/scan'
     | '/api/telegram/gvg-pin-bp'
     | '/api/telegram/gvg-pin-towers'
+    | '/api/telegram/gvg-tower-keyboard'
     | '/api/telegram/gvg-video-setup'
     | '/api/public/telegram/gvg-video-webhook'
   fileRoutesById: FileRoutesById
@@ -236,6 +249,7 @@ export interface RootRouteChildren {
   MobLevelsScanRoute: typeof MobLevelsScanRoute
   ApiTelegramGvgPinBpRoute: typeof ApiTelegramGvgPinBpRoute
   ApiTelegramGvgPinTowersRoute: typeof ApiTelegramGvgPinTowersRoute
+  ApiTelegramGvgTowerKeyboardRoute: typeof ApiTelegramGvgTowerKeyboardRoute
   ApiTelegramGvgVideoSetupRoute: typeof ApiTelegramGvgVideoSetupRoute
   ApiPublicTelegramGvgVideoWebhookRoute: typeof ApiPublicTelegramGvgVideoWebhookRoute
 }
@@ -333,6 +347,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTelegramGvgVideoSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/telegram/gvg-tower-keyboard': {
+      id: '/api/telegram/gvg-tower-keyboard'
+      path: '/api/telegram/gvg-tower-keyboard'
+      fullPath: '/api/telegram/gvg-tower-keyboard'
+      preLoaderRoute: typeof ApiTelegramGvgTowerKeyboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/telegram/gvg-pin-towers': {
       id: '/api/telegram/gvg-pin-towers'
       path: '/api/telegram/gvg-pin-towers'
@@ -372,6 +393,7 @@ const rootRouteChildren: RootRouteChildren = {
   MobLevelsScanRoute: MobLevelsScanRoute,
   ApiTelegramGvgPinBpRoute: ApiTelegramGvgPinBpRoute,
   ApiTelegramGvgPinTowersRoute: ApiTelegramGvgPinTowersRoute,
+  ApiTelegramGvgTowerKeyboardRoute: ApiTelegramGvgTowerKeyboardRoute,
   ApiTelegramGvgVideoSetupRoute: ApiTelegramGvgVideoSetupRoute,
   ApiPublicTelegramGvgVideoWebhookRoute: ApiPublicTelegramGvgVideoWebhookRoute,
 }
