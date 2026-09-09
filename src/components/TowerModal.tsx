@@ -497,30 +497,23 @@ export function TowerModal({
             role="dialog"
             aria-modal="true"
             aria-label={`Скріншот розстановки вежі ${towerId}`}
-            // Any touch/click anywhere closes the lightbox — the inner image
-            // wrapper stops propagation so taps directly on the picture stay.
-            // Only pointerdown closes; preventDefault keeps the browser from
-            // synthesizing a follow-up click that would land on the dialog
-            // overlay (sitting just below) and close the whole tower modal.
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setLightboxOpen(false);
-            }}
+            // Any tap outside the picture closes the lightbox. We close on
+            // click (not pointerdown): the lightbox is still mounted when the
+            // click fires, so the event cannot leak to the tower dialog's
+            // overlay below and accidentally close the whole modal. The inner
+            // image wrapper stops propagation so taps directly on the picture
+            // do nothing.
+            onClick={() => setLightboxOpen(false)}
             className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-2 sm:p-6"
             style={{ touchAction: "manipulation" }}
           >
             <div
               className="relative flex max-h-full max-w-full flex-col items-center"
-              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 type="button"
-                onPointerDown={(e) => {
-                  e.stopPropagation();
-                  setLightboxOpen(false);
-                }}
+                onClick={() => setLightboxOpen(false)}
                 aria-label="Закрити перегляд"
                 className="mb-3 flex min-h-14 w-full touch-manipulation select-none items-center justify-center gap-2 rounded-xl bg-white/15 px-6 py-4 text-lg font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-white/25 active:scale-95"
               >
