@@ -294,11 +294,17 @@ async function storeTelegramPhoto(
 
 /* ---------------- Workflow ---------------- */
 
-async function startForm(
+/**
+ * Starts the step-by-step add form. Called both from the (legacy) reply
+ * keyboard text button and from the pinned inline panel, where there is no
+ * trigger message to clean up.
+ */
+export async function startTowerForm(
   chatId: number,
   userId: number,
-  triggerMessageId: number | undefined,
+  triggerMessageId?: number,
 ): Promise<void> {
+
   const member = await tg<{ status?: string; custom_title?: string }>("getChatMember", {
     chat_id: chatId,
     user_id: userId,
