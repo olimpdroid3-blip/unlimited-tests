@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/db.server";
 import { isMirrorRow, MIRROR_PREFIX } from "@/lib/mirror-order";
 import { deleteTelegramMessage } from "@/lib/gvg-tower-notify.server";
 import { drainBotMessages, setBotMessages } from "@/lib/gvg-bot-messages.server";
+import { TOWER_REPLY_KEYBOARD } from "@/lib/tower-form";
 
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
@@ -86,6 +87,9 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
       text,
       disable_notification: true,
       disable_web_page_preview: true,
+      // Re-attach the persistent reply keyboard with every fresh list so it
+      // reliably reappears after users leave/re-enter the topic.
+      reply_markup: TOWER_REPLY_KEYBOARD,
     }),
   });
   const json = (await res.json().catch(() => ({}))) as {
