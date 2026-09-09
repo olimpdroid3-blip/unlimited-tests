@@ -4,7 +4,6 @@ import { supabaseAdmin } from "@/lib/db.server";
 import { isMirrorRow, MIRROR_PREFIX } from "@/lib/mirror-order";
 import { deleteTelegramMessage } from "@/lib/gvg-tower-notify.server";
 import { drainBotMessages, setBotMessages } from "@/lib/gvg-bot-messages.server";
-import { TOWERS_URL } from "@/lib/gvg-pinned-towers.server";
 
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
@@ -87,7 +86,6 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
       text,
       disable_notification: true,
       disable_web_page_preview: true,
-      reply_markup: { inline_keyboard: [[{ text: "🏰 Вежі — Дзеркала", url: TOWERS_URL }]] },
     }),
   });
   const json = (await res.json().catch(() => ({}))) as {

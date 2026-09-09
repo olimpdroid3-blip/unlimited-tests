@@ -3,7 +3,7 @@
 // so a restarted server never loses an in-progress form.
 import { supabaseAdmin } from "@/lib/db.server";
 import { normalizeTowerId } from "@/lib/mirror-order";
-import { createTowerRequest } from "@/lib/gvg-tower-requests.server";
+import { upsertPlacedTower } from "@/lib/gvg-tower-requests.server";
 import { handleTowerListCommand } from "@/lib/gvg-tower-list.server";
 import {
   BAD_POSITION_TEXT,
@@ -457,20 +457,20 @@ async function submitForm(form: TowerForm): Promise<void> {
   const marked: TowerForm = { ...form, submitted: true };
   await saveForm(marked);
 
-  const result = await createTowerRequest({
+  // "➕ Додати" in Telegram means: this tower is actually ON TEST now.
+  // It writes the normal towers row, never a mirror ("M:") request.
+  const result = await upsertPlacedTower({
     towerId: marked.tower_id!,
     nickname: marked.nickname,
     screenshotUrl: marked.screenshot_url,
     screenshotPath: marked.screenshot_path,
     comment: marked.comment,
-    source: "telegram",
-    telegramUserId: marked.user_id,
   });
 
   if (!result.ok) {
     const id = await send(
       marked.chat_id,
-      "❌ Не вдалося зберегти заявку. Спробуйте ще раз.",
+      "❌ Не вдалося зберегти вежу. Спробуйте ще раз.",
       keyboardFor("confirm", marked.id.slice(0, 8)),
     );
     await trackBot({ ...marked, submitted: false }, id);

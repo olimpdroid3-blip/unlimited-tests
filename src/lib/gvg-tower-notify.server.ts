@@ -1,14 +1,8 @@
 // Sends a short technical message about a tower to the pinned Telegram topic.
 import { listBotMessages, trackBotMessage } from "@/lib/gvg-bot-messages.server";
-import { TOWERS_URL } from "@/lib/gvg-pinned-towers.server";
 
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
-
-// The towers button must sit under the latest bot message only.
-export const TOWERS_KEYBOARD = {
-  inline_keyboard: [[{ text: "🏰 Вежі — Дзеркала", url: TOWERS_URL }]],
-};
 
 /** Removes the button from every older tracked bot message. */
 export async function clearOldTowerButtons(exceptId?: number): Promise<void> {
@@ -42,7 +36,6 @@ export async function notifyTowerToTelegram(
       text: `🏰 Вежа ${towerId} — ${nickname}`,
       disable_notification: true,
       disable_web_page_preview: true,
-      reply_markup: TOWERS_KEYBOARD,
     }),
   });
   const json = (await res.json().catch(() => ({}))) as {
