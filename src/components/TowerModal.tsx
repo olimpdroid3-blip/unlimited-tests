@@ -507,6 +507,7 @@ export function TowerModal({
               e.stopPropagation();
               setLightboxOpen(false);
             }}
+            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-2 sm:p-6"
             style={{ touchAction: "manipulation" }}
           >
             <div
