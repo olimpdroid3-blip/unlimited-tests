@@ -28,10 +28,9 @@ import {
 } from "@/lib/tower-form";
 
 const STATE_BUCKET = "defense-screenshots";
-const STATE_PATH = "bot-state/tower-forms.json";
+// One state object per workflow, so parallel forms never clash.
+const STATE_DIR = "bot-state/tower-forms";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
-
-type FormState = { forms: TowerForm[] };
 
 /* ---------------- Telegram API ---------------- */
 
@@ -239,7 +238,7 @@ async function wipeForm(form: TowerForm): Promise<void> {
   for (const id of collectFormMessageIds(form)) {
     await del(form.chat_id, id);
   }
-  await dropForm(form.id);
+  await dropForm(form);
 }
 
 async function removeUploadedScreenshot(form: TowerForm): Promise<void> {
