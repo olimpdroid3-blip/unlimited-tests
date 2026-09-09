@@ -386,6 +386,8 @@ export async function handleTowerWorkflowMessage(message: {
 
   if (text === BTN_LIST) {
     if (message.message_id) await del(chatId, message.message_id);
+    // Good moment to auto-cancel any abandoned form.
+    await sweepExpiredForms();
     await handleTowerListCommand();
     return true;
   }
@@ -546,10 +548,10 @@ export async function handleTowerFormCallback(cb: {
 
 /** Sends a one-off message that installs the persistent reply keyboard. */
 export async function installTowerKeyboard(): Promise<{ ok: boolean; message_id: number | null }> {
-  const id = await send(
-    TOWER_CHAT_ID,
-    "🏰 Керування вежами: скористайтесь кнопками нижче.",
-    TOWER_REPLY_KEYBOARD,
-  );
+  // Telegram can only attach a reply keyboard to a message, so this sends the
+  // smallest possible carrier — and it is deleted right away, the keyboard
+  // stays because it is chat-level and persistent.
+  const id = await send(TOWER_CHAT_ID, "🏰", TOWER_REPLY_KEYBOARD);
+  if (id) await del(TOWER_CHAT_ID, id);
   return { ok: id !== null, message_id: id };
 }
