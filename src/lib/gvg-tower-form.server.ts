@@ -11,6 +11,8 @@ import {
   BTN_LIST,
   buildSummary,
   canConfirm,
+  CB_TOWER_ADD,
+  CB_TOWER_LIST,
   CANCELLED_TEXT,
   collectFormMessageIds,
   FORM_TTL_MS,
@@ -22,7 +24,7 @@ import {
   STEP_POSITION_TEXT,
   STEP_SCREENSHOT_TEXT,
   TOWER_CHAT_ID,
-  TOWER_REPLY_KEYBOARD,
+  REMOVE_REPLY_KEYBOARD,
   TOWER_WORK_THREAD_ID,
   type TowerForm,
 } from "@/lib/tower-form";
