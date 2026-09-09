@@ -1,7 +1,9 @@
 // Single source of truth for creating / closing a tower request ("дзеркало"),
-// shared by the web form (MirrorOrderModal) and the Telegram workflow.
+// used by the web form (MirrorOrderModal), plus the helper that puts a real
+// tower "on test" (used by the Telegram "➕ Додати" workflow).
 import { supabaseAdmin } from "@/lib/db.server";
 import { mirrorRowId } from "@/lib/mirror-order";
+import { getTowerSaveUpdate } from "@/lib/tower-status";
 import { deleteTelegramMessage, notifyTowerUpdate } from "@/lib/gvg-tower-notify.server";
 
 const STATE_BUCKET = "defense-screenshots";
