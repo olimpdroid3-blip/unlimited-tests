@@ -61,29 +61,27 @@ export async function notifyTowerToTelegram(
   return { ok: true };
 }
 
-// Mirror order notification. Telegram does not support arbitrary text colors,
-// so the "замовив дзеркало" part is emphasised in bold with a red marker.
-export async function notifyMirrorOrderToTelegram(
-  nickname: string,
+// Thread 4 is the update-only topic: one short line per add/remove, no
+// keyboards, no lists, no forms.
+const UPDATE_THREAD_ID = 4;
+
+export async function notifyTowerUpdate(
+  kind: "add" | "remove",
   towerId: string,
-): Promise<{ ok: boolean; error?: string; messageId?: number }> {
+  nickname: string,
+): Promise<{ ok: boolean; error?: string; messageId?: number | null }> {
   const token = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
   if (!token) return { ok: false, error: "TELEGRAM_GVG_VIDEO_BOT_TOKEN is not configured" };
-
-  const escape = (s: string) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       chat_id: CHAT_ID,
-      message_thread_id: THREAD_ID,
-      parse_mode: "HTML",
-      text: `🏰 Вежа ${escape(towerId)} — ${escape(nickname)} 🔴<b>замовив дзеркало</b>`,
+      message_thread_id: UPDATE_THREAD_ID,
+      text: `${kind === "add" ? "➕" : "➖"} Вежа ${towerId} — ${nickname}`,
       disable_notification: true,
       disable_web_page_preview: true,
-      reply_markup: TOWERS_KEYBOARD,
     }),
   });
   const json = (await res.json().catch(() => ({}))) as {
@@ -92,14 +90,22 @@ export async function notifyMirrorOrderToTelegram(
     result?: { message_id?: number };
   };
   if (!json.ok) {
-    console.error(`[mirror-notify] sendMessage failed [${res.status}] ${json.description ?? ""}`);
+    console.error(`[tower-update] sendMessage failed [${res.status}] ${json.description ?? ""}`);
     return { ok: false, error: json.description ?? "telegram-error" };
   }
-  if (json.result?.message_id) {
-    await clearOldTowerButtons(json.result.message_id);
-    await trackBotMessage(json.result.message_id, "mirror");
-  }
-  return { ok: true, messageId: json.result?.message_id };
+  return { ok: true, messageId: json.result?.message_id ?? null };
+}
+
+/**
+ * Backwards-compatible alias: mirror orders are now announced as a short
+ * update line in thread 4 instead of a message in the working topic.
+ */
+export async function notifyMirrorOrderToTelegram(
+  nickname: string,
+  towerId: string,
+): Promise<{ ok: boolean; error?: string; messageId?: number }> {
+  const res = await notifyTowerUpdate("add", towerId, nickname);
+  return { ok: res.ok, error: res.error, messageId: res.messageId ?? undefined };
 }
 
 // Deletes a bot message (e.g. a mirror-order notification) from the pinned topic.

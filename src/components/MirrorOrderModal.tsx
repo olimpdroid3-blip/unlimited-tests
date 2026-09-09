@@ -1,11 +1,10 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/lib/db";
 import { getNickCookie } from "@/lib/nickname";
 import { fileToDataUrl, uploadScreenshot } from "@/lib/screenshot-upload";
-import { mirrorRowId, normalizeTowerId } from "@/lib/mirror-order";
-import { notifyMirrorOrder } from "@/lib/tower-notify.functions";
+import { normalizeTowerId } from "@/lib/mirror-order";
+import { submitTowerRequest } from "@/lib/tower-notify.functions";
 
 export function MirrorOrderModal({
   open,
@@ -43,30 +42,21 @@ export function MirrorOrderModal({
     if (!towerId) return;
     setBusy(true);
     try {
+      let screenshotUrl: string | null = null;
+      let screenshotPath: string | null = null;
       if (file) {
         const uploaded = await uploadScreenshot("defense-screenshots", file, "tower");
-        const { error } = await supabase.from("towers").upsert({
-          tower_id: towerId,
-          screenshot_url: uploaded.url,
-          screenshot_path: uploaded.path,
-          updated_at: new Date().toISOString(),
-        });
-        if (error) throw error;
+        screenshotUrl = uploaded.url;
+        screenshotPath = uploaded.path;
       }
 
-      const res = await notifyMirrorOrder({ data: { nickname: nickname.trim(), towerId } });
-
-      const { error: mErr } = await supabase.from("towers").upsert({
-        tower_id: mirrorRowId(towerId),
-        nickname: nickname.trim(),
-        // The mirror row stores the bot's Telegram message id in `notes`
-        // so it can be deleted once the tower is filled in.
-        notes: res.ok && res.messageId ? `tg:${res.messageId}` : null,
-        updated_at: new Date().toISOString(),
+      // Same shared server logic the Telegram workflow uses.
+      const res = await submitTowerRequest({
+        data: { towerId, nickname: nickname.trim(), screenshotUrl, screenshotPath },
       });
-      if (mErr) throw mErr;
+      if (!res.ok) throw new Error(res.error ?? "save-failed");
 
-      if (!res.ok) toast.error("Замовлення збережено, але Telegram не відповів");
+      if (!res.telegramOk) toast.error("Замовлення збережено, але Telegram не відповів");
       else toast.success("Дзеркало замовлено");
 
       onChanged();

@@ -114,9 +114,19 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
         }
 
         const callback = update["callback_query"] as
-          | { id: string; data?: string; from?: { id?: number } }
+          | {
+              id: string;
+              data?: string;
+              from?: { id?: number };
+              message?: { chat?: { id?: number }; message_thread_id?: number };
+            }
           | undefined;
         if (callback?.id) {
+          // Tower workflow buttons first, then the video bot's own buttons.
+          const { handleTowerFormCallback } = await import("@/lib/gvg-tower-form.server");
+          if (await handleTowerFormCallback(callback)) {
+            return Response.json({ ok: true, handled: "tower-form-callback" });
+          }
           const { handleCallbackQuery } = await import("@/lib/gvg-video-bot.server");
           await handleCallbackQuery(callback);
           return Response.json({ ok: true, handled: "callback" });
@@ -148,11 +158,27 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
           return Response.json({ ok: true, handled: "pinned-bp" });
         }
 
-        // Custom "/+" command: list active towers, then clean up old bot messages.
+        // Thread 4 is update-only: the bot never reacts to anything there.
+        const towerConst = await import("@/lib/tower-form");
+        if (towerConst.isUpdateOnlyThread(chatId, threadId)) {
+          return Response.json({ ok: true, ignored: "update-only-thread" });
+        }
+
+        // Legacy "/+" command kept for backwards compatibility.
         if (isTowerTopic && (message.text ?? "").trim() === "/+") {
           const mod = await import("@/lib/gvg-tower-list.server");
           const result = await mod.handleTowerListCommand();
           return Response.json({ ok: true, handled: "tower-list", result });
+        }
+
+        // Reply-keyboard buttons and the step-by-step add form (thread 8 only).
+        if (towerConst.isTowerWorkflowThread(chatId, threadId)) {
+          const form = await import("@/lib/gvg-tower-form.server");
+          const handled = await form.handleTowerWorkflowMessage({
+            ...(message as Record<string, unknown>),
+            message_thread_id: threadId ?? undefined,
+          } as Parameters<typeof form.handleTowerWorkflowMessage>[0]);
+          if (handled) return Response.json({ ok: true, handled: "tower-form" });
         }
 
         const { supabaseAdmin } = await import("@/lib/db.server");

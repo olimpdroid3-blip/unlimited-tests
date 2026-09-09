@@ -4,13 +4,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/db";
 import { toast } from "sonner";
 import { getNickCookie } from "@/lib/nickname";
-import { notifyTower, deleteTowerMessage } from "@/lib/tower-notify.functions";
+import { notifyTower, dropTowerRequest } from "@/lib/tower-notify.functions";
 import { fileToDataUrl, uploadScreenshot } from "@/lib/screenshot-upload";
 import { HeroPicker, type HeroOption } from "@/components/HeroPicker";
 import { MobPicker } from "@/components/MobPicker";
 import { getDefenseMobSelection } from "@/lib/defenses";
 import { mobCatalogRepository } from "@/lib/mob-levels-ui";
-import { mirrorRowId } from "@/lib/mirror-order";
 import { TowerDefenseVariantSelect } from "@/components/TowerDefenseVariantSelect";
 import {
   getTowerStatusFlags,
@@ -20,20 +19,6 @@ import {
   type TowerStatus,
   type TowerStatusFlags,
 } from "@/lib/tower-status";
-
-// Reads the mirror-order marker row and, if it carries a Telegram message id
-// (stored as "tg:<id>" in notes), asks the bot to delete that message.
-async function deleteMirrorOrderMessage(towerId: string) {
-  const { data } = await supabase
-    .from("towers")
-    .select("notes")
-    .eq("tower_id", mirrorRowId(towerId))
-    .maybeSingle();
-  const match = data?.notes?.match(/^tg:(\d+)$/);
-  if (match) {
-    await deleteTowerMessage({ data: { messageId: Number(match[1]) } }).catch(() => {});
-  }
-}
 
 type Tower = {
   tower_id: string;
@@ -174,11 +159,10 @@ export function TowerModal({
         updated_at: new Date().toISOString(),
       });
       if (error) throw error;
-      // Filling the tower fulfils any pending mirror order: remove the bot's
-      // "замовив дзеркало" message and the marker row.
+      // Filling the tower fulfils any pending request: shared removal deletes
+      // the bot's update message, the marker row and posts the "➖" update.
       if (update.placed) {
-        await deleteMirrorOrderMessage(towerId);
-        await supabase.from("towers").delete().eq("tower_id", mirrorRowId(towerId));
+        await dropTowerRequest({ data: { towerId } }).catch(() => {});
       }
       toast.success("Збережено");
       onChanged();
