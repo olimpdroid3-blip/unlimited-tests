@@ -84,6 +84,10 @@ async function messageExists(messageId: number): Promise<boolean> {
 }
 
 
+async function unpin(messageId: number): Promise<void> {
+  await call("unpinChatMessage", { chat_id: PIN_CHAT_ID, message_id: messageId });
+}
+
 async function pin(messageId: number): Promise<void> {
   await call("pinChatMessage", {
     chat_id: PIN_CHAT_ID,
