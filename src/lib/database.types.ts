@@ -351,10 +351,21 @@ export type Database = {
         };
         Relationships: [];
       };
+      tower_defense_variants: {
+        Row: { tower_id: string; variant: number };
+        Insert: { tower_id: string; variant: number };
+        Update: { tower_id?: string; variant?: number };
+        Relationships: [];
+      };
       towers: {
         Row: {
           awakenings: string | null;
           breached: boolean;
+          placed: boolean;
+          testing: boolean;
+          destroyed: boolean;
+          removed: boolean;
+          previous_nickname: string | null;
           nickname: string | null;
           notes: string | null;
           screenshot_path: string | null;
@@ -365,6 +376,11 @@ export type Database = {
         Insert: {
           awakenings?: string | null;
           breached?: boolean;
+          placed?: boolean;
+          testing?: boolean;
+          destroyed?: boolean;
+          removed?: boolean;
+          previous_nickname?: string | null;
           nickname?: string | null;
           notes?: string | null;
           screenshot_path?: string | null;
@@ -375,6 +391,11 @@ export type Database = {
         Update: {
           awakenings?: string | null;
           breached?: boolean;
+          placed?: boolean;
+          testing?: boolean;
+          destroyed?: boolean;
+          removed?: boolean;
+          previous_nickname?: string | null;
           nickname?: string | null;
           notes?: string | null;
           screenshot_path?: string | null;
@@ -389,6 +410,12 @@ export type Database = {
           archived_at: string;
           awakenings: string | null;
           breached: boolean;
+          placed: boolean;
+          testing: boolean;
+          destroyed: boolean;
+          removed: boolean;
+          previous_nickname: string | null;
+          defense_variant: number | null;
           id: string;
           nickname: string | null;
           notes: string | null;
@@ -400,6 +427,12 @@ export type Database = {
           archived_at?: string;
           awakenings?: string | null;
           breached?: boolean;
+          placed?: boolean;
+          testing?: boolean;
+          destroyed?: boolean;
+          removed?: boolean;
+          previous_nickname?: string | null;
+          defense_variant?: number | null;
           id?: string;
           nickname?: string | null;
           notes?: string | null;
@@ -411,6 +444,12 @@ export type Database = {
           archived_at?: string;
           awakenings?: string | null;
           breached?: boolean;
+          placed?: boolean;
+          testing?: boolean;
+          destroyed?: boolean;
+          removed?: boolean;
+          previous_nickname?: string | null;
+          defense_variant?: number | null;
           id?: string;
           nickname?: string | null;
           notes?: string | null;
