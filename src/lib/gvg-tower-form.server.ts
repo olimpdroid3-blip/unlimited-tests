@@ -311,7 +311,8 @@ export async function startTowerForm(
   });
   const resolved = resolveAdminNickname(member.ok ? member.result : null);
   if (!resolved.ok) {
-    const warnId = await send(chatId, resolved.error, TOWER_REPLY_KEYBOARD);
+    const warnId = await send(chatId, resolved.error);
+
     // Keep the topic tidy: the refusal and the tap disappear shortly after.
     if (triggerMessageId) await del(chatId, triggerMessageId);
     if (warnId) setTimeout(() => void del(chatId, warnId), 15_000);
@@ -399,7 +400,7 @@ export async function handleTowerWorkflowMessage(message: {
   }
 
   if (text === BTN_ADD) {
-    await startForm(chatId, userId, message.message_id);
+    await startTowerForm(chatId, userId, message.message_id);
     return true;
   }
 
