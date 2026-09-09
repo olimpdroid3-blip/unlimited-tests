@@ -136,3 +136,23 @@ export async function ensurePinnedTowersMessage(
   });
   return { action: "created", message_id: messageId };
 }
+
+/**
+ * Unpins and deletes the stored panel, then sends and pins a fresh one.
+ * Used when the old panel must visibly disappear from the topic header.
+ */
+export async function recreatePinnedTowersMessage(): Promise<{
+  action: string;
+  old_message_id: number | null;
+  message_id: number | null;
+}> {
+  const state = await readState();
+  const oldId = state?.message_id ?? null;
+  if (oldId) {
+    await unpin(oldId);
+    await call("deleteMessage", { chat_id: PIN_CHAT_ID, message_id: oldId });
+  }
+  lastCheck = 0;
+  const created = await ensurePinnedTowersMessage(true);
+  return { action: created.action, old_message_id: oldId, message_id: created.message_id };
+}
