@@ -347,10 +347,11 @@ export async function startTowerForm(
   };
   await saveForm(form);
 
-  // First message re-installs the persistent reply keyboard, the second one
-  // carries the step prompt with its inline "Скасувати" button.
-  const greetId = await send(chatId, `👤 ${resolved.nickname}`, { ...TOWER_REPLY_KEYBOARD });
+  // Greeting confirms whose form it is; the next message carries the step
+  // prompt with its inline "Скасувати" button.
+  const greetId = await send(chatId, `👤 ${resolved.nickname}`);
   form = await trackBot(form, greetId);
+
   const promptId = await send(chatId, STEP_POSITION_TEXT, keyboardFor("position", id.slice(0, 8)));
   await trackBot(form, promptId);
 }
