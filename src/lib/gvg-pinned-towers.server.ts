@@ -84,6 +84,10 @@ async function messageExists(messageId: number): Promise<boolean> {
 }
 
 
+async function unpin(messageId: number): Promise<void> {
+  await call("unpinChatMessage", { chat_id: PIN_CHAT_ID, message_id: messageId });
+}
+
 async function pin(messageId: number): Promise<void> {
   await call("pinChatMessage", {
     chat_id: PIN_CHAT_ID,
@@ -131,4 +135,42 @@ export async function ensurePinnedTowersMessage(
     updated_at: new Date().toISOString(),
   });
   return { action: "created", message_id: messageId };
+}
+
+/**
+ * Unpins and deletes the stored panel, then sends and pins a fresh one.
+ * Used when the old panel must visibly disappear from the topic header.
+ */
+export async function recreatePinnedTowersMessage(): Promise<{
+  action: string;
+  old_message_id: number | null;
+  message_id: number | null;
+}> {
+  const state = await readState();
+  const oldId = state?.message_id ?? null;
+  if (oldId) {
+    await unpin(oldId);
+    await call("deleteMessage", { chat_id: PIN_CHAT_ID, message_id: oldId });
+  }
+  // Old panels can be too old for deleteMessage, so always send a brand new one
+  // instead of relying on the stored state.
+  const sent = await call("sendMessage", {
+    chat_id: PIN_CHAT_ID,
+    message_thread_id: PIN_THREAD_ID,
+    text: PIN_TEXT,
+    disable_web_page_preview: true,
+    reply_markup: keyboard,
+  });
+  const messageId = (sent.result?.["message_id"] as number | undefined) ?? null;
+  if (!messageId) return { action: "send-failed", old_message_id: oldId, message_id: null };
+
+  await pin(messageId);
+  await writeState({
+    chat_id: PIN_CHAT_ID,
+    thread_id: PIN_THREAD_ID,
+    message_id: messageId,
+    updated_at: new Date().toISOString(),
+  });
+  lastCheck = Date.now();
+  return { action: "recreated", old_message_id: oldId, message_id: messageId };
 }
