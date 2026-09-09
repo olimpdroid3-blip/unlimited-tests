@@ -497,39 +497,30 @@ export function TowerModal({
             role="dialog"
             aria-modal="true"
             aria-label={`Скріншот розстановки вежі ${towerId}`}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              if (e.target === e.currentTarget) setLightboxOpen(false);
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              // Close only when tapping the backdrop (target === currentTarget).
-              if (e.target === e.currentTarget) setLightboxOpen(false);
-            }}
+            // Any touch/click anywhere closes the lightbox — the inner image
+            // wrapper stops propagation so taps directly on the picture stay.
+            onPointerDown={() => setLightboxOpen(false)}
+            onClick={() => setLightboxOpen(false)}
             className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-2 sm:p-6"
             style={{ touchAction: "manipulation" }}
           >
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setLightboxOpen(false);
-              }}
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                setLightboxOpen(false);
-              }}
-              aria-label="Закрити перегляд"
-              className="mb-3 flex min-h-14 w-full max-w-md touch-manipulation select-none items-center justify-center gap-2 rounded-xl bg-white/15 px-6 py-4 text-lg font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-white/25 active:scale-95"
-            >
-              <span className="text-2xl leading-none">×</span>
-              <span>Закрити</span>
-            </button>
             <div
-              className="relative flex max-h-full max-w-full items-center justify-center"
+              className="relative flex max-h-full max-w-full flex-col items-center"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
             >
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  setLightboxOpen(false);
+                }}
+                aria-label="Закрити перегляд"
+                className="mb-3 flex min-h-14 w-full touch-manipulation select-none items-center justify-center gap-2 rounded-xl bg-white/15 px-6 py-4 text-lg font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-white/25 active:scale-95"
+              >
+                <span className="text-2xl leading-none">×</span>
+                <span>Закрити</span>
+              </button>
               <img
                 src={shownImage}
                 alt={`Розстановка вежі ${towerId}`}
