@@ -321,14 +321,24 @@ export function TowerModal({
             <Field label="📷 Скріншот розстановки">
               <div className="space-y-2">
                 {shownImage && (
-                  <div className="overflow-hidden rounded-lg border border-border bg-black/20">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setLightboxOpen(true);
+                    }}
+                    title="Збільшити скріншот"
+                    aria-label="Збільшити скріншот"
+                    className="block w-full cursor-zoom-in overflow-hidden rounded-lg border border-border bg-black/20"
+                  >
                     <img
                       src={shownImage}
                       alt={`Розстановка вежі ${towerId}`}
                       loading="lazy"
                       className="mx-auto block max-h-56 w-full object-contain"
                     />
-                  </div>
+                  </button>
                 )}
                 <input
                   type="file"
