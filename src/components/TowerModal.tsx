@@ -506,9 +506,25 @@ export function TowerModal({
               // Close only when tapping the backdrop (target === currentTarget).
               if (e.target === e.currentTarget) setLightboxOpen(false);
             }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-2 sm:p-6"
+            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-2 sm:p-6"
             style={{ touchAction: "manipulation" }}
           >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxOpen(false);
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+              }}
+              aria-label="Закрити перегляд"
+              className="mb-3 flex w-full max-w-md items-center justify-center gap-2 rounded-xl bg-white/15 px-6 py-4 text-lg font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-white/25 active:scale-95"
+            >
+              <span className="text-2xl leading-none">×</span>
+              <span>Закрити</span>
+            </button>
             <div
               className="relative flex max-h-full max-w-full items-center justify-center"
               onPointerDown={(e) => e.stopPropagation()}
@@ -517,21 +533,9 @@ export function TowerModal({
               <img
                 src={shownImage}
                 alt={`Розстановка вежі ${towerId}`}
-                className="max-h-[100dvh] max-w-[100vw] object-contain"
+                className="max-h-[80dvh] max-w-[100vw] object-contain"
                 draggable={false}
               />
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightboxOpen(false);
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                aria-label="Закрити перегляд"
-                className="absolute right-2 top-2 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-black/70 text-3xl leading-none text-white shadow-lg transition hover:bg-black/90"
-              >
-                ×
-              </button>
             </div>
           </div>
         )}
