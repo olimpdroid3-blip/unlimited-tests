@@ -1,17 +1,17 @@
-// Keeps a single pinned message with a link to the "Вежі" page inside one forum topic.
+// Keeps a single pinned control panel (inline buttons only) in one forum topic.
 import { supabaseAdmin } from "@/lib/db.server";
+import { buildTowerPanelKeyboard } from "@/lib/tower-form";
 
 export const PIN_CHAT_ID = -1003978316922;
 export const PIN_THREAD_ID = 8;
 export const TOWERS_URL = "https://unlimited-tests.lovable.app/towers";
 
-const PIN_TEXT = "🏰 Вежі — Дзеркала\n\nВідкрий таблицю веж, щоб подивитись або внести проходку.";
-const BUTTON_TEXT = "🏰 Вежі — Дзеркала";
-
-const STATE_BUCKET = "defense-screenshots";
-const STATE_PATH = "bot-state/pinned-towers.json";
+// Telegram requires non-empty text; keep it to a single glyph so the pinned
+// panel is just the three buttons.
+const PIN_TEXT = "🏰";
 
 type PinState = { chat_id: number; thread_id: number; message_id: number; updated_at: string };
+
 
 function api(path: string): string {
   const token = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
