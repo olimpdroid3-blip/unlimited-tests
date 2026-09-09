@@ -499,7 +499,7 @@ export function TowerModal({
             aria-label={`Скріншот розстановки вежі ${towerId}`}
             onPointerDown={(e) => {
               e.stopPropagation();
-              e.preventDefault();
+              if (e.target === e.currentTarget) setLightboxOpen(false);
             }}
             onClick={(e) => {
               e.stopPropagation();
@@ -517,10 +517,10 @@ export function TowerModal({
               }}
               onPointerDown={(e) => {
                 e.stopPropagation();
-                e.preventDefault();
+                setLightboxOpen(false);
               }}
               aria-label="Закрити перегляд"
-              className="mb-3 flex w-full max-w-md items-center justify-center gap-2 rounded-xl bg-white/15 px-6 py-4 text-lg font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-white/25 active:scale-95"
+              className="mb-3 flex min-h-14 w-full max-w-md touch-manipulation select-none items-center justify-center gap-2 rounded-xl bg-white/15 px-6 py-4 text-lg font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-white/25 active:scale-95"
             >
               <span className="text-2xl leading-none">×</span>
               <span>Закрити</span>
