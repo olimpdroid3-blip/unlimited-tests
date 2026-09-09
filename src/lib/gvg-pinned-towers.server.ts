@@ -152,6 +152,14 @@ export async function recreatePinnedTowersMessage(): Promise<{
     await unpin(oldId);
     await call("deleteMessage", { chat_id: PIN_CHAT_ID, message_id: oldId });
   }
+  // Old panels can be too old for deleteMessage; drop the state so a brand new
+  // panel is always sent and pinned instead of re-using the stale one.
+  await writeState({
+    chat_id: PIN_CHAT_ID,
+    thread_id: PIN_THREAD_ID,
+    message_id: 0,
+    updated_at: new Date().toISOString(),
+  });
   lastCheck = 0;
   const created = await ensurePinnedTowersMessage(true);
   return { action: created.action, old_message_id: oldId, message_id: created.message_id };
