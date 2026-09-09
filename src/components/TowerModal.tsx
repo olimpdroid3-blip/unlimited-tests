@@ -1,13 +1,25 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/db";
 import { toast } from "sonner";
 import { getNickCookie } from "@/lib/nickname";
 import { notifyTower, deleteTowerMessage } from "@/lib/tower-notify.functions";
 import { fileToDataUrl, uploadScreenshot } from "@/lib/screenshot-upload";
 import { HeroPicker, type HeroOption } from "@/components/HeroPicker";
+import { MobPicker } from "@/components/MobPicker";
+import { getDefenseMobSelection } from "@/lib/defenses";
+import { mobCatalogRepository } from "@/lib/mob-levels-ui";
 import { mirrorRowId } from "@/lib/mirror-order";
+import { TowerDefenseVariantSelect } from "@/components/TowerDefenseVariantSelect";
+import {
+  getTowerStatusFlags,
+  getTowerSaveUpdate,
+  getTowerStatusUpdate,
+  TOWER_STATUS_LABELS,
+  type TowerStatus,
+  type TowerStatusFlags,
+} from "@/lib/tower-status";
 
 // Reads the mirror-order marker row and, if it carries a Telegram message id
 // (stored as "tg:<id>" in notes), asks the bot to delete that message.
@@ -29,6 +41,11 @@ type Tower = {
   awakenings: string | null;
   notes: string | null;
   breached?: boolean | null;
+  placed?: boolean | null;
+  testing?: boolean | null;
+  destroyed?: boolean | null;
+  removed?: boolean | null;
+  previous_nickname?: string | null;
   screenshot_url?: string | null;
   screenshot_path?: string | null;
 };
@@ -39,25 +56,31 @@ export function TowerModal({
   existing,
   onOpenChange,
   onChanged,
+  defenseVariant,
+  onVariantChanged,
 }: {
   towerId: string | null;
   open: boolean;
   existing: Tower | undefined;
   onOpenChange: (o: boolean) => void;
-  onChanged: () => void;
+  onChanged: () => void | Promise<unknown>;
+  defenseVariant: number | null;
+  onVariantChanged: () => void;
 }) {
+  const queryClient = useQueryClient();
   const [nickname, setNickname] = useState("");
   const [awakenings, setAwakenings] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [cookieNick, setCookieNick] = useState("");
-  const [breached, setBreached] = useState(false);
+  const [status, setStatus] = useState<TowerStatusFlags>(getTowerStatusFlags(undefined));
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [runCode, setRunCode] = useState("");
   const [heroSlots, setHeroSlots] = useState<Array<string | null>>([null, null, null, null, null]);
+  const [mobSlots, setMobSlots] = useState<Array<string | null>>([null, null, null, null, null]);
   const [savingDefense, setSavingDefense] = useState(false);
   const [sendingTg, setSendingTg] = useState(false);
 
@@ -74,6 +97,12 @@ export function TowerModal({
     },
   });
 
+  const { data: mobs = [] } = useQuery({
+    queryKey: ["mob-catalog"],
+    enabled: open,
+    queryFn: () => mobCatalogRepository.getAll(),
+  });
+
   useEffect(() => {
     if (open) {
       const ck = getNickCookie();
@@ -81,12 +110,13 @@ export function TowerModal({
       setNickname(existing?.nickname ?? ck ?? "");
       setAwakenings(existing?.awakenings ?? "");
       setNotes(existing?.notes ?? "");
-      setBreached(!!existing?.breached);
+      setStatus(getTowerStatusFlags(existing));
       setScreenshotUrl(existing?.screenshot_url ?? null);
       setScreenshotPreview(null);
       setScreenshotFile(null);
       setRunCode("");
       setHeroSlots([null, null, null, null, null]);
+      setMobSlots([null, null, null, null, null]);
       setConfirmDelete(false);
     }
   }, [open, existing]);
@@ -94,29 +124,39 @@ export function TowerModal({
   if (!towerId) return null;
 
   const chosenHeroes = heroSlots.filter((v): v is string => !!v);
+  const chosenMobs = mobSlots.filter((value): value is string => Boolean(value));
+  const selectedMobIds = getDefenseMobSelection(mobSlots);
   const shownImage = screenshotPreview ?? screenshotUrl;
 
-  const toggleBreached = async () => {
-    const next = !breached;
+  const changeStatus = async (next: TowerStatus, checked: boolean, close = false) => {
     setBusy(true);
-    const { error } = await supabase.from("towers").upsert({
-      tower_id: towerId,
-      nickname: existing ? (existing.nickname ?? null) : nickname.trim() || null,
-      awakenings: existing ? (existing.awakenings ?? null) : awakenings.trim() || null,
-      notes: existing ? (existing.notes ?? null) : notes.trim() || null,
-      breached: next,
-      updated_at: new Date().toISOString(),
-    });
-    setBusy(false);
-    if (error) return toast.error("Помилка збереження");
-    setBreached(next);
-    toast.success(next ? "Позначено як пробито" : "Позначку знято");
-    onChanged();
+    const update = getTowerStatusUpdate(existing, next, checked, existing?.nickname ?? nickname);
+    const previousStatus = status;
+    setStatus(getTowerStatusFlags(update));
+    try {
+      const { error } = await supabase.from("towers").upsert({
+        tower_id: towerId,
+        awakenings: existing?.awakenings ?? (awakenings.trim() || null),
+        notes: existing?.notes ?? (notes.trim() || null),
+        ...update,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      toast.success(`${TOWER_STATUS_LABELS[next]}: ${checked ? "так" : "ні"}`);
+      await onChanged();
+      if (close) onOpenChange(false);
+    } catch {
+      setStatus(previousStatus);
+      toast.error("Помилка збереження статусу");
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (placeAgain = false) => {
     setBusy(true);
     try {
+      const update = getTowerSaveUpdate({ ...existing, ...status }, nickname, { placeAgain });
       let url = screenshotUrl;
       let path = existing?.screenshot_path ?? null;
       if (screenshotFile) {
@@ -126,10 +166,9 @@ export function TowerModal({
       }
       const { error } = await supabase.from("towers").upsert({
         tower_id: towerId,
-        nickname: nickname.trim() || null,
+        ...update,
         awakenings: awakenings.trim() || null,
         notes: notes.trim() || null,
-        breached,
         screenshot_url: url,
         screenshot_path: path,
         updated_at: new Date().toISOString(),
@@ -137,8 +176,10 @@ export function TowerModal({
       if (error) throw error;
       // Filling the tower fulfils any pending mirror order: remove the bot's
       // "замовив дзеркало" message and the marker row.
-      await deleteMirrorOrderMessage(towerId);
-      await supabase.from("towers").delete().eq("tower_id", mirrorRowId(towerId));
+      if (update.placed) {
+        await deleteMirrorOrderMessage(towerId);
+        await supabase.from("towers").delete().eq("tower_id", mirrorRowId(towerId));
+      }
       toast.success("Збережено");
       onChanged();
       onOpenChange(false);
@@ -151,8 +192,19 @@ export function TowerModal({
 
   const handleSaveDefense = async () => {
     if (chosenHeroes.length < 1) return toast.error("Оберіть хоча б одного героя");
+    if (!selectedMobIds) return toast.error("Оберіть від 2 до 5 мобів без пропусків");
+    const nick = nickname.trim();
+    if (!nick) return toast.error("Спочатку вкажіть нік");
     setSavingDefense(true);
     try {
+      const { data: player, error: playerError } = await supabase
+        .from("battle_power")
+        .select("id")
+        .ilike("nickname", nick)
+        .maybeSingle();
+      if (playerError) throw playerError;
+      if (!player) return toast.error("Гравця не знайдено. Перевірте нік у списку БС");
+
       // Reuse the already-saved tower screenshot, or upload the freshly picked file.
       let url = screenshotUrl;
       if (!url && screenshotFile) {
@@ -160,41 +212,21 @@ export function TowerModal({
         setScreenshotUrl(url);
       }
 
-      let playerId: string | null = null;
-      const nick = nickname.trim();
-      if (nick) {
-        const { data: player } = await supabase
-          .from("battle_power")
-          .select("id")
-          .ilike("nickname", nick)
-          .maybeSingle();
-        playerId = player?.id ?? null;
-      }
-
-      const { data: created, error } = await supabase
-        .from("defenses")
-        .insert({
-          screenshot_url: url,
-          run_code: runCode.trim() || null,
-          player_id: playerId,
-          comment: `Вежа ${towerId}${notes.trim() ? ` — ${notes.trim()}` : ""}`,
-        })
-        .select("id")
-        .single();
+      const { error } = await supabase.rpc("create_defense_with_details", {
+        p_screenshot_url: url,
+        p_run_code: runCode.trim() || null,
+        p_player_id: player.id,
+        p_comment: `Вежа ${towerId}${notes.trim() ? ` — ${notes.trim()}` : ""}`,
+        p_hero_ids: chosenHeroes,
+        p_mob_ids: selectedMobIds,
+      });
       if (error) throw error;
-
-      const { error: hErr } = await supabase.from("defense_heroes").insert(
-        chosenHeroes.map((heroId, index) => ({
-          defense_id: created.id,
-          hero_id: heroId,
-          position: index + 1,
-        })),
-      );
-      if (hErr) throw hErr;
+      void queryClient.invalidateQueries({ queryKey: ["defenses"] });
 
       toast.success("Код проходки збережено в базі захистів");
       setRunCode("");
       setHeroSlots([null, null, null, null, null]);
+      setMobSlots([null, null, null, null, null]);
     } catch (e) {
       console.error(e);
       toast.error("Не вдалося зберегти проходку");
@@ -221,21 +253,6 @@ export function TowerModal({
     }
   };
 
-  const handleDelete = async () => {
-    setBusy(true);
-    if (existing?.screenshot_path) {
-      await supabase.storage.from("defense-screenshots").remove([existing.screenshot_path]);
-    }
-    await deleteMirrorOrderMessage(towerId);
-    await supabase.from("towers").delete().eq("tower_id", mirrorRowId(towerId));
-    const { error } = await supabase.from("towers").delete().eq("tower_id", towerId);
-    setBusy(false);
-    if (error) return toast.error("Помилка видалення");
-    toast.success("Видалено");
-    onChanged();
-    onOpenChange(false);
-  };
-
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -245,24 +262,50 @@ export function TowerModal({
             <Dialog.Title className="text-lg font-semibold text-foreground">
               🏰 Башня {towerId}
             </Dialog.Title>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={toggleBreached}
-              aria-pressed={breached}
-              className={[
-                "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition active:scale-95 disabled:opacity-50",
-                breached
-                  ? "bg-destructive text-destructive-foreground shadow-sm"
-                  : "border border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20",
-              ].join(" ")}
-            >
-              {breached ? "🔴 Пробито ✓" : "🔴 Пробито"}
-            </button>
           </div>
           <Dialog.Description className="sr-only">Редагування вежі {towerId}</Dialog.Description>
 
           <div className="mt-4 space-y-3">
+            <fieldset className="space-y-2">
+              <legend className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Позначки дефу
+              </legend>
+              {(["breached", "testing", "destroyed", "removed"] as const).map((flag) => (
+                <label key={flag} className="flex cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={status[flag]}
+                    disabled={busy}
+                    onChange={(event) => void changeStatus(flag, event.target.checked)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  {TOWER_STATUS_LABELS[flag]}
+                </label>
+              ))}
+              <p className="text-xs text-muted-foreground">
+                Можна вибрати кілька. Позначки зберігаються одразу. «Знищений» також означає
+                «Пробитий». «Зберегти» залишає позначку «Знятий».
+              </p>
+            </fieldset>
+            {status.removed && (
+              <div className="rounded-lg border border-dashed border-border bg-secondary p-3 text-sm">
+                <strong>Деф знятий</strong>
+                <p>Був: {existing?.nickname || existing?.previous_nickname || "нік не вказаний"}</p>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void handleSave(true)}
+                  className="mt-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+                >
+                  Виставити знову
+                </button>
+              </div>
+            )}
+            <TowerDefenseVariantSelect
+              towerId={towerId}
+              value={defenseVariant}
+              onChanged={onVariantChanged}
+            />
             <Field label="Нік">
               <input
                 value={nickname}
@@ -329,7 +372,7 @@ export function TowerModal({
             </Field>
           </div>
 
-          {breached && (
+          {(status.breached || status.destroyed) && (
             <div className="mt-4 space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-3">
               <div className="text-xs font-semibold uppercase tracking-wider text-primary">
                 🛡 Додати до бази захистів
@@ -354,9 +397,30 @@ export function TowerModal({
                   />
                 ))}
               </div>
+              <div className="space-y-2">
+                {mobSlots.map((value, index) => (
+                  <div key={index} className="flex flex-col gap-1.5">
+                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Моб {index + 1}
+                      {index < 2 && <span className="ml-1 text-destructive">*</span>}
+                    </span>
+                    <MobPicker
+                      mobs={mobs}
+                      value={value}
+                      placeholder={`Оберіть моба ${index + 1}`}
+                      excludeIds={chosenMobs}
+                      onChange={(id) =>
+                        setMobSlots((prev) => prev.map((v, i) => (i === index ? id : v)))
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
               <button
                 type="button"
-                disabled={savingDefense || chosenHeroes.length === 0}
+                disabled={
+                  savingDefense || chosenHeroes.length === 0 || !selectedMobIds || !nickname.trim()
+                }
                 onClick={handleSaveDefense}
                 className="w-full rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
               >
@@ -367,14 +431,16 @@ export function TowerModal({
 
           {confirmDelete ? (
             <div className="mt-5 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
-              <div className="text-sm text-foreground">Видалити запис?</div>
+              <div className="text-sm text-foreground">
+                Зняти деф? Попередній нік залишиться на плитці.
+              </div>
               <div className="mt-3 flex gap-2">
                 <button
                   disabled={busy}
-                  onClick={handleDelete}
+                  onClick={() => void changeStatus("removed", true, true)}
                   className="flex-1 rounded-lg bg-destructive px-3 py-2 text-sm font-medium text-destructive-foreground transition hover:opacity-90 disabled:opacity-50"
                 >
-                  Так, видалити
+                  Так, зняти
                 </button>
                 <button
                   disabled={busy}
@@ -389,7 +455,7 @@ export function TowerModal({
             <div className="mt-5 flex gap-2">
               <button
                 disabled={busy}
-                onClick={handleSave}
+                onClick={() => void handleSave()}
                 className="flex-1 rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
               >
                 💾 Зберегти
@@ -407,10 +473,10 @@ export function TowerModal({
                 </svg>
               </button>
               <button
-                disabled={busy || !existing}
+                disabled={busy || !existing || status.removed}
                 onClick={() => setConfirmDelete(true)}
-                title="Видалити запис"
-                aria-label="Видалити запис"
+                title="Зняти деф"
+                aria-label="Зняти деф"
                 className="flex w-11 shrink-0 items-center justify-center rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-2.5 text-sm font-medium text-destructive transition hover:bg-destructive/20 disabled:opacity-40"
               >
                 🗑

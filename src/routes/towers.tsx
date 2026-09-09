@@ -8,6 +8,7 @@ import { TowerModal } from "@/components/TowerModal";
 import { MirrorOrderModal } from "@/components/MirrorOrderModal";
 import { isMirrorRow, MIRROR_PREFIX } from "@/lib/mirror-order";
 import * as Dialog from "@radix-ui/react-dialog";
+import { getTowerStatusFlags, getTowerStatuses, TOWER_STATUS_LABELS } from "@/lib/tower-status";
 
 export const Route = createFileRoute("/towers")({
   head: () => ({
@@ -27,9 +28,22 @@ type Tower = {
   awakenings: string | null;
   notes: string | null;
   breached?: boolean | null;
+  placed?: boolean | null;
+  testing?: boolean | null;
+  destroyed?: boolean | null;
+  removed?: boolean | null;
+  previous_nickname?: string | null;
   screenshot_url?: string | null;
   screenshot_path?: string | null;
 };
+
+const COMPACT_STATUS_LABELS = {
+  placed: "Вист.",
+  breached: "Проб.",
+  testing: "Тест",
+  destroyed: "Знищ.",
+  removed: "Знятий",
+} as const;
 
 const COLUMNS = [
   { num: 1, label: "I", color: "text-col-i" },
@@ -85,8 +99,21 @@ function HomePage() {
   });
 
   const realTowers = towers.filter((t) => !isMirrorRow(t.tower_id));
+  const { data: variants = [], refetch: refetchVariants } = useQuery({
+    queryKey: ["tower-defense-variants"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tower_defense_variants")
+        .select("tower_id,variant");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const variantsByTower = new Map(variants.map((row) => [row.tower_id, row.variant]));
   const mirrorRequested = new Set(
-    towers.filter((t) => isMirrorRow(t.tower_id)).map((t) => t.tower_id.slice(MIRROR_PREFIX.length)),
+    towers
+      .filter((t) => isMirrorRow(t.tower_id))
+      .map((t) => t.tower_id.slice(MIRROR_PREFIX.length)),
   );
   const map = new Map(realTowers.map((t) => [t.tower_id, t]));
   const existing = selected ? map.get(selected) : undefined;
@@ -98,13 +125,19 @@ function HomePage() {
 
   const handleClearAll = async () => {
     setBusy(true);
-    if (towers.length > 0) {
-      const archiveRows = realTowers.map((t) => ({
-        tower_id: t.tower_id,
-        nickname: t.nickname,
-        awakenings: t.awakenings,
-        notes: t.notes,
-        breached: !!t.breached,
+    if (towers.length > 0 || variants.length > 0) {
+      const archiveIds = new Set([
+        ...realTowers.map((tower) => tower.tower_id),
+        ...variantsByTower.keys(),
+      ]);
+      const archiveRows = [...archiveIds].map((id) => ({
+        tower_id: id,
+        nickname: map.get(id)?.nickname ?? null,
+        awakenings: map.get(id)?.awakenings ?? null,
+        notes: map.get(id)?.notes ?? null,
+        defense_variant: variantsByTower.get(id) ?? null,
+        ...getTowerStatusFlags(map.get(id)),
+        previous_nickname: map.get(id)?.previous_nickname ?? null,
         // Tower screenshots are wiped along with the records; only copies
         // already saved into the defenses database survive.
         screenshot_url: null,
@@ -125,12 +158,21 @@ function HomePage() {
         setBusy(false);
         return;
       }
+      const { error: variantError } = await supabase
+        .from("tower_defense_variants")
+        .delete()
+        .neq("tower_id", "");
+      if (variantError) {
+        setBusy(false);
+        return;
+      }
     }
     setBusy(false);
     setClearOpen(false);
     setConfirmOpen(false);
     setConfirmText("");
     refetch();
+    refetchVariants();
   };
 
   // Second-step confirmation: proceed only if the user typed "згоден"
@@ -151,7 +193,7 @@ function HomePage() {
         {/* 4-column grid of towers */}
         <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
           {COLUMNS.map((col) => (
-            <div key={col.num} className="flex flex-col gap-2">
+            <div key={col.num} className="row-span-13 grid grid-rows-subgrid">
               <div
                 className={[
                   "text-center text-base font-bold tracking-widest sm:text-lg",
@@ -160,47 +202,98 @@ function HomePage() {
               >
                 {col.label}
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="row-span-12 grid grid-rows-subgrid">
                 {PAIRS.map((pair, pIdx) => (
                   <div
                     key={pIdx}
-                    className="flex flex-col gap-1 rounded-lg border-2 border-border/50 p-1 sm:gap-1.5 sm:p-1.5"
+                    className="row-span-2 grid grid-rows-subgrid gap-y-1 rounded-lg border-2 border-border/50 p-1 sm:gap-y-1.5 sm:p-1.5"
                   >
                     {pair.map(([r, s]) => {
                       const id = `${col.num}.${r}.${s}`;
                       const tower = map.get(id);
-                      const active = !!tower;
-                      const breached = !!tower?.breached;
+                      const variant = variantsByTower.get(id);
+                      const status = getTowerStatusFlags(tower);
+                      const statuses = getTowerStatuses(tower);
+                      const active = status.placed;
+                      const breached = status.breached;
                       const mirror = mirrorRequested.has(id);
                       return (
                         <button
                           key={id}
                           onClick={() => openTower(id)}
+                          aria-label={[
+                            id,
+                            variant != null ? `К${variant}` : null,
+                            ...statuses.map((flag) => TOWER_STATUS_LABELS[flag]),
+                            status.removed
+                              ? `Був: ${tower?.previous_nickname || "нік не вказаний"}`
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
                           className={[
-                            "relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-semibold transition-all duration-200 active:scale-95 sm:gap-2 sm:rounded-lg sm:px-3 sm:py-1.5 sm:text-sm",
+                            "relative grid min-h-14 min-w-0 grid-cols-1 grid-rows-[1rem_1.25rem_auto] content-start items-start gap-1 rounded-md px-1.5 py-1.5 text-left text-xs font-semibold transition-colors duration-200 active:scale-95 sm:min-h-16 sm:grid-rows-[1.25rem_1.25rem_auto_auto] sm:rounded-lg sm:px-3 sm:text-sm",
                             "border",
-                            breached
-                              ? "border-tower-breached/40 bg-tower-breached text-tower-breached-foreground shadow-[0_0_14px_-6px_var(--tower-breached)]"
-                              : mirror
-                                ? "border-2 border-primary bg-tower-idle text-tower-idle-text hover:text-foreground"
-                                : active
-                                  ? "border-tower-active/40 bg-tower-active text-tower-active-foreground shadow-[0_0_14px_-6px_var(--tower-active)]"
-                                  : "border-border bg-tower-idle text-tower-idle-text hover:text-foreground",
+                            status.removed
+                              ? "border-dashed border-violet-500 bg-violet-50 text-violet-950 dark:border-violet-400 dark:bg-violet-950 dark:text-violet-100"
+                              : status.destroyed
+                                ? "border-red-700 bg-red-700 text-white"
+                                : status.testing
+                                  ? "border-blue-700 bg-blue-700 text-white"
+                                  : breached
+                                    ? "border-tower-breached/40 bg-tower-breached text-tower-breached-foreground shadow-[0_0_14px_-6px_var(--tower-breached)]"
+                                    : mirror
+                                      ? "border-2 border-primary bg-tower-idle text-tower-idle-text hover:text-foreground"
+                                      : active
+                                        ? "border-tower-active/40 bg-tower-active text-tower-active-foreground shadow-[0_0_14px_-6px_var(--tower-active)]"
+                                        : "border-border bg-tower-idle text-tower-idle-text hover:text-foreground",
                           ].join(" ")}
                         >
-                          <span
-                            className={[
-                              "h-2 w-2 shrink-0 rounded-full sm:h-2.5 sm:w-2.5",
-                              breached
-                                ? "bg-tower-breached-foreground"
-                                : mirror
-                                  ? "bg-primary"
-                                  : active
-                                    ? "bg-tower-active-foreground"
-                                    : "bg-muted-foreground/60",
-                            ].join(" ")}
-                          />
-                          <span className="font-mono tracking-wide">{id}</span>
+                          <span className="flex items-center gap-1 sm:gap-2">
+                            <span className="hidden h-2 w-2 shrink-0 rounded-full bg-current opacity-70 sm:block" />
+                            <span className="whitespace-nowrap font-mono leading-4 sm:tracking-wide">
+                              {id}
+                            </span>
+                          </span>
+                          <span className="flex h-5 items-start">
+                            {variant != null && (
+                              <span
+                                title={`Варіант дефу К${variant}`}
+                                className="whitespace-nowrap rounded border border-current/30 px-1 font-mono text-[10px] font-bold leading-4 sm:px-1.5 sm:text-xs"
+                              >
+                                К{variant}
+                              </span>
+                            )}
+                          </span>
+                          <span className="flex flex-col items-start gap-1 sm:flex-row sm:flex-wrap">
+                            {statuses.map((flag) => (
+                              <span
+                                key={flag}
+                                title={TOWER_STATUS_LABELS[flag]}
+                                className={[
+                                  "max-w-full rounded text-[9px] leading-3 sm:px-1 sm:py-0.5 sm:text-xs",
+                                  flag === "breached"
+                                    ? "border border-emerald-400 bg-emerald-700 px-0.5 py-0.5 text-white"
+                                    : flag === "removed"
+                                      ? "border border-violet-400 bg-violet-700 px-0.5 py-0.5 text-white"
+                                      : "sm:border sm:border-current/30",
+                                ].join(" ")}
+                              >
+                                <span className="sm:hidden">{COMPACT_STATUS_LABELS[flag]}</span>
+                                <span className="hidden sm:inline">
+                                  {TOWER_STATUS_LABELS[flag]}
+                                </span>
+                              </span>
+                            ))}
+                          </span>
+                          {status.removed && (
+                            <span
+                              title={`Був: ${tower?.previous_nickname || "нік не вказаний"}`}
+                              className="hidden text-xs font-normal leading-tight xl:block [overflow-wrap:anywhere]"
+                            >
+                              Був: {tower?.previous_nickname || "нік не вказаний"}
+                            </span>
+                          )}
                         </button>
                       );
                     })}
@@ -236,7 +329,6 @@ function HomePage() {
             <span>🗑</span>
             <span>Видалити всі записи</span>
           </button>
-
         </div>
       </main>
 
@@ -250,6 +342,8 @@ function HomePage() {
         towerId={selected}
         open={modalOpen}
         existing={existing}
+        defenseVariant={selected ? (variantsByTower.get(selected) ?? null) : null}
+        onVariantChanged={() => refetchVariants()}
         onOpenChange={setModalOpen}
         onChanged={() => refetch()}
       />

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/db";
 import { AppHeader } from "@/components/AppHeader";
+import { getTowerStatuses, TOWER_STATUS_LABELS } from "@/lib/tower-status";
 
 export const Route = createFileRoute("/archive")({
   head: () => ({
@@ -22,6 +23,13 @@ type Row = {
   nickname: string | null;
   awakenings: string | null;
   notes: string | null;
+  defense_variant?: number | null;
+  placed?: boolean | null;
+  testing?: boolean | null;
+  destroyed?: boolean | null;
+  removed?: boolean | null;
+  breached?: boolean | null;
+  previous_nickname?: string | null;
   archived_at: string;
 };
 
@@ -78,10 +86,18 @@ function ArchivePage() {
                     .slice()
                     .sort((a, b) => a.tower_id.localeCompare(b.tower_id))
                     .map((r) => (
-                      <div key={r.id} className="rounded-lg border border-border bg-card p-3">
+                      <div
+                        key={r.id}
+                        className="min-w-0 rounded-lg border border-border bg-card p-3"
+                      >
                         <div className="flex items-baseline justify-between gap-3">
                           <div className="text-sm font-semibold text-foreground">
                             🏰 {r.tower_id}
+                            {r.defense_variant != null && (
+                              <span className="ml-2 rounded border border-border px-1.5 font-mono text-xs">
+                                К{r.defense_variant}
+                              </span>
+                            )}
                           </div>
                           {r.nickname && (
                             <div className="truncate text-xs text-muted-foreground">
@@ -89,6 +105,18 @@ function ArchivePage() {
                             </div>
                           )}
                         </div>
+                        <div className="mt-1 flex flex-wrap gap-1 text-xs text-muted-foreground">
+                          {getTowerStatuses(r).map((flag) => (
+                            <span key={flag} className="rounded border border-border px-1">
+                              {TOWER_STATUS_LABELS[flag]}
+                            </span>
+                          ))}
+                        </div>
+                        {r.previous_nickname && (
+                          <div className="mt-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                            Був: {r.previous_nickname}
+                          </div>
+                        )}
                         {r.awakenings && (
                           <div className="mt-1 text-xs text-muted-foreground">
                             Пробуди: <span className="text-foreground">{r.awakenings}</span>

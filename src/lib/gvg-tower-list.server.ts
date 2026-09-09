@@ -9,14 +9,15 @@ import { TOWERS_URL } from "@/lib/gvg-pinned-towers.server";
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
 
-const escape = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 type TowerRow = {
   tower_id: string;
   nickname: string | null;
   screenshot_url: string | null;
   breached: boolean | null;
+  removed: boolean;
+  placed: boolean;
 };
 
 function towerSortKey(id: string): number[] {
@@ -39,7 +40,7 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
 
   const { data, error } = await supabaseAdmin
     .from("towers")
-    .select("tower_id, nickname, screenshot_url, breached");
+    .select("tower_id, nickname, screenshot_url, breached, removed, placed");
   if (error) {
     console.error("[tower-list] towers fetch failed", error.message);
     return { ok: false, error: error.message };
@@ -47,7 +48,14 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
 
   const rows = (data ?? []) as TowerRow[];
   const filled = rows
-    .filter((r) => !isMirrorRow(r.tower_id) && !r.breached && (r.nickname || r.screenshot_url))
+    .filter(
+      (r) =>
+        !isMirrorRow(r.tower_id) &&
+        r.placed &&
+        !r.breached &&
+        !r.removed &&
+        (r.nickname || r.screenshot_url),
+    )
     .sort((a, b) => compareTowerIds(a.tower_id, b.tower_id));
   const ordered = rows
     .filter((r) => isMirrorRow(r.tower_id))
