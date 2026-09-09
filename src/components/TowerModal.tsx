@@ -499,9 +499,14 @@ export function TowerModal({
             aria-label={`Скріншот розстановки вежі ${towerId}`}
             // Any touch/click anywhere closes the lightbox — the inner image
             // wrapper stops propagation so taps directly on the picture stay.
-            onPointerDown={() => setLightboxOpen(false)}
-            onClick={() => setLightboxOpen(false)}
-            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-2 sm:p-6"
+            // Only pointerdown closes; preventDefault keeps the browser from
+            // synthesizing a follow-up click that would land on the dialog
+            // overlay (sitting just below) and close the whole tower modal.
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setLightboxOpen(false);
+            }}
             style={{ touchAction: "manipulation" }}
           >
             <div
