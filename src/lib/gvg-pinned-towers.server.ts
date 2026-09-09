@@ -65,11 +65,16 @@ async function writeState(state: PinState): Promise<void> {
 
 const keyboard = buildTowerPanelKeyboard(TOWERS_URL);
 
-/** Returns true when the stored message still exists in the topic. */
+/**
+ * Returns true when the stored message still exists. Also upgrades an older
+ * panel in place (text + buttons) instead of pinning a second message.
+ */
 async function messageExists(messageId: number): Promise<boolean> {
-  const res = await call("editMessageReplyMarkup", {
+  const res = await call("editMessageText", {
     chat_id: PIN_CHAT_ID,
     message_id: messageId,
+    text: PIN_TEXT,
+    disable_web_page_preview: true,
     reply_markup: keyboard,
   });
   if (res.ok) return true;
@@ -77,6 +82,7 @@ async function messageExists(messageId: number): Promise<boolean> {
   // "message is not modified" means the message is alive and already correct.
   return d.includes("not modified");
 }
+
 
 async function pin(messageId: number): Promise<void> {
   await call("pinChatMessage", {
