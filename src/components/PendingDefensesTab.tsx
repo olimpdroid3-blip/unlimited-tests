@@ -11,6 +11,20 @@ export type PendingDefenseRow = {
   created_at: string;
 };
 
+type PendingQueryError = { message: string } | null;
+type PendingQueueClient = {
+  from: (table: "pending_defenses") => {
+    select: (columns: string) => {
+      order: (
+        column: "created_at",
+        options: { ascending: boolean },
+      ) => PromiseLike<{ data: PendingDefenseRow[] | null; error: PendingQueryError }>;
+    };
+  };
+};
+
+const pendingQueueClient = supabase as unknown as PendingQueueClient;
+
 function normalizeNickname(value: string | null | undefined): string {
   return (value ?? "").trim().toLocaleLowerCase();
 }
@@ -37,12 +51,12 @@ export function PendingDefensesTab({
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["pending-defenses"],
     queryFn: async (): Promise<PendingDefenseRow[]> => {
-      const { data, error } = await supabase
+      const { data, error } = await pendingQueueClient
         .from("pending_defenses")
         .select("id,screenshot_url,run_code,comment,submitted_nickname,created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as PendingDefenseRow[];
+      return data ?? [];
     },
   });
 
