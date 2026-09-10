@@ -24,10 +24,6 @@ import {
   STEP_POSITION_TEXT,
   STEP_SCREENSHOT_TEXT,
   TOWER_CHAT_ID,
-  BTN_MIRROR_KB,
-  BTN_MIRRORS,
-  TOWER_REPLY_KEYBOARD,
-
   TOWER_WORK_THREAD_ID,
   type TowerForm,
 } from "@/lib/tower-form";
