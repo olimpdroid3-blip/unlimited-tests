@@ -6,16 +6,14 @@ export const PIN_CHAT_ID = -1003978316922;
 export const PIN_THREAD_ID = 8;
 export const TOWERS_URL = "https://unlimited-tests.lovable.app/towers";
 
-// Telegram requires non-empty text. An invisible separator keeps the pinned
-// panel visually limited to the three buttons.
-const PIN_TEXT = "\u2063";
+// Telegram shows this text in the large pinned-message banner at the top.
+// Tapping that banner jumps to this message, where the three inline controls live.
+const PIN_TEXT = "🏰 Керування дзеркалами";
 
 const STATE_BUCKET = "defense-screenshots";
 const STATE_PATH = "bot-state/pinned-towers.json";
 
 type PinState = { chat_id: number; thread_id: number; message_id: number; updated_at: string };
-
-
 
 function api(path: string): string {
   const token = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
@@ -65,10 +63,7 @@ async function writeState(state: PinState): Promise<void> {
 
 const keyboard = buildTowerPanelKeyboard(TOWERS_URL);
 
-/**
- * Returns true when the stored message still exists. Also upgrades an older
- * panel in place (text + buttons) instead of pinning a second message.
- */
+/** Returns true when the stored message still exists and upgrades it in place. */
 async function messageExists(messageId: number): Promise<boolean> {
   const res = await call("editMessageText", {
     chat_id: PIN_CHAT_ID,
@@ -79,10 +74,8 @@ async function messageExists(messageId: number): Promise<boolean> {
   });
   if (res.ok) return true;
   const d = (res.description ?? "").toLowerCase();
-  // "message is not modified" means the message is alive and already correct.
   return d.includes("not modified");
 }
-
 
 async function unpin(messageId: number): Promise<void> {
   await call("unpinChatMessage", { chat_id: PIN_CHAT_ID, message_id: messageId });
@@ -101,10 +94,7 @@ async function pin(messageId: number): Promise<void> {
 
 let lastCheck = 0;
 
-/**
- * Ensures the topic has a pinned message with the towers button.
- * Recreates and re-pins it when the message was deleted.
- */
+/** Ensures the topic has its single pinned towers control message. */
 export async function ensurePinnedTowersMessage(
   force = false,
 ): Promise<{ action: string; message_id: number | null }> {
@@ -140,10 +130,7 @@ export async function ensurePinnedTowersMessage(
   return { action: "created", message_id: messageId };
 }
 
-/**
- * Unpins and deletes the stored panel, then sends and pins a fresh one.
- * Used when the old panel must visibly disappear from the topic header.
- */
+/** Recreates the pinned control message only when explicitly requested. */
 export async function recreatePinnedTowersMessage(): Promise<{
   action: string;
   old_message_id: number | null;
@@ -155,8 +142,6 @@ export async function recreatePinnedTowersMessage(): Promise<{
     await unpin(oldId);
     await call("deleteMessage", { chat_id: PIN_CHAT_ID, message_id: oldId });
   }
-  // Old panels can be too old for deleteMessage, so always send a brand new one
-  // instead of relying on the stored state.
   const sent = await call("sendMessage", {
     chat_id: PIN_CHAT_ID,
     message_thread_id: PIN_THREAD_ID,
