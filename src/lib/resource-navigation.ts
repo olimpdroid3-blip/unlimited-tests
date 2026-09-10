@@ -40,7 +40,7 @@ export const LANDING_SECTIONS: ResourceSection[] = [
     to: "/walkthroughs",
     icon: "🎯",
     title: "Проходки",
-    subtitle: "База захистів · відео проходок",
+    subtitle: "База проходок · відео проходок",
   },
 ];
 
@@ -63,7 +63,7 @@ export const WALKTHROUGH_SECTIONS: ResourceSection[] = [
   {
     to: "/defenses",
     icon: "🛡",
-    title: "База захистів",
+    title: "База проходок",
     subtitle: "Скріншоти · коди проходок · пошук по героях",
   },
   {
