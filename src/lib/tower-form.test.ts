@@ -17,7 +17,6 @@ import {
   isUpdateOnlyThread,
   resolveAdminNickname,
   TOWER_CHAT_ID,
-  TOWER_REPLY_KEYBOARD,
   type TowerForm,
 } from "./tower-form.ts";
 
