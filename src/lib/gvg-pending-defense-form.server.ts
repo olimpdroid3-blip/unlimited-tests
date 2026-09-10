@@ -144,6 +144,7 @@ async function dropState(form: Form): Promise<void> {
 async function cleanupBotMessages(form: Form): Promise<void> {
   const ids = new Set<number>([
     ...(form.bot_message_ids ?? []),
+    ...(form.user_message_ids ?? []),
     form.prompt_message_id ?? 0,
     form.cancel_message_id ?? 0,
   ]);
