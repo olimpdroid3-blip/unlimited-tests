@@ -369,6 +369,7 @@ export async function startPendingDefenseForm(userId: number): Promise<void> {
     run_code: null,
     comment: null,
     bot_message_ids: [],
+    user_message_ids: [],
     prompt_message_id: null,
     cancel_message_id: null,
     created_at: new Date(now).toISOString(),
