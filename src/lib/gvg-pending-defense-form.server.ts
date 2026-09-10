@@ -14,7 +14,7 @@ const STATE_DIR = "bot-state/pending-defense-forms";
 const FORM_TTL_MS = 30 * 60 * 1000;
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
-type Step = "screenshot" | "code" | "comment";
+type Step = "screenshot" | "code" | "comment" | "confirm";
 type Form = {
   id: string;
   chat_id: number;
@@ -27,8 +27,10 @@ type Form = {
   run_code: string | null;
   comment: string | null;
   bot_message_ids: number[];
+  user_message_ids?: number[];
   prompt_message_id?: number | null;
   cancel_message_id?: number | null;
+  submitted?: boolean;
   created_at: string;
   expires_at: string;
 };
