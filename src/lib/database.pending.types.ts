@@ -15,8 +15,8 @@ type PendingDefensesTable = {
   };
   Insert: {
     id?: string;
-    screenshot_url: string;
-    run_code: string;
+    screenshot_url: string | null;
+    run_code: string | null;
     comment?: string | null;
     submitted_nickname?: string | null;
     telegram_user_id?: number | null;
