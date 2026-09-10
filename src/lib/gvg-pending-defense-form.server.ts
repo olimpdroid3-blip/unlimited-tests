@@ -5,6 +5,7 @@ export const REVIEW_CHAT_ID = -1003978316922;
 export const REVIEW_THREAD_ID = 4;
 export const REVIEW_BUTTON_TEXT = "📸 ДОДАТИ СКРІН І КОД";
 export const REVIEW_CALLBACK = "defense-review:add";
+const REVIEW_CANCEL_PREFIX = "defense-review:cancel:";
 
 const STATE_BUCKET = "defense-screenshots";
 const STATE_DIR = "bot-state/pending-defense-forms";
@@ -24,6 +25,8 @@ type Form = {
   run_code: string | null;
   comment: string | null;
   bot_message_ids: number[];
+  prompt_message_id?: number | null;
+  cancel_message_id?: number | null;
   created_at: string;
   expires_at: string;
 };
@@ -37,13 +40,14 @@ type TgMessage = {
   text?: string;
   photo?: TgPhotoSize[];
   document?: { file_id?: string; mime_type?: string };
+  reply_to_message?: { message_id?: number };
 };
 
 type TgCallback = {
   id: string;
   data?: string;
   from?: { id?: number };
-  message?: { chat?: { id?: number }; message_thread_id?: number };
+  message?: { message_id?: number; chat?: { id?: number }; message_thread_id?: number };
 };
 
 function token(): string {
@@ -128,7 +132,12 @@ async function dropState(form: Form): Promise<void> {
 }
 
 async function cleanupBotMessages(form: Form): Promise<void> {
-  for (const id of [...new Set(form.bot_message_ids)]) {
+  const ids = new Set<number>([
+    ...(form.bot_message_ids ?? []),
+    form.prompt_message_id ?? 0,
+    form.cancel_message_id ?? 0,
+  ]);
+  for (const id of ids) {
     if (id > 0) await del(id);
   }
 }
@@ -141,6 +150,15 @@ async function expire(form: Form): Promise<void> {
   await cleanupBotMessages(form);
   await removeScreenshot(form);
   await dropState(form);
+}
+
+async function cleanupExpiredForms(): Promise<void> {
+  const names = await listStateNames();
+  for (const name of names) {
+    const form = await readState(name);
+    if (!form) continue;
+    if (new Date(form.expires_at).getTime() <= Date.now()) await expire(form);
+  }
 }
 
 async function findForm(userId: number): Promise<Form | null> {
@@ -159,21 +177,69 @@ async function findForm(userId: number): Promise<Form | null> {
 
   if (active.length === 0) return null;
 
-  // Storage listing order is not guaranteed. If an older duplicate form is
-  // returned first, the conversation can jump backwards from "code" to
-  // "screenshot". Always keep the newest form and purge every older active
-  // duplicate for this Telegram user.
   active.sort((a, b) => b.created_at.localeCompare(a.created_at));
   const [latest, ...duplicates] = active;
   for (const duplicate of duplicates) await expire(duplicate);
   return latest ?? null;
 }
 
-async function trackPrompt(form: Form, text: string): Promise<Form> {
-  const messageId = await send(text);
-  const next = messageId ? { ...form, bot_message_ids: [...form.bot_message_ids, messageId] } : form;
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+async function sendCancelControl(form: Form): Promise<Form> {
+  const res = await tg<{ message_id?: number }>("sendMessage", {
+    chat_id: REVIEW_CHAT_ID,
+    message_thread_id: REVIEW_THREAD_ID,
+    text: "📝 Форма проходки активна 30 хв.",
+    disable_notification: true,
+    reply_markup: {
+      inline_keyboard: [[{ text: "❌ Скасувати", callback_data: `${REVIEW_CANCEL_PREFIX}${form.id}` }]],
+    },
+  });
+  const messageId = res.result?.message_id ?? null;
+  const next = messageId
+    ? {
+        ...form,
+        cancel_message_id: messageId,
+        bot_message_ids: [...(form.bot_message_ids ?? []), messageId],
+      }
+    : form;
   await saveState(next);
   return next;
+}
+
+async function sendPrompt(form: Form, text: string): Promise<Form> {
+  const res = await tg<{ message_id?: number }>("sendMessage", {
+    chat_id: REVIEW_CHAT_ID,
+    message_thread_id: REVIEW_THREAD_ID,
+    parse_mode: "HTML",
+    text: `👤 <a href="tg://user?id=${form.user_id}">${escapeHtml(form.nickname)}</a>\n${text}`,
+    disable_notification: true,
+    disable_web_page_preview: true,
+    reply_markup: {
+      force_reply: true,
+      selective: true,
+      input_field_placeholder: "Відповідь для форми",
+    },
+  });
+  const messageId = res.result?.message_id ?? null;
+  const next = messageId
+    ? {
+        ...form,
+        prompt_message_id: messageId,
+        bot_message_ids: [...(form.bot_message_ids ?? []), messageId],
+      }
+    : form;
+  await saveState(next);
+  return next;
+}
+
+async function replacePrompt(form: Form, text: string): Promise<Form> {
+  if (form.prompt_message_id) await del(form.prompt_message_id);
+  const cleared = { ...form, prompt_message_id: null };
+  await saveState(cleared);
+  return sendPrompt(cleared, text);
 }
 
 function pickFileId(message: TgMessage): string | null {
@@ -205,6 +271,8 @@ async function storePhoto(fileId: string): Promise<{ url: string; path: string }
 }
 
 export async function startPendingDefenseForm(userId: number): Promise<void> {
+  await cleanupExpiredForms();
+
   const member = await tg<{ status?: string; custom_title?: string }>("getChatMember", {
     chat_id: REVIEW_CHAT_ID,
     user_id: userId,
@@ -232,21 +300,53 @@ export async function startPendingDefenseForm(userId: number): Promise<void> {
     run_code: null,
     comment: null,
     bot_message_ids: [],
+    prompt_message_id: null,
+    cancel_message_id: null,
     created_at: new Date(now).toISOString(),
     expires_at: new Date(now + FORM_TTL_MS).toISOString(),
   };
   await saveState(form);
-  form = await trackPrompt(form, `👤 ${form.nickname}\n📸 Надішліть скріншот проходки`);
+  form = await sendCancelControl(form);
+  await sendPrompt(form, "📸 Надішліть скріншот проходки");
 }
 
 export async function handlePendingDefenseCallback(callback: TgCallback): Promise<boolean> {
-  if (callback.data !== REVIEW_CALLBACK) return false;
+  const data = callback.data ?? "";
+  if (data !== REVIEW_CALLBACK && !data.startsWith(REVIEW_CANCEL_PREFIX)) return false;
+
   const chatId = callback.message?.chat?.id;
   const threadId = callback.message?.message_thread_id ?? 0;
   const userId = callback.from?.id;
-  await tg("answerCallbackQuery", { callback_query_id: callback.id });
-  if (chatId !== REVIEW_CHAT_ID || threadId !== REVIEW_THREAD_ID || !userId) return true;
-  await startPendingDefenseForm(userId);
+  if (chatId !== REVIEW_CHAT_ID || threadId !== REVIEW_THREAD_ID || !userId) {
+    await tg("answerCallbackQuery", { callback_query_id: callback.id });
+    return true;
+  }
+
+  await cleanupExpiredForms();
+
+  if (data === REVIEW_CALLBACK) {
+    await tg("answerCallbackQuery", { callback_query_id: callback.id });
+    await startPendingDefenseForm(userId);
+    return true;
+  }
+
+  const formId = data.slice(REVIEW_CANCEL_PREFIX.length);
+  const form = await findForm(userId);
+  if (!form || form.id !== formId) {
+    await tg("answerCallbackQuery", {
+      callback_query_id: callback.id,
+      text: "Форма вже закрита",
+      show_alert: false,
+    });
+    return true;
+  }
+
+  await expire(form);
+  await tg("answerCallbackQuery", {
+    callback_query_id: callback.id,
+    text: "Форму скасовано",
+    show_alert: false,
+  });
   return true;
 }
 
@@ -254,36 +354,52 @@ export async function handlePendingDefenseMessage(message: TgMessage): Promise<b
   if (message.chat?.id !== REVIEW_CHAT_ID || (message.message_thread_id ?? 0) !== REVIEW_THREAD_ID || !message.from?.id) {
     return false;
   }
+
+  await cleanupExpiredForms();
   let form = await findForm(message.from.id);
   if (!form) return false;
+
+  // Forms created by the previous implementation had no prompt id and would
+  // capture every ordinary message in the topic. Retire them immediately.
+  if (!form.prompt_message_id) {
+    await expire(form);
+    return false;
+  }
+
+  // Only an explicit reply to the current form prompt belongs to the form.
+  // Normal conversation in topic 4 is always ignored by the bot.
+  if (message.reply_to_message?.message_id !== form.prompt_message_id) return false;
 
   if (form.step === "screenshot") {
     const fileId = pickFileId(message);
     if (!fileId) {
-      await trackPrompt(form, "❌ Потрібен скріншот. Надішліть зображення.");
+      await replacePrompt(form, "❌ Потрібен скріншот.\n📸 Надішліть зображення у відповідь на це повідомлення.");
       return true;
     }
     const stored = await storePhoto(fileId);
     if (!stored) {
-      await trackPrompt(form, "❌ Не вдалося завантажити скріншот. Спробуйте ще раз.");
+      await replacePrompt(form, "❌ Не вдалося завантажити скріншот.\n📸 Спробуйте ще раз.");
       return true;
     }
     form = { ...form, screenshot_url: stored.url, screenshot_path: stored.path, step: "code" };
-    await saveState(form);
-    await trackPrompt(form, "🔑 Надішліть код проходки");
+    await replacePrompt(form, "🔑 Надішліть код проходки");
     return true;
   }
 
   const text = (message.text ?? "").trim();
   if (!text) {
-    await trackPrompt(form, form.step === "code" ? "❌ Надішліть код текстом." : "❌ Надішліть коментар текстом.");
+    await replacePrompt(
+      form,
+      form.step === "code"
+        ? "❌ Надішліть код текстом у відповідь на це повідомлення."
+        : "❌ Надішліть коментар текстом у відповідь на це повідомлення.",
+    );
     return true;
   }
 
   if (form.step === "code") {
     form = { ...form, run_code: text, step: "comment" };
-    await saveState(form);
-    await trackPrompt(form, "💬 Додайте коментар");
+    await replacePrompt(form, "💬 Додайте коментар");
     return true;
   }
 
@@ -301,7 +417,7 @@ export async function handlePendingDefenseMessage(message: TgMessage): Promise<b
   });
   if (error) {
     console.error("[pending-defense-form] pending insert failed", error.message);
-    await trackPrompt(form, "❌ Не вдалося передати проходку на сайт. Спробуйте ще раз пізніше.");
+    await replacePrompt(form, "❌ Не вдалося передати проходку на сайт.\n💬 Надішліть коментар ще раз пізніше.");
     return true;
   }
 
