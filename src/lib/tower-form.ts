@@ -10,23 +10,11 @@ export const TOWER_UPDATE_THREAD_ID = 4;
 export const BTN_ADD = "➕ Додати";
 export const BTN_LIST = "🏰 Всі вежі";
 export const BTN_MIRRORS = "Вежі — Дзеркала";
-/** Third reply-keyboard button: gives the link to the mirrors page. */
-export const BTN_MIRROR_KB = "🪞 Дзеркало";
 
 /** Callback data of the pinned inline control panel. */
 export const CB_TOWER_ADD = "tower:add";
 export const CB_TOWER_LIST = "tower:list";
 
-/**
- * Permanent bottom reply keyboard for the towers topic. It is re-sent with
- * every fresh tower list so clients that dropped it get it back. It is never
- * removed by the bot.
- */
-export const TOWER_REPLY_KEYBOARD = {
-  keyboard: [[{ text: BTN_ADD }, { text: BTN_LIST }], [{ text: BTN_MIRROR_KB }]],
-  resize_keyboard: true,
-  is_persistent: true,
-};
 
 
 /**
