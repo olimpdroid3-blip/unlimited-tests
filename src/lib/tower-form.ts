@@ -4,9 +4,10 @@
 export const TOWER_CHAT_ID = -1003978316922;
 /** Main working topic: forms, tower list, and pinned controls. */
 export const TOWER_WORK_THREAD_ID = 8;
-/** Update-only topic: short "➕/➖ Вежа ..." lines and nothing else. */
+/** Topic 4: short tower updates plus the walkthrough review intake. */
 export const TOWER_UPDATE_THREAD_ID = 4;
 
+export const BTN_MANAGE = "🔥 ПЕРЕЙТИ ДО КЕРУВАННЯ";
 export const BTN_ADD = "➕ Додати";
 export const BTN_LIST = "🏰 Всі вежі";
 export const BTN_MIRRORS = "Сайт";
@@ -19,6 +20,7 @@ export const CB_TOWER_LIST = "tower:list";
 export function buildTowerPanelKeyboard(towersUrl: string) {
   return {
     inline_keyboard: [
+      [{ text: BTN_MANAGE, url: towersUrl }],
       [
         { text: BTN_ADD, callback_data: CB_TOWER_ADD },
         { text: BTN_LIST, callback_data: CB_TOWER_LIST },
@@ -55,7 +57,7 @@ export function isTowerWorkflowThread(chatId: number, threadId: number | null): 
   return chatId === TOWER_CHAT_ID && (threadId ?? 0) === TOWER_WORK_THREAD_ID;
 }
 
-/** Thread 4 is notification-only: it never accepts commands or form input. */
+/** Identifies topic 4, which also hosts the review intake form. */
 export function isUpdateOnlyThread(chatId: number, threadId: number | null): boolean {
   return chatId === TOWER_CHAT_ID && (threadId ?? 0) === TOWER_UPDATE_THREAD_ID;
 }

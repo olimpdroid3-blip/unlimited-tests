@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/db";
 import { AppHeader } from "@/components/AppHeader";
 import { MobPicker } from "@/components/MobPicker";
+import { PendingDefensesTab, type PendingDefenseRow } from "@/components/PendingDefensesTab";
 import { PlayerSelectField } from "@/components/PlayerSelectField";
 import { Toaster } from "@/components/ui/sonner";
 import { HeroPicker, type HeroOption } from "@/components/HeroPicker";
@@ -86,10 +87,12 @@ export const Route = createFileRoute("/defenses")({
   component: DefensesPage,
 });
 
-type Tab = "add" | "search" | "all" | "editor";
+type Tab = "add" | "search" | "all" | "pending" | "editor";
+type PendingDraft = { row: PendingDefenseRow; matchedPlayerId?: string };
 
 function DefensesPage() {
   const [tab, setTab] = useState<Tab | null>(null);
+  const [pendingDraft, setPendingDraft] = useState<PendingDraft | null>(null);
 
   const { data: heroes = [] } = useQuery({
     queryKey: ["heroes"],
@@ -135,6 +138,11 @@ function DefensesPage() {
     },
   });
 
+  const openPending = (row: PendingDefenseRow, matchedPlayerId?: string) => {
+    setPendingDraft({ row, matchedPlayerId });
+    setTab("add");
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <Toaster position="top-center" richColors />
@@ -155,8 +163,8 @@ function DefensesPage() {
           <p className="mt-1 text-sm text-muted-foreground">Оберіть потрібний розділ.</p>
         </div>
 
-        <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl border border-border bg-card/40 p-1.5 sm:grid-cols-4">
-          <TabButton active={tab === "add"} onClick={() => setTab("add")}>
+        <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl border border-border bg-card/40 p-1.5 sm:grid-cols-5">
+          <TabButton active={tab === "add"} onClick={() => { setPendingDraft(null); setTab("add"); }}>
             ➕ <span>Додати</span>
           </TabButton>
           <TabButton active={tab === "search"} onClick={() => setTab("search")}>
@@ -165,14 +173,27 @@ function DefensesPage() {
           <TabButton active={tab === "all"} onClick={() => setTab("all")}>
             📚 <span>Всі коди</span>
           </TabButton>
+          <TabButton active={tab === "pending"} onClick={() => setTab("pending")}>
+            🕓 <span>На Перевірку</span>
+          </TabButton>
           <TabButton active={tab === "editor"} onClick={() => setTab("editor")}>
             ⚙️ <span>Герої</span>
           </TabButton>
         </div>
 
-        {tab === "add" && <AddTab heroes={heroes} players={players} mobs={mobs} />}
+        {tab === "add" && (
+          <AddTab
+            key={pendingDraft?.row.id ?? "manual"}
+            heroes={heroes}
+            players={players}
+            mobs={mobs}
+            initialPending={pendingDraft}
+            onPendingSaved={() => setPendingDraft(null)}
+          />
+        )}
         {tab === "search" && <SearchTab heroes={heroes} />}
         {tab === "all" && <AllCodesTab />}
+        {tab === "pending" && <PendingDefensesTab players={players} onOpen={openPending} />}
         {tab === "editor" && <EditorTab heroes={heroes} />}
       </main>
     </div>
@@ -202,15 +223,27 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-function AddTab({ heroes, players, mobs }: { heroes: HeroOption[]; players: BattlePowerRow[]; mobs: Mob[] }) {
+function AddTab({
+  heroes,
+  players,
+  mobs,
+  initialPending,
+  onPendingSaved,
+}: {
+  heroes: HeroOption[];
+  players: BattlePowerRow[];
+  mobs: Mob[];
+  initialPending?: PendingDraft | null;
+  onPendingSaved?: () => void;
+}) {
   const qc = useQueryClient();
-  const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [screenshot, setScreenshot] = useState<string | null>(initialPending?.row.screenshot_url ?? null);
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
-  const [runCode, setRunCode] = useState("");
+  const [runCode, setRunCode] = useState(initialPending?.row.run_code ?? "");
   const [slots, setSlots] = useState<Array<string | null>>([null, null, null, null, null]);
-  const [playerId, setPlayerId] = useState<string>();
+  const [playerId, setPlayerId] = useState<string | undefined>(initialPending?.matchedPlayerId);
   const [mobSlots, setMobSlots] = useState<Array<string | null>>([null, null, null, null, null]);
-  const [comment, setComment] = useState("");
+  const [comment, setComment] = useState(initialPending?.row.comment ?? "");
   const [busy, setBusy] = useState(false);
 
   const chosen = slots.filter((v): v is string => !!v);
@@ -222,18 +255,33 @@ function AddTab({ heroes, players, mobs }: { heroes: HeroOption[]; players: Batt
     if (!canSave) return;
     setBusy(true);
     try {
-      let screenshot_url: string | null = null;
+      let screenshot_url: string | null = initialPending?.row.screenshot_url ?? null;
       if (screenshotFile) screenshot_url = await uploadToBucket("defense-screenshots", screenshotFile, "def");
-      const { error } = await supabase.rpc("create_defense_with_details", {
-        p_screenshot_url: screenshot_url,
-        p_run_code: runCode.trim() || null,
-        p_player_id: playerId!,
-        p_comment: comment.trim() || null,
-        p_hero_ids: chosen,
-        p_mob_ids: selectedMobIds!,
-      });
-      if (error) throw error;
-      toast.success("Проходку збережено");
+
+      if (initialPending) {
+        const { error } = await supabase.rpc("finalize_pending_defense", {
+          p_pending_id: initialPending.row.id,
+          p_screenshot_url: screenshot_url,
+          p_run_code: runCode.trim() || null,
+          p_player_id: playerId!,
+          p_comment: comment.trim() || null,
+          p_hero_ids: chosen,
+          p_mob_ids: selectedMobIds!,
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.rpc("create_defense_with_details", {
+          p_screenshot_url: screenshot_url,
+          p_run_code: runCode.trim() || null,
+          p_player_id: playerId!,
+          p_comment: comment.trim() || null,
+          p_hero_ids: chosen,
+          p_mob_ids: selectedMobIds!,
+        });
+        if (error) throw error;
+      }
+
+      toast.success(initialPending ? "Проходку перевірено та збережено" : "Проходку збережено");
       setScreenshot(null);
       setScreenshotFile(null);
       setRunCode("");
@@ -242,6 +290,8 @@ function AddTab({ heroes, players, mobs }: { heroes: HeroOption[]; players: Batt
       setMobSlots([null, null, null, null, null]);
       setComment("");
       qc.invalidateQueries({ queryKey: ["defenses"] });
+      qc.invalidateQueries({ queryKey: ["pending-defenses"] });
+      onPendingSaved?.();
     } catch (e) {
       console.error(e);
       toast.error("Не вдалося зберегти");
@@ -252,6 +302,12 @@ function AddTab({ heroes, players, mobs }: { heroes: HeroOption[]; players: Batt
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card/50 p-4">
+      {initialPending && (
+        <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
+          🕓 Запис із «На Перевірку». Після успішного збереження він буде видалений з черги.
+        </div>
+      )}
+
       <label className="flex flex-col gap-1.5">
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">📷 Скріншот</span>
         <div className="flex items-center gap-3">
@@ -261,7 +317,7 @@ function AddTab({ heroes, players, mobs }: { heroes: HeroOption[]; players: Batt
             onChange={async (e) => {
               const f = e.target.files?.[0] || null;
               setScreenshotFile(f);
-              setScreenshot(f ? await fileToDataUrl(f) : null);
+              setScreenshot(f ? await fileToDataUrl(f) : initialPending?.row.screenshot_url ?? null);
             }}
             className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:text-secondary-foreground hover:file:bg-accent"
           />
@@ -276,6 +332,12 @@ function AddTab({ heroes, players, mobs }: { heroes: HeroOption[]; players: Batt
         </label>
         <PlayerSelectField id="defense-player" value={playerId} players={players} disabled={busy} onValueChange={setPlayerId} />
       </div>
+
+      {initialPending && !initialPending.matchedPlayerId && (
+        <div className="text-xs text-amber-500">
+          Нік «{initialPending.row.submitted_nickname || "—"}» не знайдено в базі. Оберіть існуючого гравця вручну.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {slots.map((value, index) => (
@@ -463,11 +525,13 @@ function AllCodesTab() {
       {selected && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-3 pt-8 sm:p-6" onClick={() => !deleting && setSelected(null)}>
           <div className="w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-2 flex flex-col items-end gap-2">
+            <div className="mb-2 flex justify-end">
               <button onClick={() => setSelected(null)} disabled={deleting} className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow disabled:opacity-50">✕ Закрити</button>
-              <button onClick={onDeleteSelected} disabled={deleting} className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive/20 disabled:opacity-50">🗑 {deleting ? "Видалення…" : "Видалити"}</button>
             </div>
             <DefenseCard defense={selected} hideDelete />
+            <div className="mt-2 flex justify-end">
+              <button onClick={onDeleteSelected} disabled={deleting} className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive/20 disabled:opacity-50">🗑 {deleting ? "Видалення…" : "Видалити"}</button>
+            </div>
           </div>
         </div>
       )}

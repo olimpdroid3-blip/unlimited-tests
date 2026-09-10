@@ -6,9 +6,9 @@ export const PIN_CHAT_ID = -1003978316922;
 export const PIN_THREAD_ID = 8;
 export const TOWERS_URL = "https://unlimited-tests.lovable.app/towers";
 
-// Telegram shows this text in the large pinned-message banner at the top.
-// Tapping that banner jumps to this message, where the three inline controls live.
-const PIN_TEXT = "🏰 Керування дзеркалами";
+// Telegram controls the font size of the pinned preview, so the strongest
+// visual emphasis available to the bot is a short uppercase label + emoji.
+const PIN_TEXT = "⚔️ ДЗЕРКАЛА GvG — КЕРУВАННЯ";
 
 const STATE_BUCKET = "defense-screenshots";
 const STATE_PATH = "bot-state/pinned-towers.json";

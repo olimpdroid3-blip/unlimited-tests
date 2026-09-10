@@ -1,7 +1,7 @@
 // Server-only Supabase client (service role) for the GvG project database.
 // Bypasses RLS — never import from client code.
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/database.types";
+import type { Database } from "@/lib/database.pending.types";
 
 function createSupabaseFetch(key: string): typeof fetch {
   return (input, init) => {

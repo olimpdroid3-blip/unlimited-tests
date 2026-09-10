@@ -28,7 +28,6 @@ type TgMessage = {
   voice?: unknown;
   is_topic_message?: boolean;
   reply_to_message?: { message_thread_id?: number; message_id?: number };
-  // service messages
   new_chat_members?: unknown;
   left_chat_member?: unknown;
   forum_topic_created?: unknown;
@@ -45,13 +44,9 @@ function pickMessage(update: Record<string, unknown>): TgMessage | null {
 }
 
 function isServiceMessage(m: TgMessage): boolean {
-  return Boolean(
-    m.new_chat_members || m.left_chat_member || m.forum_topic_created || m.pinned_message,
-  );
+  return Boolean(m.new_chat_members || m.left_chat_member || m.forum_topic_created || m.pinned_message);
 }
 
-// Telegram puts the topic id in message_thread_id, but for the "General" topic
-// and for some replies it can be missing — fall back to the reply chain.
 export function resolveThreadId(m: TgMessage): number | null {
   if (typeof m.message_thread_id === "number") return m.message_thread_id;
   if (m.is_topic_message && typeof m.reply_to_message?.message_thread_id === "number") {
@@ -97,11 +92,7 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
 
         const provided = request.headers.get("X-Telegram-Bot-Api-Secret-Token") ?? "";
         if (!safeEqual(provided, deriveWebhookSecret(botToken))) {
-          console.error(
-            "[gvg-video-webhook] invalid secret token (header present:",
-            provided.length > 0,
-            ")",
-          );
+          console.error("[gvg-video-webhook] invalid secret token (header present:", provided.length > 0, ")");
           return new Response("Unauthorized", { status: 401 });
         }
 
@@ -122,7 +113,11 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
             }
           | undefined;
         if (callback?.id) {
-          // Tower workflow buttons first, then the video bot's own buttons.
+          const review = await import("@/lib/gvg-pending-defense-form.server");
+          if (await review.handlePendingDefenseCallback(callback)) {
+            return Response.json({ ok: true, handled: "pending-defense-callback" });
+          }
+
           const { handleTowerFormCallback } = await import("@/lib/gvg-tower-form.server");
           if (await handleTowerFormCallback(callback)) {
             return Response.json({ ok: true, handled: "tower-form-callback" });
@@ -143,35 +138,34 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
         const chatId = message.chat.id;
         const threadId = resolveThreadId(message);
 
-        // Keep the pinned "Вежі" message alive in its dedicated topic.
         const pin = await import("@/lib/gvg-pinned-towers.server");
         const isTowerTopic = chatId === pin.PIN_CHAT_ID && (threadId ?? 0) === pin.PIN_THREAD_ID;
-        if (isTowerTopic) {
-          await pin.ensurePinnedTowersMessage();
-        }
+        if (isTowerTopic) await pin.ensurePinnedTowersMessage();
 
-        // Keep the pinned "БС" message alive in its dedicated topic (and do
-        // nothing else there).
         const bpPin = await import("@/lib/gvg-pinned-bp.server");
         if (chatId === bpPin.BP_CHAT_ID && (threadId ?? 0) === bpPin.BP_THREAD_ID) {
           await bpPin.ensurePinnedBpMessage();
           return Response.json({ ok: true, handled: "pinned-bp" });
         }
 
-        // Thread 4 is update-only: the bot never reacts to anything there.
         const towerConst = await import("@/lib/tower-form");
         if (towerConst.isUpdateOnlyThread(chatId, threadId)) {
-          return Response.json({ ok: true, ignored: "update-only-thread" });
+          const reviewPin = await import("@/lib/gvg-pinned-review.server");
+          await reviewPin.ensurePinnedReviewMessage();
+          const review = await import("@/lib/gvg-pending-defense-form.server");
+          const handled = await review.handlePendingDefenseMessage({
+            ...(message as Record<string, unknown>),
+            message_thread_id: threadId ?? undefined,
+          } as Parameters<typeof review.handlePendingDefenseMessage>[0]);
+          return Response.json({ ok: true, handled: handled ? "pending-defense-form" : "update-thread-idle" });
         }
 
-        // Legacy "/+" command kept for backwards compatibility.
         if (isTowerTopic && (message.text ?? "").trim() === "/+") {
           const mod = await import("@/lib/gvg-tower-list.server");
           const result = await mod.handleTowerListCommand();
           return Response.json({ ok: true, handled: "tower-list", result });
         }
 
-        // Reply-keyboard buttons and the step-by-step add form (thread 8 only).
         if (towerConst.isTowerWorkflowThread(chatId, threadId)) {
           const form = await import("@/lib/gvg-tower-form.server");
           const handled = await form.handleTowerWorkflowMessage({
@@ -182,7 +176,6 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
         }
 
         const { supabaseAdmin } = await import("@/lib/db.server");
-
         const { data: source, error: sourceError } = await supabaseAdmin
           .from("telegram_sources")
           .select("id")
@@ -195,15 +188,10 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
           console.error("[gvg-video-webhook] source lookup failed", sourceError.message);
           return Response.json({ ok: true, error: "source-lookup-failed" });
         }
-
-        if (!source) {
-          return Response.json({ ok: true, ignored: "source-not-allowed" });
-        }
+        if (!source) return Response.json({ ok: true, ignored: "source-not-allowed" });
 
         const messageType = resolveMessageType(message);
         const bot = await import("@/lib/gvg-video-bot.server");
-
-        // A plain text message may be an answer to the bot's hero/notes prompt.
         if (messageType === "text" && message.from?.id) {
           const handled = await bot.handleTextMessage(chatId, message.from.id, message.text ?? "");
           if (handled) return Response.json({ ok: true, handled: "pending-reply" });
@@ -211,7 +199,6 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
 
         const link = buildMessageLink(chatId, message.message_id, threadId, message.chat.username);
         const messageDate = message.date ? new Date(message.date * 1000).toISOString() : null;
-
         const uploader = await bot.resolveUploader(chatId, message.from);
 
         const { data: stored, error: upsertError } = await supabaseAdmin
@@ -254,11 +241,8 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
             videoMessageId: message.message_id,
             videoRowId: stored?.id ?? null,
           });
-          if (pendingId) {
-            await bot.sendHeroPrompt(pendingId, chatId, threadId);
-          } else {
-            await bot.tgSend(chatId, threadId, bot.HERO_PROMPT);
-          }
+          if (pendingId) await bot.sendHeroPrompt(pendingId, chatId, threadId);
+          else await bot.tgSend(chatId, threadId, bot.HERO_PROMPT);
         }
 
         return Response.json({ ok: true, indexed: true });
