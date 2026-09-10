@@ -405,7 +405,9 @@ function SearchTab({ heroes }: { heroes: HeroOption[] }) {
 }
 
 function AllCodesTab() {
+  const qc = useQueryClient();
   const [selected, setSelected] = useState<DefenseRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { data: defenses = [], isLoading } = useQuery({
     queryKey: ["defenses", "all-codes"],
     queryFn: async (): Promise<DefenseRow[]> => {
@@ -414,6 +416,22 @@ function AllCodesTab() {
       return hydrateDefenses((data ?? []) as unknown as RawDefenseRow[]);
     },
   });
+
+  const onDeleteSelected = async () => {
+    if (!selected || deleting) return;
+    if (!confirm("Видалити цю проходку? Цю дію неможливо скасувати.")) return;
+    setDeleting(true);
+    const { error } = await supabase.from("defenses").delete().eq("id", selected.id);
+    if (error) {
+      toast.error("Не вдалося видалити");
+      setDeleting(false);
+      return;
+    }
+    setSelected(null);
+    toast.success("Проходку видалено");
+    await qc.invalidateQueries({ queryKey: ["defenses"] });
+    setDeleting(false);
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -443,10 +461,11 @@ function AllCodesTab() {
       {!isLoading && defenses.length === 0 && <div className="rounded-xl border border-dashed border-border bg-card/30 p-6 text-center text-sm text-muted-foreground">Поки що немає доданих проходок</div>}
 
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-3 pt-8 sm:p-6" onClick={() => setSelected(null)}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-3 pt-8 sm:p-6" onClick={() => !deleting && setSelected(null)}>
           <div className="w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-2 flex justify-end">
-              <button onClick={() => setSelected(null)} className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow">✕ Закрити</button>
+            <div className="mb-2 flex flex-col items-end gap-2">
+              <button onClick={() => setSelected(null)} disabled={deleting} className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow disabled:opacity-50">✕ Закрити</button>
+              <button onClick={onDeleteSelected} disabled={deleting} className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive/20 disabled:opacity-50">🗑 {deleting ? "Видалення…" : "Видалити"}</button>
             </div>
             <DefenseCard defense={selected} hideDelete />
           </div>
