@@ -253,6 +253,64 @@ async function replacePrompt(form: Form, text: string): Promise<Form> {
   return sendPrompt(cleared, text);
 }
 
+/** Last step: a summary with the explicit "add" button, no more text input. */
+async function sendConfirm(form: Form): Promise<Form> {
+  if (form.prompt_message_id) await del(form.prompt_message_id);
+  const summary = [
+    `👤 <a href="tg://user?id=${form.user_id}">${escapeHtml(form.nickname)}</a>`,
+    "📸 Скріншот: ✅",
+    `🔑 Код: ${form.run_code ? "✅" : "—"}`,
+    `💬 Коментар: ${form.comment ? escapeHtml(form.comment) : "—"}`,
+  ].join("\n");
+  const res = await tg<{ message_id?: number }>("sendMessage", {
+    chat_id: REVIEW_CHAT_ID,
+    message_thread_id: REVIEW_THREAD_ID,
+    parse_mode: "HTML",
+    text: summary,
+    disable_notification: true,
+    disable_web_page_preview: true,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: "✅ Додати", callback_data: `${REVIEW_SUBMIT_PREFIX}${form.id}` },
+          { text: "❌ Скасувати", callback_data: `${REVIEW_CANCEL_PREFIX}${form.id}` },
+        ],
+      ],
+    },
+  });
+  const messageId = res.result?.message_id ?? null;
+  const next: Form = {
+    ...form,
+    step: "confirm",
+    prompt_message_id: null,
+    bot_message_ids: messageId ? [...(form.bot_message_ids ?? []), messageId] : (form.bot_message_ids ?? []),
+  };
+  await saveState(next);
+  return next;
+}
+
+async function submitForm(form: Form): Promise<boolean> {
+  const { error } = await supabaseAdmin.from("pending_defenses").insert({
+    screenshot_url: form.screenshot_url,
+    run_code: form.run_code,
+    comment: form.comment,
+    submitted_nickname: form.nickname,
+    telegram_user_id: form.user_id,
+    telegram_chat_id: form.chat_id,
+    telegram_thread_id: form.thread_id,
+    source_form_id: form.id,
+  });
+  if (error) {
+    console.error("[pending-defense-form] pending insert failed", error.message);
+    return false;
+  }
+  await cleanupBotMessages(form);
+  await dropState(form);
+  const doneId = await send("✅ Проходку передано на перевірку");
+  if (doneId) setTimeout(() => void del(doneId), 10_000);
+  return true;
+}
+
 function pickFileId(message: TgMessage): string | null {
   const photos = message.photo ?? [];
   if (photos.length > 0) return photos[photos.length - 1]?.file_id ?? null;
