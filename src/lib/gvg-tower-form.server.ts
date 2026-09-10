@@ -589,17 +589,24 @@ export async function handleTowerFormCallback(cb: {
 }
 
 /**
- * Maintenance endpoint: makes sure the pinned inline panel exists and that the
- * bottom reply keyboard is present again. The keyboard rides on a fresh tower
- * list, so no throwaway service message is created.
+ * Maintenance endpoint kept for compatibility. The bottom reply keyboard is
+ * gone for good: this only guarantees the pinned inline panel exists.
  */
 export async function installTowerKeyboard(): Promise<{ ok: boolean; message_id: number | null }> {
   const { ensurePinnedTowersMessage } = await import("@/lib/gvg-pinned-towers.server");
   const pinned = await ensurePinnedTowersMessage(true);
-
-  await handleTowerListCommand();
-
   return { ok: pinned.message_id !== null, message_id: pinned.message_id };
+}
+
+/**
+ * One-shot cleanup: clients that still cache the old bottom keyboard drop it
+ * when they receive a message carrying remove_keyboard. The carrier message is
+ * deleted right away so the topic stays clean.
+ */
+export async function removeLegacyTowerKeyboard(): Promise<{ ok: boolean }> {
+  const id = await send(TOWER_CHAT_ID, "\u2063", { remove_keyboard: true });
+  if (id) await del(TOWER_CHAT_ID, id);
+  return { ok: id !== null };
 }
 
 
