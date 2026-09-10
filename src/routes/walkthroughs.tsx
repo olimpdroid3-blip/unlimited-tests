@@ -10,7 +10,7 @@ export const Route = createFileRoute("/walkthroughs")({
       { title: "Проходки — NoNameClan" },
       {
         name: "description",
-        content: "База захистів і відео проходок NoNameClan.",
+        content: "База проходок і відео проходок NoNameClan.",
       },
     ],
   }),
