@@ -111,11 +111,17 @@ async function listStateNames(): Promise<string[]> {
   return (data ?? []).map((item) => item.name).filter((name) => name.endsWith(".json"));
 }
 
+// Storage downloads go through a CDN cache, which used to return a stale step
+// and a stale prompt id — that is what made the form loop on the same question.
 async function readState(name: string): Promise<Form | null> {
-  const { data, error } = await supabaseAdmin.storage.from(STATE_BUCKET).download(`${STATE_DIR}/${name}`);
-  if (error || !data) return null;
   try {
-    return JSON.parse(await data.text()) as Form;
+    const { data, error } = await supabaseAdmin.storage
+      .from(STATE_BUCKET)
+      .createSignedUrl(`${STATE_DIR}/${name}`, 60);
+    if (error || !data?.signedUrl) return null;
+    const res = await fetch(`${data.signedUrl}&_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return (await res.json()) as Form;
   } catch {
     return null;
   }
