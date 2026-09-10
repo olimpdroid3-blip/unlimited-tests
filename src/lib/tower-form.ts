@@ -2,25 +2,20 @@
 // Kept out of *.server.ts so it can be unit tested without network/env.
 
 export const TOWER_CHAT_ID = -1003978316922;
-/** Main working topic: reply keyboard, forms, tower list. */
+/** Main working topic: forms, tower list, and pinned controls. */
 export const TOWER_WORK_THREAD_ID = 8;
 /** Update-only topic: short "➕/➖ Вежа ..." lines and nothing else. */
 export const TOWER_UPDATE_THREAD_ID = 4;
 
 export const BTN_ADD = "➕ Додати";
 export const BTN_LIST = "🏰 Всі вежі";
-export const BTN_MIRRORS = "Вежі — Дзеркала";
+export const BTN_MIRRORS = "Сайт";
 
 /** Callback data of the pinned inline control panel. */
 export const CB_TOWER_ADD = "tower:add";
 export const CB_TOWER_LIST = "tower:list";
 
-
-
-/**
- * The permanent tower control panel: three inline buttons in one row.
- * Telegram may wrap them on narrow screens — that is acceptable.
- */
+/** The permanent pinned tower control panel. */
 export function buildTowerPanelKeyboard(towersUrl: string) {
   return {
     inline_keyboard: [
@@ -32,7 +27,6 @@ export function buildTowerPanelKeyboard(towersUrl: string) {
     ],
   };
 }
-
 
 export const FORM_TTL_MS = 30 * 60 * 1000;
 
@@ -56,10 +50,7 @@ export type TowerForm = {
   expires_at: string;
 };
 
-/**
- * Reply-keyboard buttons survive on the chat level, so every handler must
- * verify the exact chat AND topic before doing anything.
- */
+/** Every handler must verify the exact chat AND topic before doing anything. */
 export function isTowerWorkflowThread(chatId: number, threadId: number | null): boolean {
   return chatId === TOWER_CHAT_ID && (threadId ?? 0) === TOWER_WORK_THREAD_ID;
 }
