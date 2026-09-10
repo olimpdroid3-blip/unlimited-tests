@@ -11,7 +11,6 @@ import {
   canConfirm,
   CB_TOWER_ADD,
   CB_TOWER_LIST,
-  BTN_MIRROR_KB,
   collectFormMessageIds,
   isFormExpired,
   isTowerWorkflowThread,
