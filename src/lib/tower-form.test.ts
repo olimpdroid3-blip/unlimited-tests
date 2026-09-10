@@ -88,14 +88,10 @@ test("panel callback data is stable and distinct from the form prefix", () => {
   }
 });
 
-test("the bottom reply keyboard has three persistent buttons", () => {
-  assert.deepEqual(TOWER_REPLY_KEYBOARD.keyboard, [
-    [{ text: BTN_ADD }, { text: BTN_LIST }],
-    [{ text: BTN_MIRROR_KB }],
-  ]);
-  assert.equal(TOWER_REPLY_KEYBOARD.resize_keyboard, true);
-  assert.equal(TOWER_REPLY_KEYBOARD.is_persistent, true);
-  assert.equal("one_time_keyboard" in TOWER_REPLY_KEYBOARD, false);
+test("the module exposes no bottom reply keyboard anymore", async () => {
+  const mod = (await import("./tower-form.ts")) as Record<string, unknown>;
+  assert.equal("TOWER_REPLY_KEYBOARD" in mod, false);
+  assert.equal("BTN_MIRROR_KB" in mod, false);
 });
 
 
