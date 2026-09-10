@@ -6,6 +6,8 @@ export const REVIEW_THREAD_ID = 4;
 export const REVIEW_BUTTON_TEXT = "📸 ДОДАТИ СКРІН І КОД";
 export const REVIEW_CALLBACK = "defense-review:add";
 const REVIEW_CANCEL_PREFIX = "defense-review:cancel:";
+const REVIEW_SUBMIT_PREFIX = "defense-review:submit:";
+const REVIEW_SKIP_PREFIX = "defense-review:skip:";
 
 const STATE_BUCKET = "defense-screenshots";
 const STATE_DIR = "bot-state/pending-defense-forms";
