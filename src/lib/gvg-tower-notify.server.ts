@@ -19,7 +19,6 @@ export async function clearOldTowerButtons(exceptId?: number): Promise<void> {
   }
 }
 
-
 export async function notifyTowerToTelegram(
   nickname: string,
   towerId: string,
@@ -54,8 +53,7 @@ export async function notifyTowerToTelegram(
   return { ok: true };
 }
 
-// Thread 4 is the update-only topic: one short line per add/remove, no
-// keyboards, no lists, no forms.
+// Thread 4 keeps the short add/remove lines plus one pinned walkthrough-submit control.
 const UPDATE_THREAD_ID = 4;
 
 export async function notifyTowerUpdate(
@@ -65,6 +63,9 @@ export async function notifyTowerUpdate(
 ): Promise<{ ok: boolean; error?: string; messageId?: number | null }> {
   const token = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
   if (!token) return { ok: false, error: "TELEGRAM_GVG_VIDEO_BOT_TOKEN is not configured" };
+
+  const reviewPin = await import("@/lib/gvg-pinned-review.server");
+  await reviewPin.ensurePinnedReviewMessage();
 
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
@@ -90,8 +91,8 @@ export async function notifyTowerUpdate(
 }
 
 /**
- * Backwards-compatible alias: mirror orders are now announced as a short
- * update line in thread 4 instead of a message in the working topic.
+ * Backwards-compatible alias: mirror orders are announced as a short update
+ * line in thread 4.
  */
 export async function notifyMirrorOrderToTelegram(
   nickname: string,
@@ -101,7 +102,6 @@ export async function notifyMirrorOrderToTelegram(
   return { ok: res.ok, error: res.error, messageId: res.messageId ?? undefined };
 }
 
-// Deletes a bot message (e.g. a mirror-order notification) from the pinned topic.
 export async function deleteTelegramMessage(
   messageId: number,
 ): Promise<{ ok: boolean; error?: string }> {
