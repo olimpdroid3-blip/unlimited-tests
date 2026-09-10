@@ -382,7 +382,11 @@ export async function startPendingDefenseForm(userId: number): Promise<void> {
 
 export async function handlePendingDefenseCallback(callback: TgCallback): Promise<boolean> {
   const data = callback.data ?? "";
-  if (data !== REVIEW_CALLBACK && !data.startsWith(REVIEW_CANCEL_PREFIX)) return false;
+  const isFormAction =
+    data.startsWith(REVIEW_CANCEL_PREFIX) ||
+    data.startsWith(REVIEW_SUBMIT_PREFIX) ||
+    data.startsWith(REVIEW_SKIP_PREFIX);
+  if (data !== REVIEW_CALLBACK && !isFormAction) return false;
 
   const chatId = callback.message?.chat?.id;
   const threadId = callback.message?.message_thread_id ?? 0;
@@ -400,7 +404,7 @@ export async function handlePendingDefenseCallback(callback: TgCallback): Promis
     return true;
   }
 
-  const formId = data.slice(REVIEW_CANCEL_PREFIX.length);
+  const formId = data.slice(data.indexOf(":", data.indexOf(":") + 1) + 1);
   const form = await findForm(userId);
   if (!form || form.id !== formId) {
     await tg("answerCallbackQuery", {
@@ -411,6 +415,28 @@ export async function handlePendingDefenseCallback(callback: TgCallback): Promis
     return true;
   }
 
+  if (data.startsWith(REVIEW_SKIP_PREFIX)) {
+    await tg("answerCallbackQuery", { callback_query_id: callback.id });
+    if (form.step === "comment") await sendConfirm({ ...form, comment: null });
+    return true;
+  }
+
+  if (data.startsWith(REVIEW_SUBMIT_PREFIX)) {
+    if (form.step !== "confirm" || form.submitted) {
+      await tg("answerCallbackQuery", { callback_query_id: callback.id });
+      return true;
+    }
+    await saveState({ ...form, submitted: true });
+    const ok = await submitForm(form);
+    await tg("answerCallbackQuery", {
+      callback_query_id: callback.id,
+      text: ok ? "Додано" : "Не вдалося зберегти",
+      show_alert: false,
+    });
+    if (!ok) await saveState({ ...form, submitted: false });
+    return true;
+  }
+
   await expire(form);
   await tg("answerCallbackQuery", {
     callback_query_id: callback.id,
@@ -418,6 +444,27 @@ export async function handlePendingDefenseCallback(callback: TgCallback): Promis
     show_alert: false,
   });
   return true;
+}
+
+const COMMENT_PROMPT = "💬 Додайте коментар (або натисніть «⏭ Пропустити»)";
+
+async function sendCommentPrompt(form: Form): Promise<Form> {
+  const next = await replacePrompt(form, COMMENT_PROMPT);
+  const res = await tg<{ message_id?: number }>("sendMessage", {
+    chat_id: REVIEW_CHAT_ID,
+    message_thread_id: REVIEW_THREAD_ID,
+    text: "⏭",
+    disable_notification: true,
+    reply_markup: {
+      inline_keyboard: [[{ text: "⏭ Пропустити", callback_data: `${REVIEW_SKIP_PREFIX}${form.id}` }]],
+    },
+  });
+  const messageId = res.result?.message_id ?? null;
+  const withSkip: Form = messageId
+    ? { ...next, bot_message_ids: [...(next.bot_message_ids ?? []), messageId] }
+    : next;
+  await saveState(withSkip);
+  return withSkip;
 }
 
 export async function handlePendingDefenseMessage(message: TgMessage): Promise<boolean> {
@@ -431,22 +478,44 @@ export async function handlePendingDefenseMessage(message: TgMessage): Promise<b
 
   // Forms created by the previous implementation had no prompt id and would
   // capture every ordinary message in the topic. Retire them immediately.
-  if (!form.prompt_message_id) {
+  if (!form.prompt_message_id && form.step !== "confirm") {
     await expire(form);
     return false;
   }
 
-  // Only an explicit reply to the current form prompt belongs to the form.
-  // Normal conversation in topic 4 is always ignored by the bot.
-  if (message.reply_to_message?.message_id !== form.prompt_message_id) return false;
+  // A reply to ANY message this form produced counts: Telegram keeps quoting an
+  // already deleted prompt, which previously made the answer look ignored.
+  const replyId = message.reply_to_message?.message_id ?? 0;
+  const ownIds = new Set<number>([...(form.bot_message_ids ?? []), form.prompt_message_id ?? 0]);
+  if (!replyId || !ownIds.has(replyId)) return false;
+
+  const userMessageId = typeof message.message_id === "number" ? message.message_id : 0;
+  form = {
+    ...form,
+    user_message_ids: userMessageId
+      ? [...(form.user_message_ids ?? []), userMessageId]
+      : (form.user_message_ids ?? []),
+  };
+  // The user's own answer is removed right away so the topic stays clean.
+  const forget = async () => {
+    if (userMessageId) await del(userMessageId);
+  };
+
+  if (form.step === "confirm") {
+    await forget();
+    await saveState(form);
+    return true;
+  }
 
   if (form.step === "screenshot") {
     const fileId = pickFileId(message);
     if (!fileId) {
+      await forget();
       await replacePrompt(form, "❌ Потрібен скріншот.\n📸 Надішліть зображення у відповідь на це повідомлення.");
       return true;
     }
     const stored = await storePhoto(fileId);
+    await forget();
     if (!stored) {
       await replacePrompt(form, "❌ Не вдалося завантажити скріншот.\n📸 Спробуйте ще раз.");
       return true;
@@ -457,6 +526,7 @@ export async function handlePendingDefenseMessage(message: TgMessage): Promise<b
   }
 
   const text = (message.text ?? "").trim();
+  await forget();
   if (!text) {
     await replacePrompt(
       form,
@@ -469,29 +539,10 @@ export async function handlePendingDefenseMessage(message: TgMessage): Promise<b
 
   if (form.step === "code") {
     form = { ...form, run_code: text, step: "comment" };
-    await replacePrompt(form, "💬 Додайте коментар");
+    await sendCommentPrompt(form);
     return true;
   }
 
-  form = { ...form, comment: text };
-  await saveState(form);
-  const { error } = await supabaseAdmin.from("pending_defenses").insert({
-    screenshot_url: form.screenshot_url,
-    run_code: form.run_code,
-    comment: form.comment,
-    submitted_nickname: form.nickname,
-    telegram_user_id: form.user_id,
-    telegram_chat_id: form.chat_id,
-    telegram_thread_id: form.thread_id,
-    source_form_id: form.id,
-  });
-  if (error) {
-    console.error("[pending-defense-form] pending insert failed", error.message);
-    await replacePrompt(form, "❌ Не вдалося передати проходку на сайт.\n💬 Надішліть коментар ще раз пізніше.");
-    return true;
-  }
-
-  await cleanupBotMessages(form);
-  await dropState(form);
+  await sendConfirm({ ...form, comment: text });
   return true;
 }
