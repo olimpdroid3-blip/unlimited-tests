@@ -145,6 +145,8 @@ async function expire(form: Form): Promise<void> {
 
 async function findForm(userId: number): Promise<Form | null> {
   const names = (await listStateNames()).filter((name) => name.startsWith(`${userId}__`));
+  const active: Form[] = [];
+
   for (const name of names) {
     const form = await readState(name);
     if (!form) continue;
@@ -152,9 +154,19 @@ async function findForm(userId: number): Promise<Form | null> {
       await expire(form);
       continue;
     }
-    return form;
+    active.push(form);
   }
-  return null;
+
+  if (active.length === 0) return null;
+
+  // Storage listing order is not guaranteed. If an older duplicate form is
+  // returned first, the conversation can jump backwards from "code" to
+  // "screenshot". Always keep the newest form and purge every older active
+  // duplicate for this Telegram user.
+  active.sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const [latest, ...duplicates] = active;
+  for (const duplicate of duplicates) await expire(duplicate);
+  return latest ?? null;
 }
 
 async function trackPrompt(form: Form, text: string): Promise<Form> {
