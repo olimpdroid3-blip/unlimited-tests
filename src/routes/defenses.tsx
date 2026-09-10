@@ -77,19 +77,19 @@ async function uploadToBucket(bucket: string, file: File, prefix: string): Promi
 export const Route = createFileRoute("/defenses")({
   head: () => ({
     meta: [
-      { title: "База захистів — GvG Вежі" },
+      { title: "База проходок — GvG Вежі" },
       { name: "description", content: "Додавання, пошук та керування базою проходок." },
-      { property: "og:title", content: "База захистів — GvG Вежі" },
+      { property: "og:title", content: "База проходок — GvG Вежі" },
       { property: "og:description", content: "Додавання, пошук та керування базою проходок." },
     ],
   }),
   component: DefensesPage,
 });
 
-type Tab = "add" | "search" | "editor";
+type Tab = "add" | "search" | "all" | "editor";
 
 function DefensesPage() {
-  const [tab, setTab] = useState<Tab>("add");
+  const [tab, setTab] = useState<Tab | null>(null);
 
   const { data: heroes = [] } = useQuery({
     queryKey: ["heroes"],
@@ -150,61 +150,48 @@ function DefensesPage() {
           </Link>
           <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold tracking-tight">
             <span>🛡</span>
-            <span>База захистів</span>
+            <span>База проходок</span>
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Додавання, пошук та керування базою проходок.
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Оберіть потрібний розділ.</p>
         </div>
 
-        <div className="mb-4 grid grid-cols-3 gap-1.5 rounded-xl border border-border bg-card/40 p-1">
+        <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl border border-border bg-card/40 p-1.5 sm:grid-cols-4">
           <TabButton active={tab === "add"} onClick={() => setTab("add")}>
-            ➕ <span className="hidden sm:inline">Додати захист</span>
-            <span className="sm:hidden">Додати</span>
+            ➕ <span>Додати</span>
           </TabButton>
           <TabButton active={tab === "search"} onClick={() => setTab("search")}>
-            🔍 <span className="hidden sm:inline">Пошук</span>
-            <span className="sm:hidden">Пошук</span>
+            🔍 <span>Пошук</span>
+          </TabButton>
+          <TabButton active={tab === "all"} onClick={() => setTab("all")}>
+            📚 <span>Всі коди</span>
           </TabButton>
           <TabButton active={tab === "editor"} onClick={() => setTab("editor")}>
-            ⚙️ <span className="hidden sm:inline">Редактор героїв</span>
-            <span className="sm:hidden">Герої</span>
+            ⚙️ <span>Герої</span>
           </TabButton>
         </div>
 
         {tab === "add" && <AddTab heroes={heroes} players={players} mobs={mobs} />}
         {tab === "search" && <SearchTab heroes={heroes} />}
+        {tab === "all" && <AllCodesTab />}
         {tab === "editor" && <EditorTab heroes={heroes} />}
       </main>
     </div>
   );
 }
 
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
       className={[
-        "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition",
-        active
-          ? "bg-primary/15 text-primary shadow-inner"
-          : "text-muted-foreground hover:text-foreground",
+        "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-medium transition",
+        active ? "bg-primary/15 text-primary shadow-inner" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
       ].join(" ")}
     >
       {children}
     </button>
   );
 }
-
-// ---------------- ADD TAB ----------------
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -215,15 +202,7 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-function AddTab({
-  heroes,
-  players,
-  mobs,
-}: {
-  heroes: HeroOption[];
-  players: BattlePowerRow[];
-  mobs: Mob[];
-}) {
+function AddTab({ heroes, players, mobs }: { heroes: HeroOption[]; players: BattlePowerRow[]; mobs: Mob[] }) {
   const qc = useQueryClient();
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
@@ -244,9 +223,7 @@ function AddTab({
     setBusy(true);
     try {
       let screenshot_url: string | null = null;
-      if (screenshotFile) {
-        screenshot_url = await uploadToBucket("defense-screenshots", screenshotFile, "def");
-      }
+      if (screenshotFile) screenshot_url = await uploadToBucket("defense-screenshots", screenshotFile, "def");
       const { error } = await supabase.rpc("create_defense_with_details", {
         p_screenshot_url: screenshot_url,
         p_run_code: runCode.trim() || null,
@@ -256,7 +233,7 @@ function AddTab({
         p_mob_ids: selectedMobIds!,
       });
       if (error) throw error;
-      toast.success("Захист збережено");
+      toast.success("Проходку збережено");
       setScreenshot(null);
       setScreenshotFile(null);
       setRunCode("");
@@ -276,9 +253,7 @@ function AddTab({
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card/50 p-4">
       <label className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          📷 Скріншот
-        </span>
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">📷 Скріншот</span>
         <div className="flex items-center gap-3">
           <input
             type="file"
@@ -290,57 +265,23 @@ function AddTab({
             }}
             className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:text-secondary-foreground hover:file:bg-accent"
           />
-          {screenshot && (
-            <img
-              src={screenshot}
-              alt=""
-              className="h-16 w-16 rounded-md border border-border object-cover"
-            />
-          )}
+          {screenshot && <img src={screenshot} alt="" className="h-16 w-16 rounded-md border border-border object-cover" />}
         </div>
       </label>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Код проходки
-          </span>
-          <input
-            value={runCode}
-            onChange={(e) => setRunCode(e.target.value)}
-            placeholder="Напр. WoR-12345"
-            className="h-11 rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-primary/60 focus:outline-none"
-          />
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Код проходки</span>
+          <input value={runCode} onChange={(e) => setRunCode(e.target.value)} placeholder="Напр. WoR-12345" className="h-11 rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-primary/60 focus:outline-none" />
         </label>
-
-        <PlayerSelectField
-          id="defense-player"
-          value={playerId}
-          players={players}
-          disabled={busy}
-          onValueChange={setPlayerId}
-        />
+        <PlayerSelectField id="defense-player" value={playerId} players={players} disabled={busy} onValueChange={setPlayerId} />
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {slots.map((value, index) => (
           <div key={index} className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Герой {index + 1}
-              {index === 0 && <span className="ml-1 text-destructive">*</span>}
-            </span>
-            <HeroPicker
-              heroes={heroes}
-              value={value}
-              onChange={(heroId) =>
-                setSlots((currentSlots) =>
-                  currentSlots.map((currentValue, slotIndex) =>
-                    slotIndex === index ? heroId : currentValue,
-                  ),
-                )
-              }
-              excludeIds={chosen}
-            />
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Герой {index + 1}{index === 0 && <span className="ml-1 text-destructive">*</span>}</span>
+            <HeroPicker heroes={heroes} value={value} onChange={(heroId) => setSlots((current) => current.map((v, i) => i === index ? heroId : v))} excludeIds={chosen} />
           </div>
         ))}
       </div>
@@ -348,52 +289,21 @@ function AddTab({
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {mobSlots.map((value, index) => (
           <div key={index} className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Моб {index + 1}
-              {index < 2 && <span className="ml-1 text-destructive">*</span>}
-            </span>
-            <MobPicker
-              mobs={mobs}
-              value={value}
-              onChange={(mobId) =>
-                setMobSlots((currentSlots) =>
-                  currentSlots.map((currentValue, slotIndex) =>
-                    slotIndex === index ? mobId : currentValue,
-                  ),
-                )
-              }
-              excludeIds={chosenMobs}
-              placeholder={`Оберіть моба ${index + 1}`}
-            />
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Моб {index + 1}{index < 2 && <span className="ml-1 text-destructive">*</span>}</span>
+            <MobPicker mobs={mobs} value={value} onChange={(mobId) => setMobSlots((current) => current.map((v, i) => i === index ? mobId : v))} excludeIds={chosenMobs} placeholder={`Оберіть моба ${index + 1}`} />
           </div>
         ))}
       </div>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Коментар
-        </span>
-        <textarea
-          value={comment}
-          onChange={(event) => setComment(event.target.value)}
-          placeholder="БС, таймінг, порядок дій або інші нюанси…"
-          rows={4}
-          className="resize-y rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none"
-        />
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Коментар</span>
+        <textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder="БС, таймінг, порядок дій або інші нюанси…" rows={4} className="resize-y rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none" />
       </label>
 
-      <button
-        disabled={!canSave}
-        onClick={onSave}
-        className="mt-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
-      >
-        💾 Зберегти
-      </button>
+      <button disabled={!canSave} onClick={onSave} className="mt-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">💾 Зберегти</button>
     </div>
   );
 }
-
-// ---------------- SEARCH TAB ----------------
 
 type DefenseRow = {
   id: string;
@@ -415,15 +325,29 @@ type RawDefenseRow = Omit<DefenseRow, "defense_mobs"> & {
   defense_mobs: Array<{
     position: number;
     mob_id: string;
-    mobs: {
-      id: string;
-      name: string;
-      image_url: string | null;
-      mob_type: Mob["mobType"];
-      rarity: Mob["rarity"];
-    } | null;
+    mobs: { id: string; name: string; image_url: string | null; mob_type: Mob["mobType"]; rarity: Mob["rarity"] } | null;
   }>;
 };
+
+async function hydrateDefenses(rawDefenses: RawDefenseRow[]): Promise<DefenseRow[]> {
+  const playerIds = [...new Set(rawDefenses.map((d) => d.player_id).filter((id): id is string => Boolean(id)))];
+  const mobIds = [...new Set(rawDefenses.flatMap((d) => d.defense_mobs.map(({ mob_id }) => mob_id)))];
+  let levels: PlayerMobLevel[] = [];
+  if (playerIds.length > 0 && mobIds.length > 0) {
+    const { data, error } = await supabase.from("player_mob_levels").select("player_id,mob_id,level,updated_at").in("player_id", playerIds).in("mob_id", mobIds);
+    if (error) throw error;
+    levels = (data ?? []).map((level) => ({ playerId: level.player_id, mobId: level.mob_id, level: level.level, updatedAt: level.updated_at }));
+  }
+  return rawDefenses.map((defense) => {
+    const catalog = defense.defense_mobs.flatMap(({ mobs: mob }) => mob ? [{ id: mob.id, name: mob.name, imageUrl: mob.image_url, mobType: mob.mob_type, rarity: mob.rarity }] : []);
+    return {
+      ...defense,
+      defense_mobs: resolveDefenseMobs(defense.player_id, defense.defense_mobs.map(({ mob_id, position }) => ({ mobId: mob_id, position })), catalog, levels),
+    };
+  });
+}
+
+const DEFENSE_SELECT = "id, screenshot_url, run_code, comment, player_id, created_at, player:battle_power(id, nickname, power1, power2, power3, power4, power5), defense_heroes(position, hero_id, heroes(id, name_ru, name_en, icon_url)), defense_mobs(position, mob_id, mobs(id, name, image_url, mob_type, rarity))";
 
 function SearchTab({ heroes }: { heroes: HeroOption[] }) {
   const qc = useQueryClient();
@@ -437,10 +361,7 @@ function SearchTab({ heroes }: { heroes: HeroOption[] }) {
     enabled: searchIds !== null && searchIds.length > 0,
     queryFn: async (): Promise<DefenseRow[]> => {
       const ids = searchIds ?? [];
-      const { data: matches, error: mErr } = await supabase
-        .from("defense_heroes")
-        .select("defense_id, hero_id")
-        .in("hero_id", ids);
+      const { data: matches, error: mErr } = await supabase.from("defense_heroes").select("defense_id, hero_id").in("hero_id", ids);
       if (mErr) throw mErr;
       const counts = new Map<string, Set<string>>();
       for (const r of matches ?? []) {
@@ -448,280 +369,115 @@ function SearchTab({ heroes }: { heroes: HeroOption[] }) {
         s.add(r.hero_id);
         counts.set(r.defense_id, s);
       }
-      const defenseIds = [...counts.entries()]
-        .filter(([, set]) => ids.every((id) => set.has(id)))
-        .map(([id]) => id);
+      const defenseIds = [...counts.entries()].filter(([, set]) => ids.every((id) => set.has(id))).map(([id]) => id);
       if (defenseIds.length === 0) return [];
-      const { data, error } = await supabase
-        .from("defenses")
-        .select(
-          "id, screenshot_url, run_code, comment, player_id, created_at, player:battle_power(id, nickname, power1, power2, power3, power4, power5), defense_heroes(position, hero_id, heroes(id, name_ru, name_en, icon_url)), defense_mobs(position, mob_id, mobs(id, name, image_url, mob_type, rarity))",
-        )
-        .in("id", defenseIds)
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("defenses").select(DEFENSE_SELECT).in("id", defenseIds).order("created_at", { ascending: false });
       if (error) throw error;
-      const rawDefenses = (data ?? []) as unknown as RawDefenseRow[];
-      const playerIds = [
-        ...new Set(
-          rawDefenses
-            .map((defense) => defense.player_id)
-            .filter((playerId): playerId is string => Boolean(playerId)),
-        ),
-      ];
-      const mobIds = [
-        ...new Set(
-          rawDefenses.flatMap((defense) => defense.defense_mobs.map(({ mob_id }) => mob_id)),
-        ),
-      ];
-      let levels: PlayerMobLevel[] = [];
-      if (playerIds.length > 0 && mobIds.length > 0) {
-        const { data: levelRows, error: levelsError } = await supabase
-          .from("player_mob_levels")
-          .select("player_id,mob_id,level,updated_at")
-          .in("player_id", playerIds)
-          .in("mob_id", mobIds);
-        if (levelsError) throw levelsError;
-        levels = (levelRows ?? []).map((level) => ({
-          playerId: level.player_id,
-          mobId: level.mob_id,
-          level: level.level,
-          updatedAt: level.updated_at,
-        }));
-      }
-
-      return rawDefenses.map((defense) => {
-        const catalog = defense.defense_mobs.flatMap(({ mobs: mob }) =>
-          mob
-            ? [
-                {
-                  id: mob.id,
-                  name: mob.name,
-                  imageUrl: mob.image_url,
-                  mobType: mob.mob_type,
-                  rarity: mob.rarity,
-                },
-              ]
-            : [],
-        );
-        return {
-          ...defense,
-          defense_mobs: resolveDefenseMobs(
-            defense.player_id,
-            defense.defense_mobs.map(({ mob_id, position }) => ({
-              mobId: mob_id,
-              position,
-            })),
-            catalog,
-            levels,
-          ),
-        };
-      });
+      return hydrateDefenses((data ?? []) as unknown as RawDefenseRow[]);
     },
   });
 
   const onDelete = async (id: string) => {
-    if (!confirm("Видалити цей захист?")) return;
+    if (!confirm("Видалити цю проходку?")) return;
     const { error } = await supabase.from("defenses").delete().eq("id", id);
-    if (error) {
-      toast.error("Не вдалося видалити");
-      return;
-    }
+    if (error) return toast.error("Не вдалося видалити");
     toast.success("Видалено");
     qc.invalidateQueries({ queryKey: ["defenses"] });
   };
 
-  const canSearch = chosen.length >= 1;
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card/50 p-4">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">
-          Фільтр (AND) — оберіть від 1 до 5 героїв
-        </div>
-        {slots.map((val, i) => (
-          <HeroPicker
-            key={i}
-            heroes={heroes}
-            value={val}
-            onChange={(id) => {
-              const next = [...slots];
-              next[i] = id;
-              setSlots(next);
-            }}
-            excludeIds={chosen}
-            placeholder={`Герой ${i + 1}`}
-          />
-        ))}
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">Фільтр (AND) — оберіть від 1 до 5 героїв</div>
+        {slots.map((val, i) => <HeroPicker key={i} heroes={heroes} value={val} onChange={(id) => { const next = [...slots]; next[i] = id; setSlots(next); }} excludeIds={chosen} placeholder={`Герой ${i + 1}`} />)}
         <div className="flex items-center gap-2">
-          <button
-            disabled={!canSearch}
-            onClick={() => {
-              setSearchIds(chosen);
-              setSearchVersion((version) => version + 1);
-            }}
-            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
-          >
-            🔍 Пошук
-          </button>
-          {chosen.length > 0 && (
-            <button
-              onClick={() => {
-                setSlots([null, null, null, null, null]);
-                setSearchIds(null);
-              }}
-              className="text-xs text-muted-foreground hover:text-destructive"
-            >
-              Очистити фільтр
-            </button>
-          )}
+          <button disabled={chosen.length < 1} onClick={() => { setSearchIds(chosen); setSearchVersion((v) => v + 1); }} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">🔍 Пошук</button>
+          {chosen.length > 0 && <button onClick={() => { setSlots([null, null, null, null, null]); setSearchIds(null); }} className="text-xs text-muted-foreground hover:text-destructive">Очистити фільтр</button>}
         </div>
       </div>
+      {searchIds !== null && <div className="flex flex-col gap-3">
+        <div className="text-xs text-muted-foreground">{isFetching ? "Пошук…" : `Знайдено: ${results.length}`}</div>
+        {results.map((d) => <DefenseCard key={d.id} defense={d} onDelete={() => onDelete(d.id)} />)}
+        {!isFetching && results.length === 0 && <div className="rounded-xl border border-dashed border-border bg-card/30 p-6 text-center text-sm text-muted-foreground">Немає результатів</div>}
+      </div>}
+    </div>
+  );
+}
 
-      {searchIds !== null && (
-        <div className="flex flex-col gap-3">
-          <div className="text-xs text-muted-foreground">
-            {isFetching ? "Пошук…" : `Знайдено: ${results.length}`}
-          </div>
-          {results.map((d) => (
-            <DefenseCard key={d.id} defense={d} onDelete={() => onDelete(d.id)} />
-          ))}
-          {!isFetching && results.length === 0 && (
-            <div className="rounded-xl border border-dashed border-border bg-card/30 p-6 text-center text-sm text-muted-foreground">
-              Немає результатів
+function AllCodesTab() {
+  const [selected, setSelected] = useState<DefenseRow | null>(null);
+  const { data: defenses = [], isLoading } = useQuery({
+    queryKey: ["defenses", "all-codes"],
+    queryFn: async (): Promise<DefenseRow[]> => {
+      const { data, error } = await supabase.from("defenses").select(DEFENSE_SELECT).order("created_at", { ascending: false });
+      if (error) throw error;
+      return hydrateDefenses((data ?? []) as unknown as RawDefenseRow[]);
+    },
+  });
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="text-xs text-muted-foreground">{isLoading ? "Завантаження…" : `Усього проходок: ${defenses.length}`}</div>
+      {defenses.map((defense) => {
+        const heroNames = [...defense.defense_heroes]
+          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+          .flatMap((row) => row.heroes ? [row.heroes.name_ru] : []);
+        return (
+          <button key={defense.id} onClick={() => setSelected(defense)} className="flex w-full gap-3 rounded-xl border border-border bg-card/50 p-2.5 text-left transition hover:border-primary/40 hover:bg-accent/40">
+            {defense.screenshot_url ? (
+              <img src={defense.screenshot_url} alt="" className="h-20 w-28 shrink-0 rounded-lg border border-border bg-background object-cover sm:h-24 sm:w-36" />
+            ) : (
+              <div className="flex h-20 w-28 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-background/50 text-2xl text-muted-foreground sm:h-24 sm:w-36">🖼</div>
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold text-foreground">{defense.run_code || "Без коду"}</div>
+              <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{heroNames.length ? heroNames.join(", ") : "Герої не вказані"}</div>
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                <span>📅 {formatDefenseDate(defense.created_at)}</span>
+                {defense.player?.nickname && <span>👤 {defense.player.nickname}</span>}
+              </div>
             </div>
-          )}
+          </button>
+        );
+      })}
+      {!isLoading && defenses.length === 0 && <div className="rounded-xl border border-dashed border-border bg-card/30 p-6 text-center text-sm text-muted-foreground">Поки що немає доданих проходок</div>}
+
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-3 pt-8 sm:p-6" onClick={() => setSelected(null)}>
+          <div className="w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-2 flex justify-end">
+              <button onClick={() => setSelected(null)} className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow">✕ Закрити</button>
+            </div>
+            <DefenseCard defense={selected} hideDelete />
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function DefenseCard({ defense, onDelete }: { defense: DefenseRow; onDelete: () => void }) {
+function DefenseCard({ defense, onDelete, hideDelete = false }: { defense: DefenseRow; onDelete?: () => void; hideDelete?: boolean }) {
   const heroes = [...defense.defense_heroes].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-  const powers = defense.player
-    ? [
-        defense.player.power1,
-        defense.player.power2,
-        defense.player.power3,
-        defense.player.power4,
-        defense.player.power5,
-      ]
-    : [];
+  const powers = defense.player ? [defense.player.power1, defense.player.power2, defense.player.power3, defense.player.power4, defense.player.power5] : [];
   const copy = async () => {
     if (!defense.run_code) return;
     await navigator.clipboard.writeText(defense.run_code);
     toast.success("Код скопійовано");
   };
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card/50 p-3">
-      {(defense.screenshot_url || heroes.length > 0) && (
-        <div className="grid gap-3 md:grid-cols-2">
-          {defense.screenshot_url && (
-            <a href={defense.screenshot_url} target="_blank" rel="noreferrer" className="min-w-0">
-              <img
-                src={defense.screenshot_url}
-                alt=""
-                className="aspect-video w-full rounded-lg border border-border bg-background/50 object-contain"
-              />
-            </a>
-          )}
-          {heroes.length > 0 && (
-            <div
-              className={`flex flex-wrap content-start items-start gap-1.5 ${defense.screenshot_url ? "" : "md:col-span-2"}`}
-            >
-              {heroes.map((row) =>
-                row.heroes ? (
-                  <span
-                    key={row.hero_id}
-                    className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-foreground"
-                  >
-                    {row.heroes.name_ru}
-                  </span>
-                ) : null,
-              )}
-            </div>
-          )}
-        </div>
-      )}
-      {defense.run_code && (
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-input px-3 py-2">
-          <span className="text-xs text-muted-foreground">🔑</span>
-          <code className="flex-1 truncate font-mono text-sm text-foreground">
-            {defense.run_code}
-          </code>
-          <button
-            onClick={copy}
-            className="rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-xs font-medium text-primary transition hover:bg-primary/20"
-          >
-            📋 Копіювати
-          </button>
-        </div>
-      )}
-      {defense.player && (
-        <div className="rounded-xl border border-border bg-background/50 p-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <span aria-hidden="true">👤</span>
-            <span>{defense.player.nickname}</span>
-          </div>
-          <div className="mt-2 grid grid-cols-5 gap-1.5">
-            {powers.map((power, index) => (
-              <div
-                key={index}
-                className="rounded-lg border border-border bg-secondary/70 px-1.5 py-2 text-center"
-              >
-                <div className="text-[10px] uppercase text-muted-foreground">БС {index + 1}</div>
-                <div className="mt-0.5 truncate font-mono text-xs font-semibold tabular-nums text-foreground">
-                  {formatDefensePower(power)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {defense.defense_mobs.length > 0 && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {defense.defense_mobs.map(({ mob, level, position }) => (
-            <div
-              key={mob.id}
-              className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-secondary/50 p-2"
-            >
-              {mob.imageUrl && (
-                <img
-                  src={mob.imageUrl}
-                  alt=""
-                  className="h-10 w-10 shrink-0 rounded-md border border-border object-cover"
-                />
-              )}
-              <div className="min-w-0">
-                <div className="truncate text-xs font-medium text-foreground">
-                  {position}. {mob.name}
-                </div>
-                <div className="mt-0.5 text-[11px] font-semibold text-primary">
-                  Рівень {level ?? "—"}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      {defense.comment && (
-        <div className="rounded-lg border border-border bg-background/50 px-3 py-2.5">
-          <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            Коментар
-          </div>
-          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">
-            {defense.comment}
-          </p>
-        </div>
-      )}
-      <div className="flex justify-end">
-        <button
-          onClick={onDelete}
-          className="text-xs text-muted-foreground transition hover:text-destructive"
-        >
-          🗑 Видалити
-        </button>
-      </div>
+    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-lg">
+      <div className="text-[11px] text-muted-foreground">Додано: {formatDefenseDate(defense.created_at)}</div>
+      {(defense.screenshot_url || heroes.length > 0) && <div className="grid gap-3 md:grid-cols-2">
+        {defense.screenshot_url && <a href={defense.screenshot_url} target="_blank" rel="noreferrer" className="min-w-0"><img src={defense.screenshot_url} alt="" className="aspect-video w-full rounded-lg border border-border bg-background/50 object-contain" /></a>}
+        {heroes.length > 0 && <div className={`flex flex-wrap content-start items-start gap-1.5 ${defense.screenshot_url ? "" : "md:col-span-2"}`}>
+          {heroes.map((row) => row.heroes ? <span key={row.hero_id} className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-foreground">{row.heroes.name_ru}</span> : null)}
+        </div>}
+      </div>}
+      {defense.run_code && <div className="flex items-center gap-2 rounded-lg border border-border bg-input px-3 py-2"><span className="text-xs text-muted-foreground">🔑</span><code className="flex-1 truncate font-mono text-sm text-foreground">{defense.run_code}</code><button onClick={copy} className="rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-xs font-medium text-primary transition hover:bg-primary/20">📋 Копіювати</button></div>}
+      {defense.player && <div className="rounded-xl border border-border bg-background/50 p-3"><div className="flex items-center gap-2 text-sm font-semibold text-foreground"><span>👤</span><span>{defense.player.nickname}</span></div><div className="mt-2 grid grid-cols-5 gap-1.5">{powers.map((power, index) => <div key={index} className="rounded-lg border border-border bg-secondary/70 px-1.5 py-2 text-center"><div className="text-[10px] uppercase text-muted-foreground">БС {index + 1}</div><div className="mt-0.5 truncate font-mono text-xs font-semibold tabular-nums text-foreground">{formatDefensePower(power)}</div></div>)}</div></div>}
+      {defense.defense_mobs.length > 0 && <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{defense.defense_mobs.map(({ mob, level, position }) => <div key={mob.id} className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-secondary/50 p-2">{mob.imageUrl && <img src={mob.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-md border border-border object-cover" />}<div className="min-w-0"><div className="truncate text-xs font-medium text-foreground">{position}. {mob.name}</div><div className="mt-0.5 text-[11px] font-semibold text-primary">Рівень {level ?? "—"}</div></div></div>)}</div>}
+      {defense.comment && <div className="rounded-lg border border-border bg-background/50 px-3 py-2.5"><div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Коментар</div><p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">{defense.comment}</p></div>}
+      {!hideDelete && onDelete && <div className="flex justify-end"><button onClick={onDelete} className="text-xs text-muted-foreground transition hover:text-destructive">🗑 Видалити</button></div>}
     </div>
   );
 }
@@ -731,7 +487,11 @@ function formatDefensePower(value: number | null): string {
   return Number(value.toFixed(3)).toString();
 }
 
-// ---------------- EDITOR TAB ----------------
+function formatDefenseDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("uk-UA", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
+}
 
 function EditorTab({ heroes }: { heroes: HeroOption[] }) {
   const qc = useQueryClient();
@@ -767,7 +527,7 @@ function EditorTab({ heroes }: { heroes: HeroOption[] }) {
     if (!confirm("Видалити героя? Не вдасться, якщо він використовується.")) return;
     const { error } = await supabase.from("heroes").delete().eq("id", id);
     if (error) {
-      toast.error("Не вдалося видалити (можливо, використовується у захистах)");
+      toast.error("Не вдалося видалити (можливо, використовується у проходках)");
       return;
     }
     toast.success("Видалено");
@@ -783,86 +543,20 @@ function EditorTab({ heroes }: { heroes: HeroOption[] }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card/50 p-3 sm:flex-row sm:items-center">
-        <button
-          onClick={() => setAddOpen(true)}
-          className="flex items-center justify-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
-        >
-          ➕ Додати героя
-        </button>
-        <button
-          onClick={onSync}
-          disabled={syncing}
-          className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary px-3 py-2 text-sm font-medium text-secondary-foreground transition hover:bg-accent disabled:opacity-50"
-        >
-          🔄 {syncing ? "Синхронізація…" : "Синхронізувати героїв"}
-        </button>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Пошук…"
-          className="w-full flex-1 rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-primary/60 focus:outline-none sm:w-auto"
-        />
+        <button onClick={() => setAddOpen(true)} className="flex items-center justify-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20">➕ Додати героя</button>
+        <button onClick={onSync} disabled={syncing} className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary px-3 py-2 text-sm font-medium text-secondary-foreground transition hover:bg-accent disabled:opacity-50">🔄 {syncing ? "Синхронізація…" : "Синхронізувати героїв"}</button>
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Пошук…" className="w-full flex-1 rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-primary/60 focus:outline-none sm:w-auto" />
       </div>
-
-      {addOpen && (
-        <HeroForm
-          onClose={() => setAddOpen(false)}
-          onSaved={() => qc.invalidateQueries({ queryKey: ["heroes"] })}
-        />
-      )}
-
+      {addOpen && <HeroForm onClose={() => setAddOpen(false)} onSaved={() => qc.invalidateQueries({ queryKey: ["heroes"] })} />}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {filtered.map((h) =>
-          editingId === h.id ? (
-            <HeroForm
-              key={h.id}
-              hero={h}
-              onClose={() => setEditingId(null)}
-              onSaved={() => qc.invalidateQueries({ queryKey: ["heroes"] })}
-            />
-          ) : (
-            <div
-              key={h.id}
-              className="flex items-center gap-2 rounded-lg border border-border bg-card p-2"
-            >
-              <div className="flex flex-1 flex-col leading-tight">
-                <span className="text-sm text-foreground">{h.name_ru}</span>
-                <span className="text-[11px] text-muted-foreground">{h.name_en}</span>
-              </div>
-              <button
-                onClick={() => setEditingId(h.id)}
-                className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-primary"
-              >
-                ✏️
-              </button>
-              <button
-                onClick={() => onDelete(h.id)}
-                className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-destructive"
-              >
-                🗑
-              </button>
-            </div>
-          ),
-        )}
-        {filtered.length === 0 && (
-          <div className="col-span-full rounded-xl border border-dashed border-border bg-card/30 p-6 text-center text-sm text-muted-foreground">
-            Список порожній. Натисніть «Синхронізувати героїв».
-          </div>
-        )}
+        {filtered.map((h) => editingId === h.id ? <HeroForm key={h.id} hero={h} onClose={() => setEditingId(null)} onSaved={() => qc.invalidateQueries({ queryKey: ["heroes"] })} /> : <div key={h.id} className="flex items-center gap-2 rounded-lg border border-border bg-card p-2"><div className="flex flex-1 flex-col leading-tight"><span className="text-sm text-foreground">{h.name_ru}</span><span className="text-[11px] text-muted-foreground">{h.name_en}</span></div><button onClick={() => setEditingId(h.id)} className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-primary">✏️</button><button onClick={() => onDelete(h.id)} className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-destructive">🗑</button></div>)}
+        {filtered.length === 0 && <div className="col-span-full rounded-xl border border-dashed border-border bg-card/30 p-6 text-center text-sm text-muted-foreground">Список порожній. Натисніть «Синхронізувати героїв».</div>}
       </div>
     </div>
   );
 }
 
-function HeroForm({
-  hero,
-  onClose,
-  onSaved,
-}: {
-  hero?: HeroOption;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
+function HeroForm({ hero, onClose, onSaved }: { hero?: HeroOption; onClose: () => void; onSaved: () => void }) {
   const [nameEn, setNameEn] = useState(hero?.name_en ?? "");
   const [nameRu, setNameRu] = useState(hero?.name_ru ?? "");
   const [iconUrl, setIconUrl] = useState<string | null>(hero?.icon_url ?? null);
@@ -870,27 +564,17 @@ function HeroForm({
   const fileRef = useRef<HTMLInputElement>(null);
 
   const onSubmit = async () => {
-    if (!nameEn.trim() || !nameRu.trim()) {
-      toast.error("Вкажіть обидві назви");
-      return;
-    }
+    if (!nameEn.trim() || !nameRu.trim()) return toast.error("Вкажіть обидві назви");
     setBusy(true);
     try {
       let icon = iconUrl;
       const file = fileRef.current?.files?.[0];
-      if (file) {
-        icon = await uploadToBucket("hero-icons", file, nameEn.trim() || "hero");
-      }
+      if (file) icon = await uploadToBucket("hero-icons", file, nameEn.trim() || "hero");
       if (hero) {
-        const { error } = await supabase
-          .from("heroes")
-          .update({ name_en: nameEn.trim(), name_ru: nameRu.trim(), icon_url: icon })
-          .eq("id", hero.id);
+        const { error } = await supabase.from("heroes").update({ name_en: nameEn.trim(), name_ru: nameRu.trim(), icon_url: icon }).eq("id", hero.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from("heroes")
-          .insert({ name_en: nameEn.trim(), name_ru: nameRu.trim(), icon_url: icon });
+        const { error } = await supabase.from("heroes").insert({ name_en: nameEn.trim(), name_ru: nameRu.trim(), icon_url: icon });
         if (error) throw error;
       }
       toast.success("Збережено");
@@ -907,49 +591,14 @@ function HeroForm({
   return (
     <div className="col-span-full flex flex-col gap-2 rounded-xl border border-primary/40 bg-card p-3">
       <div className="flex items-center gap-3">
-        {iconUrl ? (
-          <img src={iconUrl} alt="" className="h-12 w-12 rounded object-cover" />
-        ) : (
-          <div className="h-12 w-12 rounded bg-muted" />
-        )}
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          onChange={async (e) => {
-            const f = e.target.files?.[0];
-            if (f) setIconUrl(await fileToDataUrl(f));
-          }}
-          className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border-0 file:bg-secondary file:px-2 file:py-1 file:text-xs file:text-secondary-foreground"
-        />
+        {iconUrl ? <img src={iconUrl} alt="" className="h-12 w-12 rounded object-cover" /> : <div className="h-12 w-12 rounded bg-muted" />}
+        <input ref={fileRef} type="file" accept="image/*" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setIconUrl(await fileToDataUrl(f)); }} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border-0 file:bg-secondary file:px-2 file:py-1 file:text-xs file:text-secondary-foreground" />
       </div>
-      <input
-        value={nameEn}
-        onChange={(e) => setNameEn(e.target.value)}
-        placeholder="English name"
-        className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-primary/60 focus:outline-none"
-      />
-      <input
-        value={nameRu}
-        onChange={(e) => setNameRu(e.target.value)}
-        placeholder="Русское название"
-        className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-primary/60 focus:outline-none"
-      />
+      <input value={nameEn} onChange={(e) => setNameEn(e.target.value)} placeholder="English name" className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-primary/60 focus:outline-none" />
+      <input value={nameRu} onChange={(e) => setNameRu(e.target.value)} placeholder="Русское название" className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-primary/60 focus:outline-none" />
       <div className="flex gap-2">
-        <button
-          disabled={busy}
-          onClick={onSubmit}
-          className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
-        >
-          💾 Зберегти
-        </button>
-        <button
-          disabled={busy}
-          onClick={onClose}
-          className="rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-secondary-foreground transition hover:bg-accent"
-        >
-          ❌
-        </button>
+        <button disabled={busy} onClick={onSubmit} className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">💾 Зберегти</button>
+        <button disabled={busy} onClick={onClose} className="rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-secondary-foreground transition hover:bg-accent">❌</button>
       </div>
     </div>
   );
