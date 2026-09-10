@@ -89,8 +89,6 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
       text,
       disable_notification: true,
       disable_web_page_preview: true,
-      // Re-attach the bottom keyboard so it is restored regularly.
-      reply_markup: TOWER_REPLY_KEYBOARD,
     }),
   });
 
