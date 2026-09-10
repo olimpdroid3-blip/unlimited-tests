@@ -406,15 +406,6 @@ export async function handleTowerWorkflowMessage(message: {
     return true;
   }
 
-  // Reply-keyboard buttons cannot carry a URL, so answer with an inline link.
-  if (text === BTN_MIRROR_KB) {
-    if (message.message_id) await del(chatId, message.message_id);
-    const { TOWERS_URL } = await import("@/lib/gvg-pinned-towers.server");
-    await send(chatId, BTN_MIRROR_KB, {
-      inline_keyboard: [[{ text: BTN_MIRRORS, url: TOWERS_URL }]],
-    });
-    return true;
-  }
 
 
 
