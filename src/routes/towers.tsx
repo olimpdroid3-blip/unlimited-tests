@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/db";
 import { AppHeader } from "@/components/AppHeader";
 import { Toaster } from "@/components/ui/sonner";
 import { TowerModal } from "@/components/TowerModal";
 import { MirrorOrderModal } from "@/components/MirrorOrderModal";
-import { isMirrorRow, MIRROR_PREFIX } from "@/lib/mirror-order";
+import { isMirrorRow, MIRROR_PREFIX, VALID_TOWER_IDS } from "@/lib/mirror-order";
 import * as Dialog from "@radix-ui/react-dialog";
 import { getTowerStatusFlags, getTowerStatuses, TOWER_STATUS_LABELS } from "@/lib/tower-status";
 
@@ -122,6 +122,11 @@ function HomePage() {
     setSelected(id);
     setModalOpen(true);
   };
+
+  useEffect(() => {
+    const towerId = new URLSearchParams(window.location.search).get("tower");
+    if (towerId && VALID_TOWER_IDS.includes(towerId)) openTower(towerId);
+  }, []);
 
   const handleClearAll = async () => {
     setBusy(true);

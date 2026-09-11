@@ -466,13 +466,14 @@ export async function handleTowerWorkflowMessage(message: {
 }
 
 async function submitForm(form: TowerForm): Promise<void> {
+  if (!form.tower_id) return;
   const marked: TowerForm = { ...form, submitted: true };
   await saveForm(marked);
 
   // "➕ Додати" in Telegram means: this tower is actually ON TEST now.
   // It writes the normal towers row, never a mirror ("M:") request.
   const result = await upsertPlacedTower({
-    towerId: marked.tower_id!,
+    towerId: form.tower_id,
     nickname: marked.nickname,
     screenshotUrl: marked.screenshot_url,
     screenshotPath: marked.screenshot_path,

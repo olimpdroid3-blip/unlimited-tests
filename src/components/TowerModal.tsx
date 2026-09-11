@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/db";
 import { toast } from "sonner";
 import { getNickCookie } from "@/lib/nickname";
-import { notifyTower, dropTowerRequest } from "@/lib/tower-notify.functions";
+import { notifyTower, dropTowerRequest, markTowerWebOrigin } from "@/lib/tower-notify.functions";
 import { fileToDataUrl, uploadScreenshot } from "@/lib/screenshot-upload";
 import { HeroPicker, type HeroOption } from "@/components/HeroPicker";
 import { MobPicker } from "@/components/MobPicker";
@@ -167,6 +167,7 @@ export function TowerModal({
         updated_at: new Date().toISOString(),
       });
       if (error) throw error;
+      if (!existing) await markTowerWebOrigin({ data: { towerId } });
       // Filling the tower fulfils any pending request: shared removal deletes
       // the bot's update message, the marker row and posts the "➖" update.
       if (update.placed) {
