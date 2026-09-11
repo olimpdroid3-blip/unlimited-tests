@@ -14,7 +14,7 @@ export type TowerOrigin = {
   created_at: string;
 };
 
-export type TowerSourceLink = { icon: "🔵➤"; url: string };
+export type TowerSourceLink = { url: string };
 
 const escapeHtml = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -57,7 +57,7 @@ export function getTowerSourceLink(
 ): TowerSourceLink | null {
   const origin = origins.find((candidate) => candidate.tower_id === towerId);
   if (origin?.source === "telegram" && origin.telegram_message_link) {
-    return { icon: "🔵➤", url: origin.telegram_message_link };
+    return { url: origin.telegram_message_link };
   }
   return null;
 }
@@ -69,6 +69,12 @@ export function renderTowerLine(
   suffix = "",
 ): string {
   const source = getTowerSourceLink(towerId, origins);
-  const label = `🏰 Вежа ${escapeHtml(towerId)} — ${source ? `${source.icon} ` : ""}${escapeHtml(nickname ?? "?")}${suffix}`;
+  const label = `🏰 Вежа ${escapeHtml(towerId)} — ${escapeHtml(nickname ?? "?")}${suffix}`;
   return source ? `<a href="${escapeHtmlAttribute(source.url)}">${label}</a>` : label;
+}
+
+export function renderTowerListText(lines: readonly string[]): string {
+  return lines.length > 0
+    ? `🏰 <b>Вежі</b>\n\n${lines.join("\n\n")}`
+    : "🏰 <b>Вежі</b>\n\nНемає активних веж";
 }
