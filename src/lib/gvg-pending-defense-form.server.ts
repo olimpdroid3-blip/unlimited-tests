@@ -1,8 +1,8 @@
 import { supabaseAdmin } from "@/lib/db.server";
-import { resolveAdminNickname } from "@/lib/tower-form";
+import { resolveAdminNickname, WALKTHROUGH_REVIEW_THREAD_ID } from "@/lib/tower-form";
 
 export const REVIEW_CHAT_ID = -1003978316922;
-export const REVIEW_THREAD_ID = 4;
+export const REVIEW_THREAD_ID = WALKTHROUGH_REVIEW_THREAD_ID;
 export const REVIEW_BUTTON_TEXT = "📸 ДОДАТИ СКРІН І КОД";
 export const REVIEW_CALLBACK = "defense-review:add";
 const REVIEW_CANCEL_PREFIX = "defense-review:cancel:";
@@ -75,7 +75,10 @@ async function tg<T = Record<string, unknown>>(
       result?: T;
       description?: string;
     };
-    if (!json.ok) console.error(`[pending-defense-form] ${method} failed [${res.status}] ${json.description ?? ""}`);
+    if (!json.ok)
+      console.error(
+        `[pending-defense-form] ${method} failed [${res.status}] ${json.description ?? ""}`,
+      );
     return { ok: json.ok === true, result: json.result, description: json.description };
   } catch (error) {
     console.error(`[pending-defense-form] ${method} error`, error);
@@ -103,7 +106,9 @@ function pathFor(form: Pick<Form, "user_id" | "id">): string {
 }
 
 async function listStateNames(): Promise<string[]> {
-  const { data, error } = await supabaseAdmin.storage.from(STATE_BUCKET).list(STATE_DIR, { limit: 200 });
+  const { data, error } = await supabaseAdmin.storage
+    .from(STATE_BUCKET)
+    .list(STATE_DIR, { limit: 200 });
   if (error) {
     console.error("[pending-defense-form] state list failed", error.message);
     return [];
@@ -154,7 +159,8 @@ async function cleanupBotMessages(form: Form): Promise<void> {
 }
 
 async function removeScreenshot(form: Form): Promise<void> {
-  if (form.screenshot_path) await supabaseAdmin.storage.from(STATE_BUCKET).remove([form.screenshot_path]);
+  if (form.screenshot_path)
+    await supabaseAdmin.storage.from(STATE_BUCKET).remove([form.screenshot_path]);
 }
 
 async function expire(form: Form): Promise<void> {
@@ -195,7 +201,11 @@ async function findForm(userId: number): Promise<Form | null> {
 }
 
 function escapeHtml(value: string): string {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 async function sendCancelControl(form: Form): Promise<Form> {
@@ -205,7 +215,9 @@ async function sendCancelControl(form: Form): Promise<Form> {
     text: "📝 Форма проходки активна 30 хв.",
     disable_notification: true,
     reply_markup: {
-      inline_keyboard: [[{ text: "❌ Скасувати", callback_data: `${REVIEW_CANCEL_PREFIX}${form.id}` }]],
+      inline_keyboard: [
+        [{ text: "❌ Скасувати", callback_data: `${REVIEW_CANCEL_PREFIX}${form.id}` }],
+      ],
     },
   });
   const messageId = res.result?.message_id ?? null;
@@ -283,7 +295,9 @@ async function sendConfirm(form: Form): Promise<Form> {
     ...form,
     step: "confirm",
     prompt_message_id: null,
-    bot_message_ids: messageId ? [...(form.bot_message_ids ?? []), messageId] : (form.bot_message_ids ?? []),
+    bot_message_ids: messageId
+      ? [...(form.bot_message_ids ?? []), messageId]
+      : (form.bot_message_ids ?? []),
   };
   await saveState(next);
   return next;
@@ -334,7 +348,9 @@ async function storePhoto(fileId: string): Promise<{ url: string; path: string }
     .from(STATE_BUCKET)
     .upload(path, new Blob([bytes], { type: contentType }), { contentType, upsert: true });
   if (error) return null;
-  const { data, error: signedError } = await supabaseAdmin.storage.from(STATE_BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
+  const { data, error: signedError } = await supabaseAdmin.storage
+    .from(STATE_BUCKET)
+    .createSignedUrl(path, SIGNED_URL_TTL);
   if (signedError || !data?.signedUrl) return null;
   return { url: data.signedUrl, path };
 }
@@ -456,7 +472,9 @@ async function sendCommentPrompt(form: Form): Promise<Form> {
     text: "⏭",
     disable_notification: true,
     reply_markup: {
-      inline_keyboard: [[{ text: "⏭ Пропустити", callback_data: `${REVIEW_SKIP_PREFIX}${form.id}` }]],
+      inline_keyboard: [
+        [{ text: "⏭ Пропустити", callback_data: `${REVIEW_SKIP_PREFIX}${form.id}` }],
+      ],
     },
   });
   const messageId = res.result?.message_id ?? null;
@@ -468,7 +486,11 @@ async function sendCommentPrompt(form: Form): Promise<Form> {
 }
 
 export async function handlePendingDefenseMessage(message: TgMessage): Promise<boolean> {
-  if (message.chat?.id !== REVIEW_CHAT_ID || (message.message_thread_id ?? 0) !== REVIEW_THREAD_ID || !message.from?.id) {
+  if (
+    message.chat?.id !== REVIEW_CHAT_ID ||
+    (message.message_thread_id ?? 0) !== REVIEW_THREAD_ID ||
+    !message.from?.id
+  ) {
     return false;
   }
 
@@ -511,7 +533,10 @@ export async function handlePendingDefenseMessage(message: TgMessage): Promise<b
     const fileId = pickFileId(message);
     if (!fileId) {
       await forget();
-      await replacePrompt(form, "❌ Потрібен скріншот.\n📸 Надішліть зображення у відповідь на це повідомлення.");
+      await replacePrompt(
+        form,
+        "❌ Потрібен скріншот.\n📸 Надішліть зображення у відповідь на це повідомлення.",
+      );
       return true;
     }
     const stored = await storePhoto(fileId);
