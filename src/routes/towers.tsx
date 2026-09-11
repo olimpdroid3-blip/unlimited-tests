@@ -6,10 +6,9 @@ import { AppHeader } from "@/components/AppHeader";
 import { Toaster } from "@/components/ui/sonner";
 import { TowerModal } from "@/components/TowerModal";
 import { MirrorOrderModal } from "@/components/MirrorOrderModal";
-import { isMirrorRow, MIRROR_PREFIX } from "@/lib/mirror-order";
+import { isMirrorRow, MIRROR_PREFIX, VALID_TOWER_IDS } from "@/lib/mirror-order";
 import * as Dialog from "@radix-ui/react-dialog";
 import { getTowerStatusFlags, getTowerStatuses, TOWER_STATUS_LABELS } from "@/lib/tower-status";
-import { VALID_TOWER_IDS } from "@/lib/mirror-order";
 
 export const Route = createFileRoute("/towers")({
   head: () => ({
