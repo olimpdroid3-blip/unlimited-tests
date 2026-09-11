@@ -60,11 +60,11 @@ test("source links use a compact icon for the tower's origin", () => {
   ];
 
   assert.deepEqual(getTowerSourceLink("1.1.1", origins), {
-    icon: "✈️",
+    label: "— [ТГ] —",
     url: "https://t.me/c/3978316922/8/42",
   });
   assert.deepEqual(getTowerSourceLink("1.1.2", origins), {
-    icon: "◆",
+    label: "◆",
     url: "https://unlimited-tests.lovable.app/towers?tower=1.1.2",
   });
   assert.equal(getTowerSourceLink("1.2.1", origins), null);

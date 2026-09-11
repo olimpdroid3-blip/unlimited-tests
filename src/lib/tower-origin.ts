@@ -14,7 +14,7 @@ export type TowerOrigin = {
   created_at: string;
 };
 
-export type TowerSourceLink = { icon: "✈️" | "◆"; url: string };
+export type TowerSourceLink = { label: "— [ТГ] —" | "◆"; url: string };
 
 export function buildTowerSiteUrl(towerId: string): string {
   return `${TOWERS_SITE_URL}?tower=${encodeURIComponent(towerId)}`;
@@ -53,10 +53,10 @@ export function getTowerSourceLink(
 ): TowerSourceLink | null {
   const origin = origins.find((candidate) => candidate.tower_id === towerId);
   if (origin?.source === "telegram" && origin.telegram_message_link) {
-    return { icon: "✈️", url: origin.telegram_message_link };
+    return { label: "— [ТГ] —", url: origin.telegram_message_link };
   }
   if (origin?.source === "web" && origin.site_url) {
-    return { icon: "◆", url: origin.site_url };
+    return { label: "◆", url: origin.site_url };
   }
   return null;
 }

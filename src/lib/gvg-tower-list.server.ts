@@ -18,7 +18,7 @@ const escapeAttribute = (s: string) => escape(s).replace(/"/g, "&quot;");
 
 function sourceAnchor(towerId: string, origins: readonly TowerOrigin[]): string {
   const source = getTowerSourceLink(towerId, origins);
-  return source ? ` <a href="${escapeAttribute(source.url)}">${source.icon}</a>` : "";
+  return source ? ` <a href="${escapeAttribute(source.url)}">${source.label}</a>` : "";
 }
 
 type TowerRow = {
