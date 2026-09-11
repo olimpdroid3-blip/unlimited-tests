@@ -15,6 +15,7 @@ import {
   isFormExpired,
   isTowerWorkflowThread,
   isUpdateOnlyThread,
+  isWalkthroughReviewThread,
   resolveAdminNickname,
   TOWER_CHAT_ID,
   type TowerForm,
@@ -63,10 +64,18 @@ test("workflow runs only in chat -1003978316922 thread 8", () => {
 
 test("thread 4 is update-only and never accepts the button captions", () => {
   assert.equal(isUpdateOnlyThread(TOWER_CHAT_ID, 4), true);
+  assert.equal(isWalkthroughReviewThread(TOWER_CHAT_ID, 4), false);
   for (const text of [BTN_ADD, BTN_LIST]) {
     assert.ok(text.length > 0);
     assert.equal(isTowerWorkflowThread(TOWER_CHAT_ID, 4), false);
   }
+});
+
+test("walkthrough review intake works only in thread 108", () => {
+  assert.equal(isWalkthroughReviewThread(TOWER_CHAT_ID, 108), true);
+  assert.equal(isWalkthroughReviewThread(TOWER_CHAT_ID, 4), false);
+  assert.equal(isWalkthroughReviewThread(TOWER_CHAT_ID, 8), false);
+  assert.equal(isWalkthroughReviewThread(-100123, 108), false);
 });
 
 test("pinned panel has exactly three buttons in one row", () => {
@@ -93,8 +102,6 @@ test("the module exposes no bottom reply keyboard anymore", async () => {
   assert.equal("TOWER_REPLY_KEYBOARD" in mod, false);
   assert.equal("BTN_MIRROR_KB" in mod, false);
 });
-
-
 
 test("non-admins cannot start the form", () => {
   assert.equal(resolveAdminNickname({ status: "member", custom_title: "Fakra" }).ok, false);
