@@ -166,7 +166,7 @@ export async function notifyTowerToTelegram(
   return { ok: true };
 }
 
-// Thread 4 keeps the short add/remove lines plus one pinned walkthrough-submit control.
+// Thread 4 keeps only the short add/remove lines.
 const UPDATE_THREAD_ID = 4;
 
 export async function notifyTowerUpdate(
