@@ -1,5 +1,6 @@
 // Sends a short technical message about a tower to the pinned Telegram topic.
 import { listBotMessages, trackBotMessage } from "@/lib/gvg-bot-messages.server";
+import { buildTowerDeleteCallback } from "@/lib/tower-origin";
 
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
@@ -39,6 +40,11 @@ export async function createTowerSourceMessage(input: {
       ...(input.screenshotUrl
         ? { photo: input.screenshotUrl, caption }
         : { text: caption, disable_web_page_preview: true }),
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🗑 Видалити запис", callback_data: buildTowerDeleteCallback(input.towerId) }],
+        ],
+      },
     }),
   });
   const json = (await response.json().catch(() => ({}))) as {
@@ -52,6 +58,31 @@ export async function createTowerSourceMessage(input: {
     return { ok: false, error: json.description ?? "telegram-error" };
   }
   return { ok: true, messageId, messageLink: towerTelegramMessageLink(messageId) };
+}
+
+/** Adds the delete control to an existing permanent source post. */
+export async function ensureTowerSourceDeleteButton(
+  messageId: number,
+  towerId: string,
+): Promise<void> {
+  const botToken = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
+  if (!botToken) return;
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/editMessageReplyMarkup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: CHAT_ID,
+      message_id: messageId,
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🗑 Видалити запис", callback_data: buildTowerDeleteCallback(towerId) }],
+        ],
+      },
+    }),
+  });
+  if (!response.ok) {
+    console.error(`[tower-source] editMessageReplyMarkup failed [${response.status}]`);
+  }
 }
 
 /** Removes the button from every older tracked bot message. */

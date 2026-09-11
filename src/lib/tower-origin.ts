@@ -1,4 +1,5 @@
 export const TOWERS_SITE_URL = "https://unlimited-tests.lovable.app/towers";
+export const CB_TOWER_DELETE_PREFIX = "tower:delete:";
 
 export type TowerOriginSource = "telegram" | "web";
 
@@ -15,6 +16,10 @@ export type TowerSourceLink = { icon: "✈️" | "◆"; url: string };
 
 export function buildTowerSiteUrl(towerId: string): string {
   return `${TOWERS_SITE_URL}?tower=${encodeURIComponent(towerId)}`;
+}
+
+export function buildTowerDeleteCallback(towerId: string): string {
+  return `${CB_TOWER_DELETE_PREFIX}${towerId}`;
 }
 
 export function getTowerSourceLink(

@@ -44,7 +44,9 @@ function pickMessage(update: Record<string, unknown>): TgMessage | null {
 }
 
 function isServiceMessage(m: TgMessage): boolean {
-  return Boolean(m.new_chat_members || m.left_chat_member || m.forum_topic_created || m.pinned_message);
+  return Boolean(
+    m.new_chat_members || m.left_chat_member || m.forum_topic_created || m.pinned_message,
+  );
 }
 
 export function resolveThreadId(m: TgMessage): number | null {
@@ -92,7 +94,11 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
 
         const provided = request.headers.get("X-Telegram-Bot-Api-Secret-Token") ?? "";
         if (!safeEqual(provided, deriveWebhookSecret(botToken))) {
-          console.error("[gvg-video-webhook] invalid secret token (header present:", provided.length > 0, ")");
+          console.error(
+            "[gvg-video-webhook] invalid secret token (header present:",
+            provided.length > 0,
+            ")",
+          );
           return new Response("Unauthorized", { status: 401 });
         }
 
@@ -109,7 +115,7 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
               id: string;
               data?: string;
               from?: { id?: number };
-              message?: { chat?: { id?: number }; message_thread_id?: number };
+              message?: { message_id?: number; chat?: { id?: number }; message_thread_id?: number };
             }
           | undefined;
         if (callback?.id) {
@@ -157,7 +163,10 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
             ...(message as Record<string, unknown>),
             message_thread_id: threadId ?? undefined,
           } as Parameters<typeof review.handlePendingDefenseMessage>[0]);
-          return Response.json({ ok: true, handled: handled ? "pending-defense-form" : "update-thread-idle" });
+          return Response.json({
+            ok: true,
+            handled: handled ? "pending-defense-form" : "update-thread-idle",
+          });
         }
 
         if (isTowerTopic && (message.text ?? "").trim() === "/+") {

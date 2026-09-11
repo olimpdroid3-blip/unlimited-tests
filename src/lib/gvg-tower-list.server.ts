@@ -2,14 +2,14 @@
 // topic, then deletes all previously tracked bot messages in that topic.
 import { supabaseAdmin } from "@/lib/db.server";
 import { isMirrorRow, MIRROR_PREFIX } from "@/lib/mirror-order";
-import { deleteTelegramMessage } from "@/lib/gvg-tower-notify.server";
+import {
+  deleteTelegramMessage,
+  ensureTowerSourceDeleteButton,
+} from "@/lib/gvg-tower-notify.server";
 import { drainBotMessages, setBotMessages } from "@/lib/gvg-bot-messages.server";
 import { listTowerOrigins } from "@/lib/tower-origin.server";
 import { getTowerSourceLink, TOWERS_SITE_URL, type TowerOrigin } from "@/lib/tower-origin";
 import { CB_TOWER_ADD } from "@/lib/tower-form";
-
-
-
 
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
@@ -72,6 +72,13 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
     .sort((a, b) => compareTowerIds(a.tower_id, b.tower_id));
 
   const origins = await listTowerOrigins();
+  await Promise.all(
+    origins.flatMap((origin) =>
+      origin.source === "telegram" && origin.telegram_message_id
+        ? [ensureTowerSourceDeleteButton(origin.telegram_message_id, origin.tower_id)]
+        : [],
+    ),
+  );
   const lines: string[] = [];
   for (const r of filled) {
     lines.push(
@@ -110,7 +117,6 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
       reply_markup,
     }),
   });
-
 
   const json = (await res.json().catch(() => ({}))) as {
     ok?: boolean;

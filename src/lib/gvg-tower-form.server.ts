@@ -3,8 +3,11 @@
 // so a restarted server never loses an in-progress form.
 import { supabaseAdmin } from "@/lib/db.server";
 import { normalizeTowerId } from "@/lib/mirror-order";
-import { upsertPlacedTower } from "@/lib/gvg-tower-requests.server";
+import { deletePlacedTower, upsertPlacedTower } from "@/lib/gvg-tower-requests.server";
 import { handleTowerListCommand } from "@/lib/gvg-tower-list.server";
+import { deleteTelegramMessage } from "@/lib/gvg-tower-notify.server";
+import { listTowerOrigins } from "@/lib/tower-origin.server";
+import { CB_TOWER_DELETE_PREFIX } from "@/lib/tower-origin";
 import {
   BAD_POSITION_TEXT,
   BTN_ADD,
@@ -305,7 +308,6 @@ export async function startTowerForm(
   userId: number,
   triggerMessageId?: number,
 ): Promise<void> {
-
   const member = await tg<{ status?: string; custom_title?: string }>("getChatMember", {
     chat_id: chatId,
     user_id: userId,
@@ -358,17 +360,29 @@ export async function startTowerForm(
 }
 
 async function askScreenshot(form: TowerForm): Promise<void> {
-  const id = await send(form.chat_id, STEP_SCREENSHOT_TEXT, keyboardFor("screenshot", form.id.slice(0, 8)));
+  const id = await send(
+    form.chat_id,
+    STEP_SCREENSHOT_TEXT,
+    keyboardFor("screenshot", form.id.slice(0, 8)),
+  );
   await trackBot(form, id);
 }
 
 async function askComment(form: TowerForm): Promise<void> {
-  const id = await send(form.chat_id, STEP_COMMENT_TEXT, keyboardFor("comment", form.id.slice(0, 8)));
+  const id = await send(
+    form.chat_id,
+    STEP_COMMENT_TEXT,
+    keyboardFor("comment", form.id.slice(0, 8)),
+  );
   await trackBot(form, id);
 }
 
 async function askConfirm(form: TowerForm): Promise<void> {
-  const id = await send(form.chat_id, buildSummary(form), keyboardFor("confirm", form.id.slice(0, 8)));
+  const id = await send(
+    form.chat_id,
+    buildSummary(form),
+    keyboardFor("confirm", form.id.slice(0, 8)),
+  );
   await trackBot(form, id);
 }
 
@@ -406,9 +420,6 @@ export async function handleTowerWorkflowMessage(message: {
     return true;
   }
 
-
-
-
   let form = await findFormByUser(userId);
   if (!form) return false;
 
@@ -417,7 +428,11 @@ export async function handleTowerWorkflowMessage(message: {
   if (form.step === "position") {
     const towerId = normalizeTowerId(text);
     if (!towerId) {
-      const id = await send(chatId, BAD_POSITION_TEXT, keyboardFor("position", form.id.slice(0, 8)));
+      const id = await send(
+        chatId,
+        BAD_POSITION_TEXT,
+        keyboardFor("position", form.id.slice(0, 8)),
+      );
       await trackBot(form, id);
       return true;
     }
@@ -430,7 +445,11 @@ export async function handleTowerWorkflowMessage(message: {
   if (form.step === "screenshot") {
     const fileId = pickFileId(message);
     if (!fileId) {
-      const id = await send(chatId, NEED_PHOTO_TEXT, keyboardFor("screenshot", form.id.slice(0, 8)));
+      const id = await send(
+        chatId,
+        NEED_PHOTO_TEXT,
+        keyboardFor("screenshot", form.id.slice(0, 8)),
+      );
       await trackBot(form, id);
       return true;
     }
@@ -503,9 +522,52 @@ export async function handleTowerFormCallback(cb: {
   id: string;
   data?: string;
   from?: { id?: number };
-  message?: { chat?: { id?: number }; message_thread_id?: number };
+  message?: { message_id?: number; chat?: { id?: number }; message_thread_id?: number };
 }): Promise<boolean> {
   const data = (cb.data ?? "").trim();
+
+  if (data.startsWith(CB_TOWER_DELETE_PREFIX)) {
+    const towerId = normalizeTowerId(data.slice(CB_TOWER_DELETE_PREFIX.length));
+    const chatId = cb.message?.chat?.id ?? null;
+    const messageId = cb.message?.message_id ?? null;
+    const userId = cb.from?.id ?? null;
+    if (
+      !towerId ||
+      !userId ||
+      chatId === null ||
+      !messageId ||
+      !isTowerWorkflowThread(chatId, cb.message?.message_thread_id ?? null)
+    ) {
+      await answer(cb.id, "Запис недоступний");
+      return true;
+    }
+
+    const member = await tg<{ status?: string }>("getChatMember", {
+      chat_id: chatId,
+      user_id: userId,
+    });
+    if (!member.ok || !["administrator", "creator"].includes(member.result?.status ?? "")) {
+      await answer(cb.id, "Видалення доступне лише адміністраторам");
+      return true;
+    }
+
+    const origin = (await listTowerOrigins()).find((item) => item.tower_id === towerId);
+    if (origin?.source !== "telegram" || origin.telegram_message_id !== messageId) {
+      await answer(cb.id, "Цей запис уже неактуальний");
+      return true;
+    }
+
+    const removed = await deletePlacedTower(towerId);
+    if (!removed.ok) {
+      await answer(cb.id, "Не вдалося видалити запис");
+      return true;
+    }
+
+    await answer(cb.id, "Запис видалено");
+    await deleteTelegramMessage(messageId).catch(() => undefined);
+    await handleTowerListCommand().catch(() => undefined);
+    return true;
+  }
 
   if (data === CB_TOWER_ADD || data === CB_TOWER_LIST) {
     const panelChatId = cb.message?.chat?.id ?? null;
@@ -609,5 +671,3 @@ export async function removeLegacyTowerKeyboard(): Promise<{ ok: boolean }> {
   if (id) await del(TOWER_CHAT_ID, id);
   return { ok: id !== null };
 }
-
-

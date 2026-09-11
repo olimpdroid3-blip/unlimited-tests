@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildTowerDeleteCallback,
   buildTowerSiteUrl,
   getTowerSourceLink,
   type TowerOrigin,
@@ -18,7 +19,14 @@ const origin = (overrides: Partial<TowerOrigin>): TowerOrigin => ({
 });
 
 test("tower site links open the requested tower", () => {
-  assert.equal(buildTowerSiteUrl("1.2.1"), "https://unlimited-tests.lovable.app/towers?tower=1.2.1");
+  assert.equal(
+    buildTowerSiteUrl("1.2.1"),
+    "https://unlimited-tests.lovable.app/towers?tower=1.2.1",
+  );
+});
+
+test("tower delete callback identifies the requested tower", () => {
+  assert.equal(buildTowerDeleteCallback("1.2.1"), "tower:delete:1.2.1");
 });
 
 test("source links use a compact icon for the tower's origin", () => {

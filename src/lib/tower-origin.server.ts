@@ -43,3 +43,11 @@ export async function saveTowerOrigin(origin: TowerOrigin, overwrite = true): Pr
     origins: [...state.origins.filter((item) => item.tower_id !== origin.tower_id), origin],
   });
 }
+
+export async function deleteTowerOrigin(towerId: string): Promise<TowerOrigin | null> {
+  const state = await readState();
+  const existing = state.origins.find((item) => item.tower_id === towerId) ?? null;
+  if (!existing) return null;
+  await writeState({ origins: state.origins.filter((item) => item.tower_id !== towerId) });
+  return existing;
+}

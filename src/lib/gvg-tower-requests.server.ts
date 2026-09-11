@@ -9,7 +9,7 @@ import {
   deleteTelegramMessage,
   notifyTowerUpdate,
 } from "@/lib/gvg-tower-notify.server";
-import { saveTowerOrigin } from "@/lib/tower-origin.server";
+import { deleteTowerOrigin, listTowerOrigins, saveTowerOrigin } from "@/lib/tower-origin.server";
 
 const STATE_BUCKET = "defense-screenshots";
 const META_PATH = "bot-state/tower-requests.json";
@@ -273,4 +273,53 @@ export async function upsertPlacedTower(
     );
   }
   return { ok: true, telegramOk: notify.ok === true };
+}
+
+/** Permanently removes a placed tower and all of its source metadata. */
+export async function deletePlacedTower(
+  towerId: string,
+): Promise<{ ok: boolean; existed: boolean; sourceMessageId?: number | null; error?: string }> {
+  const { data: tower, error: readError } = await supabaseAdmin
+    .from("towers")
+    .select("tower_id, screenshot_path")
+    .eq("tower_id", towerId)
+    .maybeSingle();
+  if (readError) return { ok: false, existed: false, error: readError.message };
+
+  const origin = (await listTowerOrigins()).find((item) => item.tower_id === towerId) ?? null;
+
+  const { error: towerError } = await supabaseAdmin
+    .from("towers")
+    .delete()
+    .in("tower_id", [towerId, mirrorRowId(towerId)]);
+  if (towerError) {
+    console.error("[tower-delete] tower delete failed", towerError.message);
+    return { ok: false, existed: !!tower || !!origin, error: towerError.message };
+  }
+
+  await deleteTowerOrigin(towerId).catch((error) =>
+    console.error("[tower-delete] origin cleanup failed", error),
+  );
+  const requestMeta = await dropMeta(towerId).catch(() => null);
+
+  const { error: variantError } = await supabaseAdmin
+    .from("tower_defense_variants")
+    .delete()
+    .eq("tower_id", towerId);
+  if (variantError) console.error("[tower-delete] variant cleanup failed", variantError.message);
+
+  const screenshotPath = (tower?.screenshot_path as string | null) ?? requestMeta?.screenshot_path;
+  if (screenshotPath) {
+    const { error: storageError } = await supabaseAdmin.storage
+      .from(STATE_BUCKET)
+      .remove([screenshotPath]);
+    if (storageError)
+      console.error("[tower-delete] screenshot cleanup failed", storageError.message);
+  }
+
+  return {
+    ok: true,
+    existed: !!tower || !!origin || !!requestMeta,
+    sourceMessageId: origin?.telegram_message_id ?? null,
+  };
 }
