@@ -11,31 +11,22 @@ export type TowerOrigin = {
   created_at: string;
 };
 
-export type TowerSourceButton = { text: string; url: string };
+export type TowerSourceLink = { icon: "✈️" | "◆"; url: string };
 
 export function buildTowerSiteUrl(towerId: string): string {
   return `${TOWERS_SITE_URL}?tower=${encodeURIComponent(towerId)}`;
 }
 
-export function buildTowerSourceButtons(
-  towerIds: readonly string[],
+export function getTowerSourceLink(
+  towerId: string,
   origins: readonly TowerOrigin[],
-): TowerSourceButton[][] {
-  const byTower = new Map(origins.map((origin) => [origin.tower_id, origin]));
-  const buttons = towerIds.flatMap((towerId) => {
-    const origin = byTower.get(towerId);
-    if (origin?.source === "telegram" && origin.telegram_message_link) {
-      return [{ text: `◉ Telegram · ${towerId}`, url: origin.telegram_message_link }];
-    }
-    if (origin?.source === "web" && origin.site_url) {
-      return [{ text: `◆ UU · ${towerId}`, url: origin.site_url }];
-    }
-    return [];
-  });
-
-  const rows: TowerSourceButton[][] = [];
-  for (let index = 0; index < buttons.length; index += 2) {
-    rows.push(buttons.slice(index, index + 2));
+): TowerSourceLink | null {
+  const origin = origins.find((candidate) => candidate.tower_id === towerId);
+  if (origin?.source === "telegram" && origin.telegram_message_link) {
+    return { icon: "✈️", url: origin.telegram_message_link };
   }
-  return rows;
+  if (origin?.source === "web" && origin.site_url) {
+    return { icon: "◆", url: origin.site_url };
+  }
+  return null;
 }
