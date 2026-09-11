@@ -10,6 +10,7 @@ import { drainBotMessages, setBotMessages } from "@/lib/gvg-bot-messages.server"
 
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
+const TOWERS_URL = "https://unlimited-tests.lovable.app/towers";
 
 const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
