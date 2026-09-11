@@ -50,3 +50,22 @@ export const dropTowerRequest = createServerFn({ method: "POST" })
     const { removeTowerRequest } = await import("@/lib/gvg-tower-requests.server");
     return removeTowerRequest(data.towerId);
   });
+
+/** Records that the current tower entry was created or updated on the website. */
+export const markTowerWebOrigin = createServerFn({ method: "POST" })
+  .inputValidator((data) => z.object({ towerId: z.string().min(1) }).parse(data))
+  .handler(async ({ data }) => {
+    const [{ saveTowerOrigin }, { buildTowerSiteUrl }] = await Promise.all([
+      import("@/lib/tower-origin.server"),
+      import("@/lib/tower-origin"),
+    ]);
+    await saveTowerOrigin({
+      tower_id: data.towerId,
+      source: "web",
+      telegram_message_id: null,
+      telegram_message_link: null,
+      site_url: buildTowerSiteUrl(data.towerId),
+      created_at: new Date().toISOString(),
+    });
+    return { ok: true };
+  });

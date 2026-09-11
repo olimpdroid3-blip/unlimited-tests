@@ -38,7 +38,7 @@ test("source buttons include only origins with direct links", () => {
   );
 
   assert.deepEqual(rows, [[
-    { text: "Telegram · 1.1.1", url: "https://t.me/c/3978316922/8/42" },
-    { text: "UU · 1.1.2", url: "https://unlimited-tests.lovable.app/towers?tower=1.1.2" },
+    { text: "◉ Telegram · 1.1.1", url: "https://t.me/c/3978316922/8/42" },
+    { text: "◆ UU · 1.1.2", url: "https://unlimited-tests.lovable.app/towers?tower=1.1.2" },
   ]]);
 });

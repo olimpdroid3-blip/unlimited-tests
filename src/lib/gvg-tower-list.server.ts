@@ -4,14 +4,15 @@ import { supabaseAdmin } from "@/lib/db.server";
 import { isMirrorRow, MIRROR_PREFIX } from "@/lib/mirror-order";
 import { deleteTelegramMessage } from "@/lib/gvg-tower-notify.server";
 import { drainBotMessages, setBotMessages } from "@/lib/gvg-bot-messages.server";
+import { listTowerOrigins } from "@/lib/tower-origin.server";
+import { buildTowerSourceButtons, TOWERS_SITE_URL } from "@/lib/tower-origin";
+import { CB_TOWER_ADD } from "@/lib/tower-form";
 
 
 
 
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
-const TOWERS_URL = "https://unlimited-tests.lovable.app/towers";
-
 const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 type TowerRow = {
@@ -80,8 +81,17 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
       ? `🏰 <b>Вежі</b>\n\n${lines.join("\n")}`
       : "🏰 <b>Вежі</b>\n\nНемає активних веж";
 
+  const origins = await listTowerOrigins();
+  const sourceRows = buildTowerSourceButtons(
+    [...filled.map((row) => row.tower_id), ...ordered.map((row) => row.tower_id.slice(MIRROR_PREFIX.length))],
+    origins,
+  );
   const reply_markup = {
-    inline_keyboard: [[{ text: "🌐 Перейти на сайт", url: TOWERS_URL }]],
+    inline_keyboard: [
+      ...sourceRows,
+      [{ text: "➕ Додати вежу", callback_data: CB_TOWER_ADD }],
+      [{ text: "🌐 Перейти на сайт", url: TOWERS_SITE_URL }],
+    ],
   };
 
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {

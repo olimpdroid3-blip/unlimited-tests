@@ -4,7 +4,12 @@
 import { supabaseAdmin } from "@/lib/db.server";
 import { mirrorRowId } from "@/lib/mirror-order";
 import { getTowerSaveUpdate } from "@/lib/tower-status";
-import { deleteTelegramMessage, notifyTowerUpdate } from "@/lib/gvg-tower-notify.server";
+import {
+  createTowerSourceMessage,
+  deleteTelegramMessage,
+  notifyTowerUpdate,
+} from "@/lib/gvg-tower-notify.server";
+import { saveTowerOrigin } from "@/lib/tower-origin.server";
 
 const STATE_BUCKET = "defense-screenshots";
 const META_PATH = "bot-state/tower-requests.json";
@@ -128,6 +133,18 @@ export async function createTowerRequest(
   }));
   const messageId = notify.ok ? (notify.messageId ?? null) : null;
 
+  if (input.source === "web") {
+    const { buildTowerSiteUrl } = await import("@/lib/tower-origin");
+    await saveTowerOrigin({
+      tower_id: towerId,
+      source: "web",
+      telegram_message_id: null,
+      telegram_message_link: null,
+      site_url: buildTowerSiteUrl(towerId),
+      created_at: new Date().toISOString(),
+    }).catch((error) => console.error("[tower-origin] web request source write failed", error));
+  }
+
   if (messageId) {
     // The marker row keeps the bot message id so it can be removed later.
     await supabaseAdmin
@@ -234,5 +251,23 @@ export async function upsertPlacedTower(
   const notify = await notifyTowerUpdate("add", towerId, nickname).catch(() => ({
     ok: false as const,
   }));
+  const sourceMessage = await createTowerSourceMessage({
+    towerId,
+    nickname,
+    screenshotUrl: input.screenshotUrl ?? null,
+    comment: input.comment?.trim() || null,
+  }).catch(() => ({ ok: false as const }));
+  if (sourceMessage.ok && sourceMessage.messageId && sourceMessage.messageLink) {
+    await saveTowerOrigin({
+      tower_id: towerId,
+      source: "telegram",
+      telegram_message_id: sourceMessage.messageId,
+      telegram_message_link: sourceMessage.messageLink,
+      site_url: null,
+      created_at: new Date().toISOString(),
+    }).catch((originError) =>
+      console.error("[tower-origin] telegram source write failed", originError),
+    );
+  }
   return { ok: true, telegramOk: notify.ok === true };
 }

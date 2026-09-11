@@ -4,6 +4,56 @@ import { listBotMessages, trackBotMessage } from "@/lib/gvg-bot-messages.server"
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
 
+const escapeHtml = (value: string) =>
+  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+export function towerTelegramMessageLink(messageId: number): string {
+  return `https://t.me/c/3978316922/${THREAD_ID}/${messageId}`;
+}
+
+/** Creates the permanent source post linked from the compact tower list button. */
+export async function createTowerSourceMessage(input: {
+  towerId: string;
+  nickname: string;
+  screenshotUrl: string | null;
+  comment: string | null;
+}): Promise<{ ok: boolean; messageId?: number; messageLink?: string; error?: string }> {
+  const botToken = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
+  if (!botToken) return { ok: false, error: "TELEGRAM_GVG_VIDEO_BOT_TOKEN is not configured" };
+
+  const caption = [
+    `🏰 <b>Вежа ${escapeHtml(input.towerId)}</b>`,
+    `Код вежі: <code>${escapeHtml(input.towerId)}</code>`,
+    `Нік: ${escapeHtml(input.nickname)}`,
+    `Коментар: ${escapeHtml(input.comment || "немає")}`,
+  ].join("\n");
+  const method = input.screenshotUrl ? "sendPhoto" : "sendMessage";
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: CHAT_ID,
+      message_thread_id: THREAD_ID,
+      parse_mode: "HTML",
+      disable_notification: true,
+      ...(input.screenshotUrl
+        ? { photo: input.screenshotUrl, caption }
+        : { text: caption, disable_web_page_preview: true }),
+    }),
+  });
+  const json = (await response.json().catch(() => ({}))) as {
+    ok?: boolean;
+    description?: string;
+    result?: { message_id?: number };
+  };
+  const messageId = json.result?.message_id;
+  if (!json.ok || !messageId) {
+    console.error(`[tower-source] ${method} failed [${response.status}] ${json.description ?? ""}`);
+    return { ok: false, error: json.description ?? "telegram-error" };
+  }
+  return { ok: true, messageId, messageLink: towerTelegramMessageLink(messageId) };
+}
+
 /** Removes the button from every older tracked bot message. */
 export async function clearOldTowerButtons(exceptId?: number): Promise<void> {
   const token = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];

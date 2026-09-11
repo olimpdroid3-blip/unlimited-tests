@@ -25,10 +25,10 @@ export function buildTowerSourceButtons(
   const buttons = towerIds.flatMap((towerId) => {
     const origin = byTower.get(towerId);
     if (origin?.source === "telegram" && origin.telegram_message_link) {
-      return [{ text: `Telegram · ${towerId}`, url: origin.telegram_message_link }];
+      return [{ text: `◉ Telegram · ${towerId}`, url: origin.telegram_message_link }];
     }
     if (origin?.source === "web" && origin.site_url) {
-      return [{ text: `UU · ${towerId}`, url: origin.site_url }];
+      return [{ text: `◆ UU · ${towerId}`, url: origin.site_url }];
     }
     return [];
   });
