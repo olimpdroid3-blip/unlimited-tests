@@ -8,19 +8,12 @@ import {
 } from "@/lib/gvg-tower-notify.server";
 import { drainBotMessages, setBotMessages } from "@/lib/gvg-bot-messages.server";
 import { listTowerOrigins } from "@/lib/tower-origin.server";
-import { getTowerSourceLink, TOWERS_SITE_URL, type TowerOrigin } from "@/lib/tower-origin";
+import { renderTowerLine, TOWERS_SITE_URL } from "@/lib/tower-origin";
 import { CB_TOWER_ADD } from "@/lib/tower-form";
 
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
 const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const escapeAttribute = (s: string) => escape(s).replace(/"/g, "&quot;");
-
-function sourceAnchor(towerId: string, origins: readonly TowerOrigin[]): string {
-  const source = getTowerSourceLink(towerId, origins);
-  return source ? ` <a href="${escapeAttribute(source.url)}">${source.label}</a>` : "";
-}
-
 type TowerRow = {
   tower_id: string;
   nickname: string | null;
@@ -81,15 +74,11 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
   );
   const lines: string[] = [];
   for (const r of filled) {
-    lines.push(
-      `🏰 Вежа ${escape(r.tower_id)} — ${escape(r.nickname ?? "?")}${sourceAnchor(r.tower_id, origins)}`,
-    );
+    lines.push(renderTowerLine(r.tower_id, r.nickname, origins));
   }
   for (const r of ordered) {
     const realId = r.tower_id.slice(MIRROR_PREFIX.length);
-    lines.push(
-      `🏰 Вежа ${escape(realId)} — ${escape(r.nickname ?? "?")} 🔴<b>замовив дзеркало</b>${sourceAnchor(realId, origins)}`,
-    );
+    lines.push(renderTowerLine(realId, r.nickname, origins, " 🔴<b>замовив дзеркало</b>"));
   }
 
   const text =
