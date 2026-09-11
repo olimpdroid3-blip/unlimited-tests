@@ -156,6 +156,10 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
 
         const towerConst = await import("@/lib/tower-form");
         if (towerConst.isUpdateOnlyThread(chatId, threadId)) {
+          return Response.json({ ok: true, handled: "update-thread-idle" });
+        }
+
+        if (towerConst.isWalkthroughReviewThread(chatId, threadId)) {
           const reviewPin = await import("@/lib/gvg-pinned-review.server");
           await reviewPin.ensurePinnedReviewMessage();
           const review = await import("@/lib/gvg-pending-defense-form.server");
@@ -165,7 +169,7 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
           } as Parameters<typeof review.handlePendingDefenseMessage>[0]);
           return Response.json({
             ok: true,
-            handled: handled ? "pending-defense-form" : "update-thread-idle",
+            handled: handled ? "pending-defense-form" : "review-thread-idle",
           });
         }
 
