@@ -1,11 +1,16 @@
 import { supabaseAdmin } from "@/lib/db.server";
-import { REVIEW_CALLBACK, REVIEW_BUTTON_TEXT, REVIEW_CHAT_ID, REVIEW_THREAD_ID } from "@/lib/gvg-pending-defense-form.server";
+import {
+  REVIEW_CALLBACK,
+  REVIEW_BUTTON_TEXT,
+  REVIEW_CHAT_ID,
+  REVIEW_THREAD_ID,
+} from "@/lib/gvg-pending-defense-form.server";
 
 const PIN_TEXT = "📸 ДОДАТИ ПРОХОДКУ НА ПЕРЕВІРКУ";
 const STATE_BUCKET = "defense-screenshots";
 const STATE_PATH = "bot-state/pinned-pending-defense.json";
 
-type PinState = { message_id: number; updated_at: string };
+type PinState = { message_id: number; thread_id?: number; updated_at: string };
 
 function token(): string {
   const value = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
@@ -23,7 +28,11 @@ async function tg<T = Record<string, unknown>>(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const json = (await res.json().catch(() => ({}))) as { ok?: boolean; result?: T; description?: string };
+    const json = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      result?: T;
+      description?: string;
+    };
     return { ok: json.ok === true, result: json.result, description: json.description };
   } catch (error) {
     console.error("[pending-defense-pin] Telegram error", error);
@@ -44,9 +53,23 @@ async function readState(): Promise<PinState | null> {
 async function writeState(messageId: number): Promise<void> {
   await supabaseAdmin.storage.from(STATE_BUCKET).upload(
     STATE_PATH,
-    new Blob([JSON.stringify({ message_id: messageId, updated_at: new Date().toISOString() })], { type: "application/json" }),
+    new Blob(
+      [
+        JSON.stringify({
+          message_id: messageId,
+          thread_id: REVIEW_THREAD_ID,
+          updated_at: new Date().toISOString(),
+        }),
+      ],
+      { type: "application/json" },
+    ),
     { upsert: true, contentType: "application/json" },
   );
+}
+
+async function removeLegacyPin(state: PinState): Promise<void> {
+  await tg("unpinChatMessage", { chat_id: REVIEW_CHAT_ID, message_id: state.message_id });
+  await tg("deleteMessage", { chat_id: REVIEW_CHAT_ID, message_id: state.message_id });
 }
 
 const markup = {
@@ -62,7 +85,11 @@ async function updateExisting(messageId: number): Promise<boolean> {
     disable_web_page_preview: true,
   });
   if (edited.ok || (edited.description ?? "").toLowerCase().includes("not modified")) {
-    await tg("pinChatMessage", { chat_id: REVIEW_CHAT_ID, message_id: messageId, disable_notification: true });
+    await tg("pinChatMessage", {
+      chat_id: REVIEW_CHAT_ID,
+      message_id: messageId,
+      disable_notification: true,
+    });
     return true;
   }
   return false;
@@ -70,14 +97,24 @@ async function updateExisting(messageId: number): Promise<boolean> {
 
 let lastCheck = 0;
 
-export async function ensurePinnedReviewMessage(force = false): Promise<{ action: string; message_id: number | null }> {
+export async function ensurePinnedReviewMessage(
+  force = false,
+): Promise<{ action: string; message_id: number | null }> {
   const now = Date.now();
-  if (!force && now - lastCheck < 5 * 60 * 1000) return { action: "skipped-throttled", message_id: null };
+  if (!force && now - lastCheck < 5 * 60 * 1000)
+    return { action: "skipped-throttled", message_id: null };
   lastCheck = now;
 
   const state = await readState();
-  if (state?.message_id && (await updateExisting(state.message_id))) {
+  if (
+    state?.message_id &&
+    state.thread_id === REVIEW_THREAD_ID &&
+    (await updateExisting(state.message_id))
+  ) {
     return { action: "kept", message_id: state.message_id };
+  }
+  if (state?.message_id && state.thread_id !== REVIEW_THREAD_ID) {
+    await removeLegacyPin(state);
   }
 
   const sent = await tg<{ message_id?: number }>("sendMessage", {
@@ -90,7 +127,11 @@ export async function ensurePinnedReviewMessage(force = false): Promise<{ action
   });
   const messageId = sent.result?.message_id ?? null;
   if (!messageId) return { action: "send-failed", message_id: null };
-  await tg("pinChatMessage", { chat_id: REVIEW_CHAT_ID, message_id: messageId, disable_notification: true });
+  await tg("pinChatMessage", {
+    chat_id: REVIEW_CHAT_ID,
+    message_id: messageId,
+    disable_notification: true,
+  });
   await writeState(messageId);
   return { action: "created", message_id: messageId };
 }
