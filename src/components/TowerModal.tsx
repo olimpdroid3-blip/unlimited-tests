@@ -167,7 +167,7 @@ export function TowerModal({
         updated_at: new Date().toISOString(),
       });
       if (error) throw error;
-      await markTowerWebOrigin({ data: { towerId } });
+      if (!existing) await markTowerWebOrigin({ data: { towerId } });
       // Filling the tower fulfils any pending request: shared removal deletes
       // the bot's update message, the marker row and posts the "➖" update.
       if (update.placed) {

@@ -59,13 +59,16 @@ export const markTowerWebOrigin = createServerFn({ method: "POST" })
       import("@/lib/tower-origin.server"),
       import("@/lib/tower-origin"),
     ]);
-    await saveTowerOrigin({
-      tower_id: data.towerId,
-      source: "web",
-      telegram_message_id: null,
-      telegram_message_link: null,
-      site_url: buildTowerSiteUrl(data.towerId),
-      created_at: new Date().toISOString(),
-    });
+    await saveTowerOrigin(
+      {
+        tower_id: data.towerId,
+        source: "web",
+        telegram_message_id: null,
+        telegram_message_link: null,
+        site_url: buildTowerSiteUrl(data.towerId),
+        created_at: new Date().toISOString(),
+      },
+      false,
+    );
     return { ok: true };
   });

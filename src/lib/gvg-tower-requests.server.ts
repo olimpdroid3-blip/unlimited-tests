@@ -135,14 +135,17 @@ export async function createTowerRequest(
 
   if (input.source === "web") {
     const { buildTowerSiteUrl } = await import("@/lib/tower-origin");
-    await saveTowerOrigin({
-      tower_id: towerId,
-      source: "web",
-      telegram_message_id: null,
-      telegram_message_link: null,
-      site_url: buildTowerSiteUrl(towerId),
-      created_at: new Date().toISOString(),
-    }).catch((error) => console.error("[tower-origin] web request source write failed", error));
+    await saveTowerOrigin(
+      {
+        tower_id: towerId,
+        source: "web",
+        telegram_message_id: null,
+        telegram_message_link: null,
+        site_url: buildTowerSiteUrl(towerId),
+        created_at: new Date().toISOString(),
+      },
+      false,
+    ).catch((error) => console.error("[tower-origin] web request source write failed", error));
   }
 
   if (messageId) {
