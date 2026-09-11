@@ -8,7 +8,7 @@ import {
 } from "@/lib/gvg-tower-notify.server";
 import { drainBotMessages, setBotMessages } from "@/lib/gvg-bot-messages.server";
 import { listTowerOrigins } from "@/lib/tower-origin.server";
-import { renderTowerLine, TOWERS_SITE_URL } from "@/lib/tower-origin";
+import { renderTowerLine, renderTowerListText, TOWERS_SITE_URL } from "@/lib/tower-origin";
 import { CB_TOWER_ADD } from "@/lib/tower-form";
 
 const CHAT_ID = -1003978316922;
@@ -81,10 +81,7 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
     lines.push(renderTowerLine(realId, r.nickname, origins, " 🔴<b>замовив дзеркало</b>"));
   }
 
-  const text =
-    lines.length > 0
-      ? `🏰 <b>Вежі</b>\n\n${lines.join("\n")}`
-      : "🏰 <b>Вежі</b>\n\nНемає активних веж";
+  const text = renderTowerListText(lines);
 
   const reply_markup = {
     inline_keyboard: [
