@@ -10,6 +10,7 @@ import { drainBotMessages, setBotMessages } from "@/lib/gvg-bot-messages.server"
 
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
+const TOWERS_URL = "https://unlimited-tests.lovable.app/towers";
 
 const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -79,6 +80,10 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
       ? `🏰 <b>Вежі</b>\n\n${lines.join("\n")}`
       : "🏰 <b>Вежі</b>\n\nНемає активних веж";
 
+  const reply_markup = {
+    inline_keyboard: [[{ text: "🌐 Перейти на сайт", url: TOWERS_URL }]],
+  };
+
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -89,6 +94,7 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
       text,
       disable_notification: true,
       disable_web_page_preview: true,
+      reply_markup,
     }),
   });
 

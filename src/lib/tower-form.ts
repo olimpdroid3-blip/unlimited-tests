@@ -7,7 +7,6 @@ export const TOWER_WORK_THREAD_ID = 8;
 /** Topic 4: short tower updates plus the walkthrough review intake. */
 export const TOWER_UPDATE_THREAD_ID = 4;
 
-export const BTN_MANAGE = "🔥 ПЕРЕЙТИ ДО КЕРУВАННЯ";
 export const BTN_ADD = "➕ Додати";
 export const BTN_LIST = "🏰 Всі вежі";
 export const BTN_MIRRORS = "Сайт";
@@ -20,7 +19,6 @@ export const CB_TOWER_LIST = "tower:list";
 export function buildTowerPanelKeyboard(towersUrl: string) {
   return {
     inline_keyboard: [
-      [{ text: BTN_MANAGE, url: towersUrl }],
       [
         { text: BTN_ADD, callback_data: CB_TOWER_ADD },
         { text: BTN_LIST, callback_data: CB_TOWER_LIST },
