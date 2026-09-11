@@ -4,8 +4,10 @@
 export const TOWER_CHAT_ID = -1003978316922;
 /** Main working topic: forms, tower list, and pinned controls. */
 export const TOWER_WORK_THREAD_ID = 8;
-/** Topic 4: short tower updates plus the walkthrough review intake. */
+/** Topic 4: short tower updates only. */
 export const TOWER_UPDATE_THREAD_ID = 4;
+/** Topic 108: walkthrough screenshot review intake. */
+export const WALKTHROUGH_REVIEW_THREAD_ID = 108;
 
 export const BTN_ADD = "➕ Додати";
 export const BTN_LIST = "🏰 Всі вежі";
@@ -55,9 +57,14 @@ export function isTowerWorkflowThread(chatId: number, threadId: number | null): 
   return chatId === TOWER_CHAT_ID && (threadId ?? 0) === TOWER_WORK_THREAD_ID;
 }
 
-/** Identifies topic 4, which also hosts the review intake form. */
+/** Identifies topic 4, which must never accept workflow input. */
 export function isUpdateOnlyThread(chatId: number, threadId: number | null): boolean {
   return chatId === TOWER_CHAT_ID && (threadId ?? 0) === TOWER_UPDATE_THREAD_ID;
+}
+
+/** Every walkthrough handler must verify this exact chat and topic. */
+export function isWalkthroughReviewThread(chatId: number, threadId: number | null): boolean {
+  return chatId === TOWER_CHAT_ID && (threadId ?? 0) === WALKTHROUGH_REVIEW_THREAD_ID;
 }
 
 export type ChatMemberInfo = { status?: string; custom_title?: string | null } | null | undefined;
