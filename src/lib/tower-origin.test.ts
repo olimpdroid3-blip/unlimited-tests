@@ -46,7 +46,7 @@ test("tower delete callback identifies the requested tower", () => {
   });
 });
 
-test("only Telegram origins expose a source link with the compact icon", () => {
+test("only Telegram origins expose a source link", () => {
   const origins = [
     origin({ tower_id: "1.1.1" }),
     origin({
@@ -60,7 +60,6 @@ test("only Telegram origins expose a source link with the compact icon", () => {
   ];
 
   assert.deepEqual(getTowerSourceLink("1.1.1", origins), {
-    icon: "🔵➤",
     url: "https://t.me/c/3978316922/8/42",
   });
   assert.equal(getTowerSourceLink("1.1.2", origins), null);
