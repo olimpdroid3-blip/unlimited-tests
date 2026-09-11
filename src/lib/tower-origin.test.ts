@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildTowerDeleteCancelCallback,
   buildTowerDeleteCallback,
+  buildTowerDeleteConfirmCallback,
   buildTowerSiteUrl,
   getTowerSourceLink,
+  parseTowerDeleteCallback,
   type TowerOrigin,
 } from "./tower-origin.ts";
 
@@ -27,6 +30,20 @@ test("tower site links open the requested tower", () => {
 
 test("tower delete callback identifies the requested tower", () => {
   assert.equal(buildTowerDeleteCallback("1.2.1"), "tower:delete:1.2.1");
+  assert.equal(buildTowerDeleteConfirmCallback("1.2.1"), "tower:delete:yes:1.2.1");
+  assert.equal(buildTowerDeleteCancelCallback("1.2.1"), "tower:delete:no:1.2.1");
+  assert.deepEqual(parseTowerDeleteCallback("tower:delete:1.2.1"), {
+    action: "request",
+    towerId: "1.2.1",
+  });
+  assert.deepEqual(parseTowerDeleteCallback("tower:delete:yes:1.2.1"), {
+    action: "confirm",
+    towerId: "1.2.1",
+  });
+  assert.deepEqual(parseTowerDeleteCallback("tower:delete:no:1.2.1"), {
+    action: "cancel",
+    towerId: "1.2.1",
+  });
 });
 
 test("source links use a compact icon for the tower's origin", () => {

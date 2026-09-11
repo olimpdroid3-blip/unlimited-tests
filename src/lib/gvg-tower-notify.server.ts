@@ -1,6 +1,10 @@
 // Sends a short technical message about a tower to the pinned Telegram topic.
 import { listBotMessages, trackBotMessage } from "@/lib/gvg-bot-messages.server";
-import { buildTowerDeleteCallback } from "@/lib/tower-origin";
+import {
+  buildTowerDeleteCallback,
+  buildTowerDeleteCancelCallback,
+  buildTowerDeleteConfirmCallback,
+} from "@/lib/tower-origin";
 
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
@@ -82,6 +86,34 @@ export async function ensureTowerSourceDeleteButton(
   });
   if (!response.ok) {
     console.error(`[tower-source] editMessageReplyMarkup failed [${response.status}]`);
+  }
+}
+
+/** Replaces the delete button with an explicit yes/no confirmation. */
+export async function showTowerSourceDeleteConfirmation(
+  messageId: number,
+  towerId: string,
+): Promise<void> {
+  const botToken = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
+  if (!botToken) return;
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/editMessageReplyMarkup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: CHAT_ID,
+      message_id: messageId,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "✅ Так, видалити", callback_data: buildTowerDeleteConfirmCallback(towerId) },
+            { text: "❌ Ні", callback_data: buildTowerDeleteCancelCallback(towerId) },
+          ],
+        ],
+      },
+    }),
+  });
+  if (!response.ok) {
+    console.error(`[tower-source] confirmation markup failed [${response.status}]`);
   }
 }
 

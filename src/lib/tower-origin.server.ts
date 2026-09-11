@@ -8,13 +8,11 @@ type OriginState = { origins: TowerOrigin[] };
 
 async function readState(): Promise<OriginState> {
   try {
-    const { data, error } = await supabaseAdmin.storage
-      .from(STATE_BUCKET)
-      .createSignedUrl(STATE_PATH, 60);
-    if (error || !data?.signedUrl) return { origins: [] };
-    const response = await fetch(`${data.signedUrl}&_=${Date.now()}`, { cache: "no-store" });
-    if (!response.ok) return { origins: [] };
-    const parsed = (await response.json()) as OriginState;
+    // Read through the authenticated Storage API instead of its CDN. The list
+    // is regenerated immediately after a write and must see the new origin.
+    const { data, error } = await supabaseAdmin.storage.from(STATE_BUCKET).download(STATE_PATH);
+    if (error || !data) return { origins: [] };
+    const parsed = JSON.parse(await data.text()) as OriginState;
     return { origins: Array.isArray(parsed.origins) ? parsed.origins : [] };
   } catch {
     return { origins: [] };

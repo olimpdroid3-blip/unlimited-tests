@@ -5,9 +5,13 @@ import { supabaseAdmin } from "@/lib/db.server";
 import { normalizeTowerId } from "@/lib/mirror-order";
 import { deletePlacedTower, upsertPlacedTower } from "@/lib/gvg-tower-requests.server";
 import { handleTowerListCommand } from "@/lib/gvg-tower-list.server";
-import { deleteTelegramMessage } from "@/lib/gvg-tower-notify.server";
+import {
+  deleteTelegramMessage,
+  ensureTowerSourceDeleteButton,
+  showTowerSourceDeleteConfirmation,
+} from "@/lib/gvg-tower-notify.server";
 import { listTowerOrigins } from "@/lib/tower-origin.server";
-import { CB_TOWER_DELETE_PREFIX } from "@/lib/tower-origin";
+import { parseTowerDeleteCallback } from "@/lib/tower-origin";
 import {
   BAD_POSITION_TEXT,
   BTN_ADD,
@@ -526,8 +530,9 @@ export async function handleTowerFormCallback(cb: {
 }): Promise<boolean> {
   const data = (cb.data ?? "").trim();
 
-  if (data.startsWith(CB_TOWER_DELETE_PREFIX)) {
-    const towerId = normalizeTowerId(data.slice(CB_TOWER_DELETE_PREFIX.length));
+  const deleteCallback = parseTowerDeleteCallback(data);
+  if (deleteCallback) {
+    const towerId = normalizeTowerId(deleteCallback.towerId);
     const chatId = cb.message?.chat?.id ?? null;
     const messageId = cb.message?.message_id ?? null;
     const userId = cb.from?.id ?? null;
@@ -554,6 +559,18 @@ export async function handleTowerFormCallback(cb: {
     const origin = (await listTowerOrigins()).find((item) => item.tower_id === towerId);
     if (origin?.source !== "telegram" || origin.telegram_message_id !== messageId) {
       await answer(cb.id, "Цей запис уже неактуальний");
+      return true;
+    }
+
+    if (deleteCallback.action === "request") {
+      await showTowerSourceDeleteConfirmation(messageId, towerId);
+      await answer(cb.id, "Підтвердіть видалення");
+      return true;
+    }
+
+    if (deleteCallback.action === "cancel") {
+      await ensureTowerSourceDeleteButton(messageId, towerId);
+      await answer(cb.id, "Видалення скасовано");
       return true;
     }
 

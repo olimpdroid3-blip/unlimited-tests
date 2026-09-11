@@ -1,5 +1,7 @@
 export const TOWERS_SITE_URL = "https://unlimited-tests.lovable.app/towers";
 export const CB_TOWER_DELETE_PREFIX = "tower:delete:";
+export const CB_TOWER_DELETE_CONFIRM_PREFIX = "tower:delete:yes:";
+export const CB_TOWER_DELETE_CANCEL_PREFIX = "tower:delete:no:";
 
 export type TowerOriginSource = "telegram" | "web";
 
@@ -20,6 +22,29 @@ export function buildTowerSiteUrl(towerId: string): string {
 
 export function buildTowerDeleteCallback(towerId: string): string {
   return `${CB_TOWER_DELETE_PREFIX}${towerId}`;
+}
+
+export function buildTowerDeleteConfirmCallback(towerId: string): string {
+  return `${CB_TOWER_DELETE_CONFIRM_PREFIX}${towerId}`;
+}
+
+export function buildTowerDeleteCancelCallback(towerId: string): string {
+  return `${CB_TOWER_DELETE_CANCEL_PREFIX}${towerId}`;
+}
+
+export function parseTowerDeleteCallback(
+  data: string,
+): { action: "request" | "confirm" | "cancel"; towerId: string } | null {
+  if (data.startsWith(CB_TOWER_DELETE_CONFIRM_PREFIX)) {
+    return { action: "confirm", towerId: data.slice(CB_TOWER_DELETE_CONFIRM_PREFIX.length) };
+  }
+  if (data.startsWith(CB_TOWER_DELETE_CANCEL_PREFIX)) {
+    return { action: "cancel", towerId: data.slice(CB_TOWER_DELETE_CANCEL_PREFIX.length) };
+  }
+  if (data.startsWith(CB_TOWER_DELETE_PREFIX)) {
+    return { action: "request", towerId: data.slice(CB_TOWER_DELETE_PREFIX.length) };
+  }
+  return null;
 }
 
 export function getTowerSourceLink(
