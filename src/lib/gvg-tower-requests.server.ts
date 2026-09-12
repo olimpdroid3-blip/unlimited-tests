@@ -275,6 +275,34 @@ export async function upsertPlacedTower(
   return { ok: true, telegramOk: notify.ok === true };
 }
 
+/**
+ * Marks an existing placed tower as breached. The record itself (nickname,
+ * screenshot, comment) stays intact; only the status flag changes.
+ */
+export async function markPlacedTowerBreached(
+  towerId: string,
+): Promise<{ ok: boolean; existed: boolean; error?: string }> {
+  const { data: existing, error: readError } = await supabaseAdmin
+    .from("towers")
+    .select("placed, breached, testing, destroyed, removed, nickname, previous_nickname")
+    .eq("tower_id", towerId)
+    .maybeSingle();
+  if (readError) return { ok: false, existed: false, error: readError.message };
+  if (!existing) return { ok: false, existed: false, error: "not-found" };
+
+  const nickname = (existing.nickname as string | null) ?? "";
+  const update = getTowerStatusUpdate(existing, "breached", true, nickname);
+  const { error } = await supabaseAdmin
+    .from("towers")
+    .update({ ...update, updated_at: new Date().toISOString() })
+    .eq("tower_id", towerId);
+  if (error) {
+    console.error("[tower-breach] update failed", error.message);
+    return { ok: false, existed: true, error: error.message };
+  }
+  return { ok: true, existed: true };
+}
+
 /** Permanently removes a placed tower and all of its source metadata. */
 export async function deletePlacedTower(
   towerId: string,
