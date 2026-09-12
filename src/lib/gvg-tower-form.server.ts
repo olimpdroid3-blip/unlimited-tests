@@ -3,15 +3,20 @@
 // so a restarted server never loses an in-progress form.
 import { supabaseAdmin } from "@/lib/db.server";
 import { normalizeTowerId } from "@/lib/mirror-order";
-import { deletePlacedTower, upsertPlacedTower } from "@/lib/gvg-tower-requests.server";
+import {
+  deletePlacedTower,
+  markPlacedTowerBreached,
+  upsertPlacedTower,
+} from "@/lib/gvg-tower-requests.server";
 import { handleTowerListCommand } from "@/lib/gvg-tower-list.server";
 import {
   deleteTelegramMessage,
   ensureTowerSourceDeleteButton,
+  showTowerSourceBreachConfirmation,
   showTowerSourceDeleteConfirmation,
 } from "@/lib/gvg-tower-notify.server";
 import { listTowerOrigins } from "@/lib/tower-origin.server";
-import { parseTowerDeleteCallback } from "@/lib/tower-origin";
+import { parseTowerBreachCallback, parseTowerDeleteCallback } from "@/lib/tower-origin";
 import {
   BAD_POSITION_TEXT,
   BTN_ADD,
