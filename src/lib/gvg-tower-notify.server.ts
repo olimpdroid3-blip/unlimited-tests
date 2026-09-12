@@ -1,10 +1,23 @@
 // Sends a short technical message about a tower to the pinned Telegram topic.
 import { listBotMessages, trackBotMessage } from "@/lib/gvg-bot-messages.server";
 import {
+  buildTowerBreachCallback,
+  buildTowerBreachCancelCallback,
+  buildTowerBreachConfirmCallback,
   buildTowerDeleteCallback,
   buildTowerDeleteCancelCallback,
   buildTowerDeleteConfirmCallback,
 } from "@/lib/tower-origin";
+
+/** Default controls under a tower source post: breach first, delete below. */
+export function towerSourceKeyboard(towerId: string) {
+  return {
+    inline_keyboard: [
+      [{ text: "💥 Пробито", callback_data: buildTowerBreachCallback(towerId) }],
+      [{ text: "🗑 Видалити запис", callback_data: buildTowerDeleteCallback(towerId) }],
+    ],
+  };
+}
 
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
