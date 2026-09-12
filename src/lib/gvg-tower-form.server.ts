@@ -530,6 +530,55 @@ export async function handleTowerFormCallback(cb: {
 }): Promise<boolean> {
   const data = (cb.data ?? "").trim();
 
+  const breachCallback = parseTowerBreachCallback(data);
+  if (breachCallback) {
+    const towerId = normalizeTowerId(breachCallback.towerId);
+    const chatId = cb.message?.chat?.id ?? null;
+    const messageId = cb.message?.message_id ?? null;
+    const userId = cb.from?.id ?? null;
+    if (
+      !towerId ||
+      !userId ||
+      chatId === null ||
+      !messageId ||
+      !isTowerWorkflowThread(chatId, cb.message?.message_thread_id ?? null)
+    ) {
+      await answer(cb.id, "Запис недоступний");
+      return true;
+    }
+
+    const member = await tg<{ status?: string }>("getChatMember", {
+      chat_id: chatId,
+      user_id: userId,
+    });
+    if (!member.ok || !["administrator", "creator"].includes(member.result?.status ?? "")) {
+      await answer(cb.id, "Дія доступна лише адміністраторам");
+      return true;
+    }
+
+    if (breachCallback.action === "request") {
+      await showTowerSourceBreachConfirmation(messageId, towerId);
+      await answer(cb.id, "Підтвердіть, що вежу пробито");
+      return true;
+    }
+
+    if (breachCallback.action === "cancel") {
+      await ensureTowerSourceDeleteButton(messageId, towerId);
+      await answer(cb.id, "Скасовано");
+      return true;
+    }
+
+    const marked = await markPlacedTowerBreached(towerId);
+    await ensureTowerSourceDeleteButton(messageId, towerId);
+    if (!marked.ok) {
+      await answer(cb.id, "Не вдалося позначити вежу");
+      return true;
+    }
+    await answer(cb.id, "Вежу позначено як пробиту");
+    await handleTowerListCommand().catch(() => undefined);
+    return true;
+  }
+
   const deleteCallback = parseTowerDeleteCallback(data);
   if (deleteCallback) {
     const towerId = normalizeTowerId(deleteCallback.towerId);
