@@ -69,7 +69,9 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
   );
   const lines: string[] = [];
   for (const r of filled) {
-    lines.push(renderTowerLine(r.tower_id, r.nickname, origins));
+    lines.push(
+      renderTowerLine(r.tower_id, r.nickname, origins, r.breached ? TOWER_BREACHED_MARK : ""),
+    );
   }
   for (const r of ordered) {
     const realId = r.tower_id.slice(MIRROR_PREFIX.length);
