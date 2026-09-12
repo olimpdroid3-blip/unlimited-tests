@@ -55,8 +55,8 @@ export const CB_TOWER_BREACH_PREFIX = "tower:breach:";
 export const CB_TOWER_BREACH_CONFIRM_PREFIX = "tower:breach:yes:";
 export const CB_TOWER_BREACH_CANCEL_PREFIX = "tower:breach:no:";
 
-/** Red marker appended to a breached tower in the shared list. */
-export const TOWER_BREACHED_MARK = " ❌";
+/** Green checkmark appended to a breached tower in the shared list. */
+export const TOWER_BREACHED_MARK = " ✅";
 
 export function buildTowerBreachCallback(towerId: string): string {
   return `${CB_TOWER_BREACH_PREFIX}${towerId}`;
