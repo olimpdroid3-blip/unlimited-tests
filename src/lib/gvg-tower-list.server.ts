@@ -52,12 +52,7 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
   const rows = (data ?? []) as TowerRow[];
   const filled = rows
     .filter(
-      (r) =>
-        !isMirrorRow(r.tower_id) &&
-        r.placed &&
-        !r.breached &&
-        !r.removed &&
-        (r.nickname || r.screenshot_url),
+      (r) => !isMirrorRow(r.tower_id) && r.placed && !r.removed && (r.nickname || r.screenshot_url),
     )
     .sort((a, b) => compareTowerIds(a.tower_id, b.tower_id));
   const ordered = rows
