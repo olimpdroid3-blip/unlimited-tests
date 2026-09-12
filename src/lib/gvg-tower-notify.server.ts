@@ -57,11 +57,7 @@ export async function createTowerSourceMessage(input: {
       ...(input.screenshotUrl
         ? { photo: input.screenshotUrl, caption }
         : { text: caption, disable_web_page_preview: true }),
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "🗑 Видалити запис", callback_data: buildTowerDeleteCallback(input.towerId) }],
-        ],
-      },
+      reply_markup: towerSourceKeyboard(input.towerId),
     }),
   });
   const json = (await response.json().catch(() => ({}))) as {
