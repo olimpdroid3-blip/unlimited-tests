@@ -3,15 +3,20 @@
 // so a restarted server never loses an in-progress form.
 import { supabaseAdmin } from "@/lib/db.server";
 import { normalizeTowerId } from "@/lib/mirror-order";
-import { deletePlacedTower, upsertPlacedTower } from "@/lib/gvg-tower-requests.server";
+import {
+  deletePlacedTower,
+  markPlacedTowerBreached,
+  upsertPlacedTower,
+} from "@/lib/gvg-tower-requests.server";
 import { handleTowerListCommand } from "@/lib/gvg-tower-list.server";
 import {
   deleteTelegramMessage,
   ensureTowerSourceDeleteButton,
+  showTowerSourceBreachConfirmation,
   showTowerSourceDeleteConfirmation,
 } from "@/lib/gvg-tower-notify.server";
 import { listTowerOrigins } from "@/lib/tower-origin.server";
-import { parseTowerDeleteCallback } from "@/lib/tower-origin";
+import { parseTowerBreachCallback, parseTowerDeleteCallback } from "@/lib/tower-origin";
 import {
   BAD_POSITION_TEXT,
   BTN_ADD,
@@ -529,6 +534,55 @@ export async function handleTowerFormCallback(cb: {
   message?: { message_id?: number; chat?: { id?: number }; message_thread_id?: number };
 }): Promise<boolean> {
   const data = (cb.data ?? "").trim();
+
+  const breachCallback = parseTowerBreachCallback(data);
+  if (breachCallback) {
+    const towerId = normalizeTowerId(breachCallback.towerId);
+    const chatId = cb.message?.chat?.id ?? null;
+    const messageId = cb.message?.message_id ?? null;
+    const userId = cb.from?.id ?? null;
+    if (
+      !towerId ||
+      !userId ||
+      chatId === null ||
+      !messageId ||
+      !isTowerWorkflowThread(chatId, cb.message?.message_thread_id ?? null)
+    ) {
+      await answer(cb.id, "Запис недоступний");
+      return true;
+    }
+
+    const member = await tg<{ status?: string }>("getChatMember", {
+      chat_id: chatId,
+      user_id: userId,
+    });
+    if (!member.ok || !["administrator", "creator"].includes(member.result?.status ?? "")) {
+      await answer(cb.id, "Дія доступна лише адміністраторам");
+      return true;
+    }
+
+    if (breachCallback.action === "request") {
+      await showTowerSourceBreachConfirmation(messageId, towerId);
+      await answer(cb.id, "Підтвердіть, що вежу пробито");
+      return true;
+    }
+
+    if (breachCallback.action === "cancel") {
+      await ensureTowerSourceDeleteButton(messageId, towerId);
+      await answer(cb.id, "Скасовано");
+      return true;
+    }
+
+    const marked = await markPlacedTowerBreached(towerId);
+    await ensureTowerSourceDeleteButton(messageId, towerId);
+    if (!marked.ok) {
+      await answer(cb.id, "Не вдалося позначити вежу");
+      return true;
+    }
+    await answer(cb.id, "Вежу позначено як пробиту");
+    await handleTowerListCommand().catch(() => undefined);
+    return true;
+  }
 
   const deleteCallback = parseTowerDeleteCallback(data);
   if (deleteCallback) {

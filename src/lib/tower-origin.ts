@@ -51,6 +51,40 @@ export function parseTowerDeleteCallback(
   return null;
 }
 
+export const CB_TOWER_BREACH_PREFIX = "tower:breach:";
+export const CB_TOWER_BREACH_CONFIRM_PREFIX = "tower:breach:yes:";
+export const CB_TOWER_BREACH_CANCEL_PREFIX = "tower:breach:no:";
+
+/** Red marker appended to a breached tower in the shared list. */
+export const TOWER_BREACHED_MARK = " ❌";
+
+export function buildTowerBreachCallback(towerId: string): string {
+  return `${CB_TOWER_BREACH_PREFIX}${towerId}`;
+}
+
+export function buildTowerBreachConfirmCallback(towerId: string): string {
+  return `${CB_TOWER_BREACH_CONFIRM_PREFIX}${towerId}`;
+}
+
+export function buildTowerBreachCancelCallback(towerId: string): string {
+  return `${CB_TOWER_BREACH_CANCEL_PREFIX}${towerId}`;
+}
+
+export function parseTowerBreachCallback(
+  data: string,
+): { action: "request" | "confirm" | "cancel"; towerId: string } | null {
+  if (data.startsWith(CB_TOWER_BREACH_CONFIRM_PREFIX)) {
+    return { action: "confirm", towerId: data.slice(CB_TOWER_BREACH_CONFIRM_PREFIX.length) };
+  }
+  if (data.startsWith(CB_TOWER_BREACH_CANCEL_PREFIX)) {
+    return { action: "cancel", towerId: data.slice(CB_TOWER_BREACH_CANCEL_PREFIX.length) };
+  }
+  if (data.startsWith(CB_TOWER_BREACH_PREFIX)) {
+    return { action: "request", towerId: data.slice(CB_TOWER_BREACH_PREFIX.length) };
+  }
+  return null;
+}
+
 export function getTowerSourceLink(
   towerId: string,
   origins: readonly TowerOrigin[],

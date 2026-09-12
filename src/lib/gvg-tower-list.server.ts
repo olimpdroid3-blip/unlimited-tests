@@ -8,7 +8,12 @@ import {
 } from "@/lib/gvg-tower-notify.server";
 import { drainBotMessages, setBotMessages } from "@/lib/gvg-bot-messages.server";
 import { listTowerOrigins } from "@/lib/tower-origin.server";
-import { renderTowerLine, renderTowerListText, TOWERS_SITE_URL } from "@/lib/tower-origin";
+import {
+  renderTowerLine,
+  renderTowerListText,
+  TOWER_BREACHED_MARK,
+  TOWERS_SITE_URL,
+} from "@/lib/tower-origin";
 import { CB_TOWER_ADD } from "@/lib/tower-form";
 
 const CHAT_ID = -1003978316922;
@@ -52,12 +57,7 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
   const rows = (data ?? []) as TowerRow[];
   const filled = rows
     .filter(
-      (r) =>
-        !isMirrorRow(r.tower_id) &&
-        r.placed &&
-        !r.breached &&
-        !r.removed &&
-        (r.nickname || r.screenshot_url),
+      (r) => !isMirrorRow(r.tower_id) && r.placed && !r.removed && (r.nickname || r.screenshot_url),
     )
     .sort((a, b) => compareTowerIds(a.tower_id, b.tower_id));
   const ordered = rows
@@ -74,7 +74,9 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
   );
   const lines: string[] = [];
   for (const r of filled) {
-    lines.push(renderTowerLine(r.tower_id, r.nickname, origins));
+    lines.push(
+      renderTowerLine(r.tower_id, r.nickname, origins, r.breached ? TOWER_BREACHED_MARK : ""),
+    );
   }
   for (const r of ordered) {
     const realId = r.tower_id.slice(MIRROR_PREFIX.length);

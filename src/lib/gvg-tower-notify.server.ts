@@ -1,10 +1,23 @@
 // Sends a short technical message about a tower to the pinned Telegram topic.
 import { listBotMessages, trackBotMessage } from "@/lib/gvg-bot-messages.server";
 import {
+  buildTowerBreachCallback,
+  buildTowerBreachCancelCallback,
+  buildTowerBreachConfirmCallback,
   buildTowerDeleteCallback,
   buildTowerDeleteCancelCallback,
   buildTowerDeleteConfirmCallback,
 } from "@/lib/tower-origin";
+
+/** Default controls under a tower source post: breach first, delete below. */
+export function towerSourceKeyboard(towerId: string) {
+  return {
+    inline_keyboard: [
+      [{ text: "💥 Пробито", callback_data: buildTowerBreachCallback(towerId) }],
+      [{ text: "🗑 Видалити запис", callback_data: buildTowerDeleteCallback(towerId) }],
+    ],
+  };
+}
 
 const CHAT_ID = -1003978316922;
 const THREAD_ID = 8;
@@ -44,11 +57,7 @@ export async function createTowerSourceMessage(input: {
       ...(input.screenshotUrl
         ? { photo: input.screenshotUrl, caption }
         : { text: caption, disable_web_page_preview: true }),
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "🗑 Видалити запис", callback_data: buildTowerDeleteCallback(input.towerId) }],
-        ],
-      },
+      reply_markup: towerSourceKeyboard(input.towerId),
     }),
   });
   const json = (await response.json().catch(() => ({}))) as {
@@ -77,15 +86,39 @@ export async function ensureTowerSourceDeleteButton(
     body: JSON.stringify({
       chat_id: CHAT_ID,
       message_id: messageId,
+      reply_markup: towerSourceKeyboard(towerId),
+    }),
+  });
+  if (!response.ok) {
+    console.error(`[tower-source] editMessageReplyMarkup failed [${response.status}]`);
+  }
+}
+
+/** Replaces the buttons with an explicit yes/no "breached" confirmation. */
+export async function showTowerSourceBreachConfirmation(
+  messageId: number,
+  towerId: string,
+): Promise<void> {
+  const botToken = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
+  if (!botToken) return;
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/editMessageReplyMarkup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: CHAT_ID,
+      message_id: messageId,
       reply_markup: {
         inline_keyboard: [
-          [{ text: "🗑 Видалити запис", callback_data: buildTowerDeleteCallback(towerId) }],
+          [
+            { text: "✅ Так, пробито", callback_data: buildTowerBreachConfirmCallback(towerId) },
+            { text: "❌ Ні", callback_data: buildTowerBreachCancelCallback(towerId) },
+          ],
         ],
       },
     }),
   });
   if (!response.ok) {
-    console.error(`[tower-source] editMessageReplyMarkup failed [${response.status}]`);
+    console.error(`[tower-source] breach markup failed [${response.status}]`);
   }
 }
 
