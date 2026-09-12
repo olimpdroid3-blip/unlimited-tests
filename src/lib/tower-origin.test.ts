@@ -3,11 +3,15 @@ import test from "node:test";
 
 import {
   buildTowerDeleteCancelCallback,
+  buildTowerBreachCallback,
   buildTowerDeleteCallback,
   buildTowerDeleteConfirmCallback,
   buildTowerSiteUrl,
   getTowerSourceLink,
+  parseTowerBreachCallback,
   parseTowerDeleteCallback,
+  renderTowerLine,
+  TOWER_BREACHED_MARK,
   type TowerOrigin,
 } from "./tower-origin.ts";
 
@@ -65,4 +69,29 @@ test("only Telegram origins expose a source link", () => {
   assert.equal(getTowerSourceLink("1.1.2", origins), null);
   assert.equal(getTowerSourceLink("1.2.1", origins), null);
   assert.equal(getTowerSourceLink("1.2.2", origins), null);
+});
+
+test("tower breach callbacks identify the requested tower", () => {
+  assert.equal(buildTowerBreachCallback("2.4.2"), "tower:breach:2.4.2");
+  assert.deepEqual(parseTowerBreachCallback("tower:breach:2.4.2"), {
+    action: "request",
+    towerId: "2.4.2",
+  });
+  assert.deepEqual(parseTowerBreachCallback("tower:breach:yes:2.4.2"), {
+    action: "confirm",
+    towerId: "2.4.2",
+  });
+  assert.deepEqual(parseTowerBreachCallback("tower:breach:no:2.4.2"), {
+    action: "cancel",
+    towerId: "2.4.2",
+  });
+  assert.equal(parseTowerBreachCallback("tower:delete:2.4.2"), null);
+  assert.equal(parseTowerDeleteCallback("tower:breach:2.4.2"), null);
+});
+
+test("breached towers are marked in the shared list", () => {
+  assert.equal(
+    renderTowerLine("2.4.2", "Fakra", [], TOWER_BREACHED_MARK),
+    "🏰 Вежа 2.4.2 — Fakra ❌",
+  );
 });
