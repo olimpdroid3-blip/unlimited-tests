@@ -92,6 +92,6 @@ test("tower breach callbacks identify the requested tower", () => {
 test("breached towers are marked in the shared list", () => {
   assert.equal(
     renderTowerLine("2.4.2", "Fakra", [], TOWER_BREACHED_MARK),
-    "🏰 Вежа 2.4.2 — Fakra ❌",
+    "🏰 Вежа 2.4.2 — Fakra ✅",
   );
 });
