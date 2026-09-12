@@ -86,15 +86,39 @@ export async function ensureTowerSourceDeleteButton(
     body: JSON.stringify({
       chat_id: CHAT_ID,
       message_id: messageId,
+      reply_markup: towerSourceKeyboard(towerId),
+    }),
+  });
+  if (!response.ok) {
+    console.error(`[tower-source] editMessageReplyMarkup failed [${response.status}]`);
+  }
+}
+
+/** Replaces the buttons with an explicit yes/no "breached" confirmation. */
+export async function showTowerSourceBreachConfirmation(
+  messageId: number,
+  towerId: string,
+): Promise<void> {
+  const botToken = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
+  if (!botToken) return;
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/editMessageReplyMarkup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: CHAT_ID,
+      message_id: messageId,
       reply_markup: {
         inline_keyboard: [
-          [{ text: "🗑 Видалити запис", callback_data: buildTowerDeleteCallback(towerId) }],
+          [
+            { text: "✅ Так, пробито", callback_data: buildTowerBreachConfirmCallback(towerId) },
+            { text: "❌ Ні", callback_data: buildTowerBreachCancelCallback(towerId) },
+          ],
         ],
       },
     }),
   });
   if (!response.ok) {
-    console.error(`[tower-source] editMessageReplyMarkup failed [${response.status}]`);
+    console.error(`[tower-source] breach markup failed [${response.status}]`);
   }
 }
 
