@@ -3,7 +3,7 @@
 // tower "on test" (used by the Telegram "➕ Додати" workflow).
 import { supabaseAdmin } from "@/lib/db.server";
 import { mirrorRowId } from "@/lib/mirror-order";
-import { getTowerSaveUpdate } from "@/lib/tower-status";
+import { getTowerSaveUpdate, getTowerStatusUpdate } from "@/lib/tower-status";
 import {
   createTowerSourceMessage,
   deleteTelegramMessage,
