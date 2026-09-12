@@ -8,7 +8,12 @@ import {
 } from "@/lib/gvg-tower-notify.server";
 import { drainBotMessages, setBotMessages } from "@/lib/gvg-bot-messages.server";
 import { listTowerOrigins } from "@/lib/tower-origin.server";
-import { renderTowerLine, renderTowerListText, TOWERS_SITE_URL } from "@/lib/tower-origin";
+import {
+  renderTowerLine,
+  renderTowerListText,
+  TOWER_BREACHED_MARK,
+  TOWERS_SITE_URL,
+} from "@/lib/tower-origin";
 import { CB_TOWER_ADD } from "@/lib/tower-form";
 
 const CHAT_ID = -1003978316922;
