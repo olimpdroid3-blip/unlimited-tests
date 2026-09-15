@@ -139,6 +139,87 @@
   --mirror: oklch(0.86 0.2 135);
 }
 
+/* Older Android browsers cannot resolve OKLCH custom properties. Keep these
+   sRGB equivalents in sync with the theme above; modern browsers use OKLCH. */
+@supports not (color: oklch(1 0 0)) {
+  :root {
+    --background: #f9f8f6;
+    --foreground: #181b1f;
+    --card: #fff;
+    --card-foreground: #181b1f;
+    --popover: #fff;
+    --popover-foreground: #181b1f;
+    --primary: #f97e00;
+    --primary-foreground: #fff;
+    --secondary: #f0f2f4;
+    --secondary-foreground: #26292e;
+    --muted: #edeef1;
+    --muted-foreground: #66696f;
+    --accent: #f6e8df;
+    --accent-foreground: #412714;
+    --destructive: #e62b34;
+    --destructive-foreground: #fff;
+    --border: #dcdee1;
+    --input: #fff;
+    --ring: #f97e00;
+    --tower-idle: #f3f5f8;
+    --tower-idle-text: #52555b;
+    --tower-active: #f97e00;
+    --tower-active-foreground: #fff;
+    --tower-breached: #2f9f3d;
+    --tower-breached-foreground: #fff;
+    --col-i: #1570d1;
+    --col-ii: #008a48;
+    --col-iii: #d27300;
+    --col-iv: #9543c6;
+    --battle-power-high: #006b75;
+  }
+  .dark {
+    --background: #0e1217;
+    --foreground: #e9ebef;
+    --card: #171b20;
+    --card-foreground: #e9ebef;
+    --popover: #1b1e24;
+    --popover-foreground: #e9ebef;
+    --primary: #ff901e;
+    --primary-foreground: #1a0f07;
+    --secondary: #23272c;
+    --secondary-foreground: #e2e5e9;
+    --muted: #22252a;
+    --muted-foreground: #9b9fa3;
+    --accent: #432610;
+    --accent-foreground: #fddfc2;
+    --destructive: #f4514f;
+    --destructive-foreground: #f8f8f8;
+    --border: #34383e;
+    --input: #1d2126;
+    --ring: #ff901e;
+    --tower-idle: #1f2329;
+    --tower-idle-text: #a2a5aa;
+    --tower-active: #ff901e;
+    --tower-active-foreground: #1a0f07;
+    --col-i: #65a7fa;
+    --col-ii: #4ebe7d;
+    --col-iii: #f7a73b;
+    --col-iv: #c385ef;
+    --battle-power-high: #00cfe0;
+    --mirror: #94ed5a;
+  }
+}
+
+/* Tailwind v4 uses individual translate, unsupported by older WebViews.
+   Limit the fallback to centered dialogs; drawers and lightboxes keep their layout. */
+@supports not (translate: -50% -50%) {
+  [role="dialog"].left-1\/2,
+  [role="alertdialog"].left-1\/2,
+  [role="dialog"].left-\[50\%\],
+  [role="alertdialog"].left-\[50\%\] {
+    transform: translate(-50%, -50%);
+    /* Enter/exit animations also write transform and would undo centering. */
+    animation: none;
+  }
+}
+
 @layer base {
   * {
     border-color: var(--color-border);

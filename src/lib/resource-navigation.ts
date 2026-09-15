@@ -1,4 +1,5 @@
 export type ResourceRoute =
+  | "/faq"
   | "/towers"
   | "/progress"
   | "/walkthroughs"
@@ -15,6 +16,7 @@ export type ResourceSection = {
 };
 
 export const RESOURCE_BACK_LINKS = {
+  "/faq": { label: "На головну", to: "/" },
   "/progress": { label: "На головну", to: "/" },
   "/walkthroughs": { label: "На головну", to: "/" },
   "/battle-power": { label: "Назад", to: "/progress" },
@@ -41,6 +43,12 @@ export const LANDING_SECTIONS: ResourceSection[] = [
     icon: "🎯",
     title: "Проходки",
     subtitle: "База проходок · відео проходок",
+  },
+  {
+    to: "/faq",
+    icon: "📖",
+    title: "FAQ та гайди",
+    subtitle: "Покрокові інструкції · завантаження PDF",
   },
 ];
 

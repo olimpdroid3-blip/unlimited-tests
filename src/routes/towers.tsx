@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/db";
 import { AppHeader } from "@/components/AppHeader";
 import { Toaster } from "@/components/ui/sonner";
+import { getTowerGroup } from "@/lib/tower-participants";
 import { TowerModal } from "@/components/TowerModal";
 import { MirrorOrderModal } from "@/components/MirrorOrderModal";
 import { isMirrorRow, MIRROR_PREFIX, VALID_TOWER_IDS } from "@/lib/mirror-order";
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/towers")({
 
 type Tower = {
   tower_id: string;
+  participants?: unknown;
   nickname: string | null;
   awakenings: string | null;
   notes: string | null;
@@ -116,6 +118,9 @@ function HomePage() {
       .map((t) => t.tower_id.slice(MIRROR_PREFIX.length)),
   );
   const map = new Map(realTowers.map((t) => [t.tower_id, t]));
+  const selectedGroup = selected
+    ? getTowerGroup(selected, realTowers, variants)
+    : { towerIds: [], placedTowerIds: [], participants: [] };
   const existing = selected ? map.get(selected) : undefined;
 
   const openTower = (id: string) => {
@@ -137,6 +142,7 @@ function HomePage() {
       ]);
       const archiveRows = [...archiveIds].map((id) => ({
         tower_id: id,
+        participants: getTowerGroup(id, realTowers, variants).participants,
         nickname: map.get(id)?.nickname ?? null,
         awakenings: map.get(id)?.awakenings ?? null,
         notes: map.get(id)?.notes ?? null,
@@ -217,6 +223,7 @@ function HomePage() {
                       const id = `${col.num}.${r}.${s}`;
                       const tower = map.get(id);
                       const variant = variantsByTower.get(id);
+                      const group = getTowerGroup(id, realTowers, variants);
                       const status = getTowerStatusFlags(tower);
                       const statuses = getTowerStatuses(tower);
                       const active = status.placed;
@@ -291,6 +298,34 @@ function HomePage() {
                               </span>
                             ))}
                           </span>
+                          {group.participants.length > 0 && (
+                            <span className="space-y-1 text-[10px] font-normal leading-tight sm:text-xs [overflow-wrap:anywhere]">
+                              {group.participants.map((participant) => (
+                                <span
+                                  key={participant.nickname}
+                                  className="block"
+                                  title={participant.comment}
+                                >
+                                  <strong>{participant.nickname}</strong>
+                                  {participant.comment && (
+                                    <span className="block whitespace-pre-wrap opacity-80">
+                                      {participant.comment}
+                                    </span>
+                                  )}
+                                </span>
+                              ))}
+                            </span>
+                          )}
+                          {group.towerIds.length > 1 && group.placedTowerIds.length > 0 && (
+                            <span className="text-[9px] font-normal sm:text-xs [overflow-wrap:anywhere]">
+                              Виставлено: {group.placedTowerIds.join(", ")}
+                            </span>
+                          )}
+                          {group.towerIds.length > 1 && (
+                            <span className="text-[9px] font-normal sm:text-xs [overflow-wrap:anywhere]">
+                              Комірки: {group.towerIds.join(", ")}
+                            </span>
+                          )}
                           {status.removed && (
                             <span
                               title={`Був: ${tower?.previous_nickname || "нік не вказаний"}`}
@@ -347,6 +382,7 @@ function HomePage() {
         towerId={selected}
         open={modalOpen}
         existing={existing}
+        group={selectedGroup}
         defenseVariant={selected ? (variantsByTower.get(selected) ?? null) : null}
         onVariantChanged={() => refetchVariants()}
         onOpenChange={setModalOpen}

@@ -366,6 +366,7 @@ export type Database = {
           destroyed: boolean;
           removed: boolean;
           previous_nickname: string | null;
+          participants: Json | null;
           nickname: string | null;
           notes: string | null;
           screenshot_path: string | null;
@@ -381,6 +382,7 @@ export type Database = {
           destroyed?: boolean;
           removed?: boolean;
           previous_nickname?: string | null;
+          participants?: Json | null;
           nickname?: string | null;
           notes?: string | null;
           screenshot_path?: string | null;
@@ -396,6 +398,7 @@ export type Database = {
           destroyed?: boolean;
           removed?: boolean;
           previous_nickname?: string | null;
+          participants?: Json | null;
           nickname?: string | null;
           notes?: string | null;
           screenshot_path?: string | null;
@@ -417,6 +420,7 @@ export type Database = {
           previous_nickname: string | null;
           defense_variant: number | null;
           id: string;
+          participants: Json | null;
           nickname: string | null;
           notes: string | null;
           original_updated_at: string | null;
@@ -434,6 +438,7 @@ export type Database = {
           previous_nickname?: string | null;
           defense_variant?: number | null;
           id?: string;
+          participants?: Json | null;
           nickname?: string | null;
           notes?: string | null;
           original_updated_at?: string | null;
@@ -451,6 +456,7 @@ export type Database = {
           previous_nickname?: string | null;
           defense_variant?: number | null;
           id?: string;
+          participants?: Json | null;
           nickname?: string | null;
           notes?: string | null;
           original_updated_at?: string | null;
@@ -485,6 +491,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      save_tower_with_participants: {
+        Args: { p_tower_id: string; p_details: Json; p_participants: Json; p_group_ids: string[] };
+        Returns: undefined;
+      };
       create_defense_with_details: {
         Args: {
           p_comment: string | null;

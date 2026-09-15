@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/db";
+import { readTowerParticipants } from "@/lib/tower-participants";
 import { AppHeader } from "@/components/AppHeader";
 import { getTowerStatuses, TOWER_STATUS_LABELS } from "@/lib/tower-status";
 
@@ -20,6 +21,7 @@ export const Route = createFileRoute("/archive")({
 type Row = {
   id: string;
   tower_id: string;
+  participants?: unknown;
   nickname: string | null;
   awakenings: string | null;
   notes: string | null;
@@ -99,7 +101,7 @@ function ArchivePage() {
                               </span>
                             )}
                           </div>
-                          {r.nickname && (
+                          {r.participants == null && r.nickname && (
                             <div className="truncate text-xs text-muted-foreground">
                               {r.nickname}
                             </div>
@@ -122,7 +124,18 @@ function ArchivePage() {
                             Пробуди: <span className="text-foreground">{r.awakenings}</span>
                           </div>
                         )}
-                        {r.notes && (
+                        {readTowerParticipants(r).map((participant) => (
+                          <div
+                            key={participant.nickname}
+                            className="mt-2 whitespace-pre-wrap text-sm [overflow-wrap:anywhere]"
+                          >
+                            <strong>{participant.nickname}</strong>
+                            {participant.comment && (
+                              <p className="text-xs text-muted-foreground">{participant.comment}</p>
+                            )}
+                          </div>
+                        ))}
+                        {!readTowerParticipants(r).length && r.notes && (
                           <div className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
                             {r.notes}
                           </div>

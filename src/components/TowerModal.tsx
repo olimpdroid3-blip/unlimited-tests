@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/db";
 import { toast } from "sonner";
-import { getNickCookie } from "@/lib/nickname";
+import { normalizeParticipants, type TowerParticipant } from "@/lib/tower-participants";
+import { TowerParticipantsEditor } from "@/components/TowerParticipantsEditor";
 import { notifyTower, dropTowerRequest, markTowerWebOrigin } from "@/lib/tower-notify.functions";
 import { fileToDataUrl, uploadScreenshot } from "@/lib/screenshot-upload";
 import { HeroPicker, type HeroOption } from "@/components/HeroPicker";
@@ -43,7 +44,9 @@ export function TowerModal({
   onChanged,
   defenseVariant,
   onVariantChanged,
+  group,
 }: {
+  group: { towerIds: string[]; placedTowerIds: string[]; participants: TowerParticipant[] };
   towerId: string | null;
   open: boolean;
   existing: Tower | undefined;
@@ -53,12 +56,13 @@ export function TowerModal({
   onVariantChanged: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [nickname, setNickname] = useState("");
+  const [participants, setParticipants] = useState<TowerParticipant[]>([]);
+  const [selectedParticipant, setSelectedParticipant] = useState(0);
+  const nickname = participants[selectedParticipant]?.nickname ?? participants[0]?.nickname ?? "";
+  const notes = participants[selectedParticipant]?.comment ?? participants[0]?.comment ?? "";
   const [awakenings, setAwakenings] = useState("");
-  const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [cookieNick, setCookieNick] = useState("");
   const [status, setStatus] = useState<TowerStatusFlags>(getTowerStatusFlags(undefined));
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
@@ -91,11 +95,7 @@ export function TowerModal({
 
   useEffect(() => {
     if (open) {
-      const ck = getNickCookie();
-      setCookieNick(ck);
-      setNickname(existing?.nickname ?? ck ?? "");
       setAwakenings(existing?.awakenings ?? "");
-      setNotes(existing?.notes ?? "");
       setStatus(getTowerStatusFlags(existing));
       setScreenshotUrl(existing?.screenshot_url ?? null);
       setScreenshotPreview(null);
@@ -107,12 +107,22 @@ export function TowerModal({
     }
   }, [open, existing]);
 
+  const groupKey = JSON.stringify(group.participants);
+  const groupIdsKey = JSON.stringify(group.towerIds);
+  const participantsDirty = JSON.stringify(participants) !== groupKey;
+  useEffect(() => {
+    if (!open) return;
+    const saved = JSON.parse(groupKey) as TowerParticipant[];
+    setParticipants(saved);
+    setSelectedParticipant(0);
+    // Status refetches must not discard unsaved participant edits.
+  }, [open, towerId, groupKey, groupIdsKey]);
+
   useEffect(() => {
     if (lightboxOpen) {
       (document.activeElement as HTMLElement | null)?.blur();
     }
   }, [lightboxOpen]);
-
 
   if (!towerId) return null;
 
@@ -147,6 +157,10 @@ export function TowerModal({
   };
 
   const handleSave = async (placeAgain = false) => {
+    if (participants.some((entry) => !entry.nickname.trim())) {
+      toast.error("Вкажіть нік або видаліть порожній рядок");
+      return;
+    }
     setBusy(true);
     try {
       const update = getTowerSaveUpdate({ ...existing, ...status }, nickname, { placeAgain });
@@ -157,14 +171,17 @@ export function TowerModal({
         url = uploaded.url;
         path = uploaded.path;
       }
-      const { error } = await supabase.from("towers").upsert({
-        tower_id: towerId,
-        ...update,
-        awakenings: awakenings.trim() || null,
-        notes: notes.trim() || null,
-        screenshot_url: url,
-        screenshot_path: path,
-        updated_at: new Date().toISOString(),
+      const { error } = await supabase.rpc("save_tower_with_participants", {
+        p_tower_id: towerId,
+        p_group_ids: group.towerIds,
+        p_participants: normalizeParticipants(participants),
+        p_details: {
+          ...update,
+          awakenings: awakenings.trim() || null,
+          notes: notes.trim() || null,
+          screenshot_url: url,
+          screenshot_path: path,
+        },
       });
       if (error) throw error;
       if (!existing) await markTowerWebOrigin({ data: { towerId } });
@@ -258,13 +275,25 @@ export function TowerModal({
             if (lightboxOpen) e.preventDefault();
           }}
           onEscapeKeyDown={(e) => {
+            // Radix observes Escape before the input's React handler. Let the
+            // nickname combobox close its list without dismissing this dialog.
+            const target = e.target;
+            if (
+              target instanceof HTMLElement &&
+              target.getAttribute("role") === "combobox" &&
+              target.getAttribute("aria-expanded") === "true"
+            ) {
+              e.preventDefault();
+              return;
+            }
             // Let Escape close the lightbox first, not the modal.
             if (lightboxOpen) {
               e.preventDefault();
               setLightboxOpen(false);
             }
           }}
-          className={`fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2 duration-200 ${lightboxOpen ? "pointer-events-none" : ""}`}>
+          className={`fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2 duration-200 ${lightboxOpen ? "pointer-events-none" : ""}`}
+        >
           <div className="flex items-start justify-between gap-2">
             <Dialog.Title className="text-lg font-semibold text-foreground">
               🏰 Башня {towerId}
@@ -312,16 +341,53 @@ export function TowerModal({
               towerId={towerId}
               value={defenseVariant}
               onChanged={onVariantChanged}
+              disabled={busy || participantsDirty}
             />
-            <Field label="Нік">
-              <input
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                disabled={!!cookieNick}
-                className="w-full rounded-lg border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-80"
-                placeholder="Ім'я гравця"
-              />
-            </Field>
+            {group.towerIds.length > 1 && (
+              <p className="text-sm text-muted-foreground">
+                Спільні ніки та коментарі для комірок: {group.towerIds.join(", ")}
+              </p>
+            )}
+            {group.towerIds.length > 1 && group.placedTowerIds.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Цей деф виставлено: {group.placedTowerIds.join(", ")}
+              </p>
+            )}
+            <TowerParticipantsEditor
+              value={participants}
+              onChange={(next) => {
+                if (next.length !== participants.length) {
+                  setSelectedParticipant(
+                    Math.max(
+                      0,
+                      next.findIndex((entry) => entry.nickname === nickname),
+                    ),
+                  );
+                }
+                setParticipants(next);
+              }}
+              disabled={busy}
+            />
+            {participantsDirty && (
+              <p className="text-xs text-muted-foreground">
+                Збережіть ніки та коментарі перед зміною варіанта дефу.
+              </p>
+            )}
+            {participants.length > 1 && (
+              <Field label="Нік для проходки та Telegram">
+                <select
+                  value={selectedParticipant}
+                  onChange={(event) => setSelectedParticipant(Number(event.target.value))}
+                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
+                >
+                  {participants.map((entry, index) => (
+                    <option key={index} value={index}>
+                      {entry.nickname || "Нік не вказаний"}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
             <Field label="Пробуди">
               <input
                 value={awakenings}
@@ -330,16 +396,6 @@ export function TowerModal({
                 placeholder="Напр. 5/5"
               />
             </Field>
-            <Field label="Примітки при проходці">
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                className="w-full resize-none rounded-lg border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary"
-                placeholder="Стратегія, склад..."
-              />
-            </Field>
-
             <Field label="📷 Скріншот розстановки">
               <div className="space-y-2">
                 {shownImage && (
