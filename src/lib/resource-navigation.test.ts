@@ -16,6 +16,7 @@ test("returns each resource page to its direct parent section", () => {
   ).RESOURCE_BACK_LINKS;
 
   assert.deepEqual(resourceBackLinks, {
+    "/faq": { label: "На головну", to: "/" },
     "/progress": { label: "На головну", to: "/" },
     "/walkthroughs": { label: "На головну", to: "/" },
     "/battle-power": { label: "Назад", to: "/progress" },
@@ -32,6 +33,7 @@ test("groups battle power and mob levels under the БС та моби landing se
       { title: "Вежі", to: "/towers" },
       { title: "БС та моби", to: "/progress" },
       { title: "Проходки", to: "/walkthroughs" },
+      { title: "FAQ та гайди", to: "/faq" },
     ],
   );
 
@@ -48,7 +50,7 @@ test("groups defenses and videos under the Проходки landing section", ()
   assert.deepEqual(
     WALKTHROUGH_SECTIONS.map(({ title, to }) => ({ title, to })),
     [
-      { title: "База захистів", to: "/defenses" },
+      { title: "База проходок", to: "/defenses" },
       { title: "Відео проходок", to: "/videos" },
     ],
   );
