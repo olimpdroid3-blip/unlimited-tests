@@ -47,6 +47,14 @@ function TelegramAdminPage() {
   const login = useServerFn(loginTelegramAdmin);
   const check = useServerFn(checkTelegramAdminSession);
   const sendTest = useServerFn(sendTelegramAdminTest);
+  const syncRecipients = useServerFn(syncTelegramRecipientsFn);
+  const listRecipients = useServerFn(listTelegramRecipientsFn);
+  const setRecipientEnabled = useServerFn(setTelegramRecipientEnabledFn);
+  const [recipients, setRecipients] = useState<Recipient[]>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [savingId, setSavingId] = useState<number | null>(null);
   const [recipient, setRecipient] = useState("");
   const [sending, setSending] = useState(false);
 
