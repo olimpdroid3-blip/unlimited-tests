@@ -6,6 +6,7 @@ import { AppHeader } from "@/components/AppHeader";
 import {
   checkTelegramAdminSession,
   loginTelegramAdmin,
+  sendTelegramAdminTest,
 } from "@/lib/telegram-admin.functions";
 
 const SESSION_KEY = "telegram-admin-session";
@@ -26,6 +27,10 @@ export const Route = createFileRoute("/telegram-admin")({
 function TelegramAdminPage() {
   const login = useServerFn(loginTelegramAdmin);
   const check = useServerFn(checkTelegramAdminSession);
+  const sendTest = useServerFn(sendTelegramAdminTest);
+  const [recipient, setRecipient] = useState("");
+  const [sending, setSending] = useState(false);
+
 
   const [authed, setAuthed] = useState(false);
   const [password, setPassword] = useState("");
@@ -63,6 +68,25 @@ function TelegramAdminPage() {
     }
   }
 
+  async function onTestSend() {
+    const token = sessionStorage.getItem(SESSION_KEY);
+    if (!token) {
+      setAuthed(false);
+      return;
+    }
+    setSending(true);
+    setResult("Відправлення…");
+    try {
+      const res = await sendTest({ data: { token, recipient: recipient.trim(), message } });
+      setResult(res.ok ? "Тестове повідомлення надіслано" : (res.error ?? "Не вдалося надіслати."));
+    } catch {
+      setResult("Не вдалося надіслати тестове повідомлення.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <AppHeader />
@@ -98,6 +122,20 @@ function TelegramAdminPage() {
           </form>
         ) : (
           <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+            <label className="text-sm font-medium" htmlFor="test-recipient">
+              Тестовий отримувач
+            </label>
+            <input
+              id="test-recipient"
+              type="text"
+              placeholder="@username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary/60"
+            />
+
             <label className="text-sm font-medium" htmlFor="broadcast-text">
               Текст повідомлення
             </label>
@@ -113,19 +151,21 @@ function TelegramAdminPage() {
             <div className="flex flex-col gap-2 sm:flex-row">
               <button
                 type="button"
-                onClick={() => setResult("Відправка ще не підключена: немає backend-каналу розсилки.")}
-                className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium transition hover:border-primary/50 hover:bg-primary/10"
+                onClick={() => void onTestSend()}
+                disabled={sending || message.trim().length === 0 || recipient.trim().length === 0}
+                className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium transition hover:border-primary/50 hover:bg-primary/10 disabled:opacity-50"
               >
-                Тестове повідомлення
+                {sending ? "Відправлення…" : "Тестове повідомлення"}
               </button>
               <button
                 type="button"
-                onClick={() => setResult("Відправка ще не підключена: немає backend-каналу розсилки.")}
+                onClick={() => setResult("Масова розсилка ще не підключена.")}
                 className="flex-1 rounded-lg border border-border bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
               >
                 Надіслати всім
               </button>
             </div>
+
 
             <div className="min-h-10 rounded-lg border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
               {result ?? "Результат відправки з'явиться тут."}

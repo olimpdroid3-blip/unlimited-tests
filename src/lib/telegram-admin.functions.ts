@@ -16,3 +16,18 @@ export const checkTelegramAdminSession = createServerFn({ method: "POST" })
     const { verifyAdminSession } = await import("@/lib/telegram-admin.server");
     return { valid: await verifyAdminSession(data.token) };
   });
+
+export const sendTelegramAdminTest = createServerFn({ method: "POST" })
+  .inputValidator((data) =>
+    z
+      .object({
+        token: z.string().min(1),
+        recipient: z.string().min(1).max(200),
+        message: z.string().min(1).max(4000),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { sendTelegramTestMessage } = await import("@/lib/telegram-admin.server");
+    return sendTelegramTestMessage(data);
+  });

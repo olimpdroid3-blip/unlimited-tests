@@ -60,3 +60,74 @@ export async function verifyAdminSession(token: string | null | undefined): Prom
   const expected = await sign(`${scope}.${expiresRaw}`);
   return safeEqual(signature, expected);
 }
+
+export type TestSendResult = { ok: boolean; error?: string; messageId?: number };
+
+/** Sends a single test MTProto message through the backend function. Secrets stay server-side. */
+export async function sendTelegramTestMessage(input: {
+  token: string | null | undefined;
+  recipient: string;
+  message: string;
+}): Promise<TestSendResult> {
+  if (!(await verifyAdminSession(input.token))) {
+    return { ok: false, error: "Сесія недійсна. Увійдіть ще раз." };
+  }
+
+  const recipient = input.recipient.trim();
+  const message = input.message.trim();
+  if (!recipient) return { ok: false, error: "Вкажіть тестового отримувача." };
+  if (!message) return { ok: false, error: "Текст повідомлення порожній." };
+  if (message.length > 4000) return { ok: false, error: "Максимум 4000 символів." };
+
+  const baseUrl = process.env["GVG_SUPABASE_URL"] ?? process.env["SUPABASE_URL"];
+  if (!baseUrl) return { ok: false, error: "Сервіс відправки не налаштований." };
+
+  const { supabaseAdmin } = await import("@/lib/db.server");
+  const { data, error } = await supabaseAdmin
+    .from("telegram_broadcast_bridge" as never)
+    .select("bridge_key")
+    .eq("id", 1)
+    .maybeSingle<{ bridge_key: string }>();
+
+  if (error || !data?.bridge_key) {
+    return { ok: false, error: "Немає доступу до каналу відправки." };
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/functions/v1/telegram-mtproto-send`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-broadcast-bridge": data.bridge_key,
+      },
+      body: JSON.stringify({ action: "test_send", recipient, message }),
+    });
+  } catch {
+    return { ok: false, error: "Сервіс відправки недоступний." };
+  }
+
+  const raw = await response.text();
+  let payload: Record<string, unknown> = {};
+  try {
+    payload = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+  } catch {
+    payload = {};
+  }
+
+  if (!response.ok || payload["ok"] === false) {
+    const detail =
+      typeof payload["error"] === "string"
+        ? payload["error"]
+        : typeof payload["message"] === "string"
+          ? (payload["message"] as string)
+          : `Помилка сервісу (${response.status})`;
+    return { ok: false, error: detail };
+  }
+
+  const messageId = payload["messageId"] ?? payload["message_id"];
+  return {
+    ok: true,
+    ...(typeof messageId === "number" ? { messageId } : {}),
+  };
+}
