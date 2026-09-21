@@ -213,6 +213,90 @@ export async function setTelegramRecipientEnabled(
   return { ok: true };
 }
 
+export type MassSendFailure = { telegramUserId?: number; username?: string | null; error: string };
+
+export type MassSendResult = {
+  ok: boolean;
+  attempted: number;
+  sent: number;
+  failed: number;
+  failures?: MassSendFailure[];
+  error?: string;
+};
+
+/** Sends the broadcast to all eligible recipients via the backend function. Secrets stay server-side. */
+export async function sendTelegramBroadcast(
+  token: string | null | undefined,
+  rawMessage: string,
+): Promise<MassSendResult> {
+  const fail = (error: string): MassSendResult => ({ ok: false, attempted: 0, sent: 0, failed: 0, error });
+
+  if (!(await verifyAdminSession(token))) return fail("Сесія недійсна. Увійдіть ще раз.");
+
+  const message = rawMessage.trim();
+  if (!message) return fail("Текст повідомлення порожній.");
+  if (message.length > 4000) return fail("Максимум 4000 символів.");
+
+  const baseUrl = getEdgeBaseUrl();
+  if (!baseUrl) return fail("Сервіс відправки не налаштований.");
+
+  const bridgeKey = await getBridgeKey();
+  if (!bridgeKey) return fail("Немає доступу до каналу відправки.");
+
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/functions/v1/telegram-mtproto-send`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-broadcast-bridge": bridgeKey },
+      body: JSON.stringify({ action: "mass_send", message }),
+    });
+  } catch {
+    return fail("Сервіс відправки недоступний.");
+  }
+
+  const raw = await response.text();
+  let payload: Record<string, unknown> = {};
+  try {
+    payload = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+  } catch {
+    payload = {};
+  }
+
+  const num = (key: string): number => (typeof payload[key] === "number" ? (payload[key] as number) : 0);
+
+  const rawFailures = Array.isArray(payload["failures"]) ? (payload["failures"] as unknown[]) : [];
+  const failures: MassSendFailure[] = rawFailures.slice(0, 50).map((item) => {
+    const f = (item ?? {}) as Record<string, unknown>;
+    const id = f["telegramUserId"] ?? f["telegram_user_id"];
+    return {
+      ...(typeof id === "number" ? { telegramUserId: id } : {}),
+      ...(typeof f["username"] === "string" ? { username: f["username"] as string } : {}),
+      error: typeof f["error"] === "string" ? (f["error"] as string) : "Невідома помилка",
+    };
+  });
+
+  const result: MassSendResult = {
+    ok: response.ok && payload["ok"] !== false,
+    attempted: num("attempted"),
+    sent: num("sent"),
+    failed: num("failed") || failures.length,
+    ...(failures.length > 0 ? { failures } : {}),
+  };
+
+  if (!result.ok) {
+    result.error =
+      typeof payload["error"] === "string"
+        ? (payload["error"] as string)
+        : typeof payload["message"] === "string"
+          ? (payload["message"] as string)
+          : result.sent > 0
+            ? "Часткове відправлення (обмеження Telegram)."
+            : `Помилка сервісу (${response.status})`;
+  }
+
+  return result;
+}
+
 /** Sends a single test MTProto message through the backend function. Secrets stay server-side. */
 export async function sendTelegramTestMessage(input: {
   token: string | null | undefined;

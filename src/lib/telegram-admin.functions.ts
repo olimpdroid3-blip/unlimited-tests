@@ -46,6 +46,20 @@ export const listTelegramRecipientsFn = createServerFn({ method: "POST" })
     return listTelegramRecipients(data.token);
   });
 
+export const sendTelegramBroadcastFn = createServerFn({ method: "POST" })
+  .inputValidator((data) =>
+    z
+      .object({
+        token: z.string().min(1),
+        message: z.string().min(1).max(4000),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { sendTelegramBroadcast } = await import("@/lib/telegram-admin.server");
+    return sendTelegramBroadcast(data.token, data.message);
+  });
+
 export const setTelegramRecipientEnabledFn = createServerFn({ method: "POST" })
   .inputValidator((data) =>
     z
