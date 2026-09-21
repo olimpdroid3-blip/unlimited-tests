@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import {
   checkTelegramAdminSession,
+  sendTelegramBroadcastFn,
   listTelegramRecipientsFn,
   loginTelegramAdmin,
   sendTelegramAdminTest,
@@ -47,6 +48,7 @@ function TelegramAdminPage() {
   const login = useServerFn(loginTelegramAdmin);
   const check = useServerFn(checkTelegramAdminSession);
   const sendTest = useServerFn(sendTelegramAdminTest);
+  const sendBroadcast = useServerFn(sendTelegramBroadcastFn);
   const syncRecipients = useServerFn(syncTelegramRecipientsFn);
   const listRecipients = useServerFn(listTelegramRecipientsFn);
   const setRecipientEnabled = useServerFn(setTelegramRecipientEnabledFn);
