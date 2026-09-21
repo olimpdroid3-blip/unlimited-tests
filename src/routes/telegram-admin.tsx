@@ -6,6 +6,7 @@ import { AppHeader } from "@/components/AppHeader";
 import {
   checkTelegramAdminSession,
   loginTelegramAdmin,
+  sendTelegramAdminTest,
 } from "@/lib/telegram-admin.functions";
 
 const SESSION_KEY = "telegram-admin-session";
