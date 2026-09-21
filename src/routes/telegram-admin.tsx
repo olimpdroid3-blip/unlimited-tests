@@ -68,6 +68,25 @@ function TelegramAdminPage() {
     }
   }
 
+  async function onTestSend() {
+    const token = sessionStorage.getItem(SESSION_KEY);
+    if (!token) {
+      setAuthed(false);
+      return;
+    }
+    setSending(true);
+    setResult("Відправлення…");
+    try {
+      const res = await sendTest({ data: { token, recipient: recipient.trim(), message } });
+      setResult(res.ok ? "Тестове повідомлення надіслано" : (res.error ?? "Не вдалося надіслати."));
+    } catch {
+      setResult("Не вдалося надіслати тестове повідомлення.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <AppHeader />
