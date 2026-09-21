@@ -27,6 +27,10 @@ export const Route = createFileRoute("/telegram-admin")({
 function TelegramAdminPage() {
   const login = useServerFn(loginTelegramAdmin);
   const check = useServerFn(checkTelegramAdminSession);
+  const sendTest = useServerFn(sendTelegramAdminTest);
+  const [recipient, setRecipient] = useState("");
+  const [sending, setSending] = useState(false);
+
 
   const [authed, setAuthed] = useState(false);
   const [password, setPassword] = useState("");
