@@ -5,9 +5,28 @@ import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import {
   checkTelegramAdminSession,
+  listTelegramRecipientsFn,
   loginTelegramAdmin,
   sendTelegramAdminTest,
+  setTelegramRecipientEnabledFn,
+  syncTelegramRecipientsFn,
 } from "@/lib/telegram-admin.functions";
+
+type Recipient = {
+  telegram_user_id: number;
+  username: string | null;
+  display_name: string | null;
+  member_status: string | null;
+  is_bot: boolean;
+  is_self: boolean;
+  is_deleted: boolean;
+  enabled: boolean;
+  in_group: boolean;
+};
+
+function isEligible(r: Recipient): boolean {
+  return !r.is_bot && !r.is_self && !r.is_deleted;
+}
 
 const SESSION_KEY = "telegram-admin-session";
 
