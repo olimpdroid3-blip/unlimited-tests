@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WalkthroughsRouteImport } from './routes/walkthroughs'
 import { Route as VideosRouteImport } from './routes/videos'
 import { Route as TowersRouteImport } from './routes/towers'
+import { Route as TelegramAdminRouteImport } from './routes/telegram-admin'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as MobsRouteImport } from './routes/mobs'
 import { Route as MobLevelsRouteImport } from './routes/mob-levels'
@@ -42,6 +43,11 @@ const VideosRoute = VideosRouteImport.update({
 const TowersRoute = TowersRouteImport.update({
   id: '/towers',
   path: '/towers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TelegramAdminRoute = TelegramAdminRouteImport.update({
+  id: '/telegram-admin',
+  path: '/telegram-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProgressRoute = ProgressRouteImport.update({
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/mob-levels': typeof MobLevelsRoute
   '/mobs': typeof MobsRoute
   '/progress': typeof ProgressRoute
+  '/telegram-admin': typeof TelegramAdminRoute
   '/towers': typeof TowersRoute
   '/videos': typeof VideosRoute
   '/walkthroughs': typeof WalkthroughsRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/mob-levels': typeof MobLevelsRoute
   '/mobs': typeof MobsRoute
   '/progress': typeof ProgressRoute
+  '/telegram-admin': typeof TelegramAdminRoute
   '/towers': typeof TowersRoute
   '/videos': typeof VideosRoute
   '/walkthroughs': typeof WalkthroughsRoute
@@ -180,6 +188,7 @@ export interface FileRoutesById {
   '/mob-levels': typeof MobLevelsRoute
   '/mobs': typeof MobsRoute
   '/progress': typeof ProgressRoute
+  '/telegram-admin': typeof TelegramAdminRoute
   '/towers': typeof TowersRoute
   '/videos': typeof VideosRoute
   '/walkthroughs': typeof WalkthroughsRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
     | '/mob-levels'
     | '/mobs'
     | '/progress'
+    | '/telegram-admin'
     | '/towers'
     | '/videos'
     | '/walkthroughs'
@@ -224,6 +234,7 @@ export interface FileRouteTypes {
     | '/mob-levels'
     | '/mobs'
     | '/progress'
+    | '/telegram-admin'
     | '/towers'
     | '/videos'
     | '/walkthroughs'
@@ -245,6 +256,7 @@ export interface FileRouteTypes {
     | '/mob-levels'
     | '/mobs'
     | '/progress'
+    | '/telegram-admin'
     | '/towers'
     | '/videos'
     | '/walkthroughs'
@@ -267,6 +279,7 @@ export interface RootRouteChildren {
   MobLevelsRoute: typeof MobLevelsRoute
   MobsRoute: typeof MobsRoute
   ProgressRoute: typeof ProgressRoute
+  TelegramAdminRoute: typeof TelegramAdminRoute
   TowersRoute: typeof TowersRoute
   VideosRoute: typeof VideosRoute
   WalkthroughsRoute: typeof WalkthroughsRoute
@@ -301,6 +314,13 @@ declare module '@tanstack/react-router' {
       path: '/towers'
       fullPath: '/towers'
       preLoaderRoute: typeof TowersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/telegram-admin': {
+      id: '/telegram-admin'
+      path: '/telegram-admin'
+      fullPath: '/telegram-admin'
+      preLoaderRoute: typeof TelegramAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/progress': {
@@ -427,6 +447,7 @@ const rootRouteChildren: RootRouteChildren = {
   MobLevelsRoute: MobLevelsRoute,
   MobsRoute: MobsRoute,
   ProgressRoute: ProgressRoute,
+  TelegramAdminRoute: TelegramAdminRoute,
   TowersRoute: TowersRoute,
   VideosRoute: VideosRoute,
   WalkthroughsRoute: WalkthroughsRoute,
