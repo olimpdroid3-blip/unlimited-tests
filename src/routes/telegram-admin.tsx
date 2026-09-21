@@ -229,6 +229,7 @@ function TelegramAdminPage() {
             </button>
           </form>
         ) : (
+          <>
           <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
             <label className="text-sm font-medium" htmlFor="test-recipient">
               Тестовий отримувач
