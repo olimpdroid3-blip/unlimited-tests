@@ -113,6 +113,87 @@ function TelegramAdminPage() {
     }
   }
 
+  const loadRecipients = useCallback(async () => {
+    const token = sessionStorage.getItem(SESSION_KEY);
+    if (!token) return;
+    try {
+      const res = await listRecipients({ data: { token } });
+      if (res.ok) setRecipients(res.recipients as Recipient[]);
+      else setSyncStatus(res.error ?? "Не вдалося завантажити список.");
+    } catch {
+      setSyncStatus("Не вдалося завантажити список.");
+    }
+  }, [listRecipients]);
+
+  useEffect(() => {
+    if (!authed) return;
+    void loadRecipients();
+  }, [authed, loadRecipients]);
+
+  async function onSync() {
+    const token = sessionStorage.getItem(SESSION_KEY);
+    if (!token) {
+      setAuthed(false);
+      return;
+    }
+    setSyncing(true);
+    setSyncStatus("Оновлення…");
+    try {
+      const res = await syncRecipients({ data: { token } });
+      if (res.ok) {
+        await loadRecipients();
+        setSyncStatus("Список оновлено");
+      } else {
+        setSyncStatus(res.error ?? "Не вдалося оновити список.");
+      }
+    } catch {
+      setSyncStatus("Не вдалося оновити список.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  async function onToggleRecipient(row: Recipient, enabled: boolean) {
+    const token = sessionStorage.getItem(SESSION_KEY);
+    if (!token) {
+      setAuthed(false);
+      return;
+    }
+    setSavingId(row.telegram_user_id);
+    setRecipients((prev) =>
+      prev.map((r) => (r.telegram_user_id === row.telegram_user_id ? { ...r, enabled } : r)),
+    );
+    try {
+      const res = await setRecipientEnabled({
+        data: { token, telegramUserId: row.telegram_user_id, enabled },
+      });
+      if (!res.ok) {
+        setRecipients((prev) =>
+          prev.map((r) =>
+            r.telegram_user_id === row.telegram_user_id ? { ...r, enabled: !enabled } : r,
+          ),
+        );
+        setSyncStatus(res.error ?? "Не вдалося зберегти зміну.");
+      }
+    } catch {
+      setRecipients((prev) =>
+        prev.map((r) =>
+          r.telegram_user_id === row.telegram_user_id ? { ...r, enabled: !enabled } : r,
+        ),
+      );
+      setSyncStatus("Не вдалося зберегти зміну.");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  const query = search.trim().toLowerCase();
+  const visibleRecipients = query
+    ? recipients.filter((r) =>
+        `${r.display_name ?? ""} ${r.username ?? ""}`.toLowerCase().includes(query),
+      )
+    : recipients;
+  const eligibleCount = recipients.filter((r) => isEligible(r) && r.enabled).length;
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
