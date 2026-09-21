@@ -120,6 +120,34 @@ function TelegramAdminPage() {
     }
   }
 
+  async function onBroadcast() {
+    const token = sessionStorage.getItem(SESSION_KEY);
+    if (!token) {
+      setAuthed(false);
+      return;
+    }
+    setConfirmOpen(false);
+    setBroadcasting(true);
+    setFailures([]);
+    setResult("Відправлення…");
+    try {
+      const res = await sendBroadcast({ data: { token, message } });
+      const total = res.attempted || res.sent + res.failed;
+      if (res.ok) {
+        setResult(`Надіслано: ${res.sent} із ${total}`);
+      } else if (res.sent > 0) {
+        setResult(`Надіслано: ${res.sent} із ${total}. Помилок: ${res.failed}`);
+      } else {
+        setResult(res.error ?? "Не вдалося надіслати.");
+      }
+      if (res.failures && res.failures.length > 0) setFailures(res.failures);
+    } catch {
+      setResult("Не вдалося виконати розсилку.");
+    } finally {
+      setBroadcasting(false);
+    }
+  }
+
   const loadRecipients = useCallback(async () => {
     const token = sessionStorage.getItem(SESSION_KEY);
     if (!token) return;
