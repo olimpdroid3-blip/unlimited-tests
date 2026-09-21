@@ -21,11 +21,13 @@ export function AppHeader() {
         />
 
         <div className="relative mx-auto flex min-h-[88px] max-w-5xl items-start justify-between gap-3 px-4 py-3 sm:min-h-[112px] sm:py-4">
-          <Link to="/" className="flex min-w-0 flex-col leading-tight">
-            <span className="sr-only">NoNameClan</span>
-            <span className="text-[10px] font-medium uppercase tracking-[0.22em] text-[oklch(0.95_0.02_250)] drop-shadow-[0_1px_3px_oklch(0.1_0_0/0.9)]">
-              База ресурсів
-            </span>
+          <Link
+            to="/telegram-admin"
+            aria-label="Службова панель"
+            title="Службова панель"
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-[oklch(0.95_0.02_250/0.35)] bg-[oklch(0.12_0.03_260/0.45)] text-base leading-none backdrop-blur-sm transition hover:bg-[oklch(0.12_0.03_260/0.7)]"
+          >
+            <span aria-hidden="true">👑</span>
           </Link>
 
           <div className="flex items-center gap-2">

@@ -1,0 +1,138 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useState } from "react";
+
+import { AppHeader } from "@/components/AppHeader";
+import {
+  checkTelegramAdminSession,
+  loginTelegramAdmin,
+} from "@/lib/telegram-admin.functions";
+
+const SESSION_KEY = "telegram-admin-session";
+
+export const Route = createFileRoute("/telegram-admin")({
+  head: () => ({
+    meta: [
+      { title: "Telegram розсилка — NoNameClan" },
+      { name: "description", content: "Службова панель Telegram-розсилки NoNameClan." },
+      { name: "robots", content: "noindex" },
+      { property: "og:title", content: "Telegram розсилка — NoNameClan" },
+      { property: "og:description", content: "Службова панель Telegram-розсилки NoNameClan." },
+    ],
+  }),
+  component: TelegramAdminPage,
+});
+
+function TelegramAdminPage() {
+  const login = useServerFn(loginTelegramAdmin);
+  const check = useServerFn(checkTelegramAdminSession);
+
+  const [authed, setAuthed] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [result, setResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = sessionStorage.getItem(SESSION_KEY);
+    if (!token) return;
+    void check({ data: { token } }).then((res) => {
+      if (res.valid) setAuthed(true);
+      else sessionStorage.removeItem(SESSION_KEY);
+    });
+  }, [check]);
+
+  async function onSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await login({ data: { password } });
+      if (res.ok) {
+        sessionStorage.setItem(SESSION_KEY, res.token);
+        setPassword("");
+        setAuthed(true);
+      } else {
+        setError(res.error);
+      }
+    } catch {
+      setError("Не вдалося перевірити пароль. Спробуйте ще раз.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <AppHeader />
+      <main className="mx-auto w-full max-w-xl flex-1 px-4 pb-10 pt-8">
+        <h1 className="mb-6 text-center text-xl font-bold tracking-tight sm:text-2xl">
+          Telegram розсилка
+        </h1>
+
+        {!authed ? (
+          <form
+            onSubmit={onSubmit}
+            className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm"
+          >
+            <label className="text-sm font-medium" htmlFor="admin-password">
+              Пароль
+            </label>
+            <input
+              id="admin-password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary/60"
+            />
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            <button
+              type="submit"
+              disabled={busy || password.length === 0}
+              className="rounded-lg border border-border bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20 disabled:opacity-50"
+            >
+              {busy ? "Перевірка…" : "Увійти"}
+            </button>
+          </form>
+        ) : (
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+            <label className="text-sm font-medium" htmlFor="broadcast-text">
+              Текст повідомлення
+            </label>
+            <textarea
+              id="broadcast-text"
+              rows={7}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className="resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary/60"
+            />
+            <div className="text-right text-xs text-muted-foreground">{message.length} символів</div>
+
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => setResult("Відправка ще не підключена: немає backend-каналу розсилки.")}
+                className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium transition hover:border-primary/50 hover:bg-primary/10"
+              >
+                Тестове повідомлення
+              </button>
+              <button
+                type="button"
+                onClick={() => setResult("Відправка ще не підключена: немає backend-каналу розсилки.")}
+                className="flex-1 rounded-lg border border-border bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
+              >
+                Надіслати всім
+              </button>
+            </div>
+
+            <div className="min-h-10 rounded-lg border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
+              {result ?? "Результат відправки з'явиться тут."}
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

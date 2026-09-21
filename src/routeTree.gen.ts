@@ -9,69 +9,30 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as ArchiveRouteImport } from './routes/archive'
-import { Route as BattlePowerRouteImport } from './routes/battle-power'
-import { Route as DefensesRouteImport } from './routes/defenses'
-import { Route as FaqRouteImport } from './routes/faq'
-import { Route as MobLevelsRouteImport } from './routes/mob-levels'
-import { Route as MobsRouteImport } from './routes/mobs'
-import { Route as ProgressRouteImport } from './routes/progress'
-import { Route as TowersRouteImport } from './routes/towers'
-import { Route as VideosRouteImport } from './routes/videos'
 import { Route as WalkthroughsRouteImport } from './routes/walkthroughs'
-import { Route as FaqGuideIdRouteImport } from './routes/faq_.$guideId'
-import { Route as MobLevelsEditRouteImport } from './routes/mob-levels_.edit'
+import { Route as VideosRouteImport } from './routes/videos'
+import { Route as TowersRouteImport } from './routes/towers'
+import { Route as TelegramAdminRouteImport } from './routes/telegram-admin'
+import { Route as ProgressRouteImport } from './routes/progress'
+import { Route as MobsRouteImport } from './routes/mobs'
+import { Route as MobLevelsRouteImport } from './routes/mob-levels'
+import { Route as FaqRouteImport } from './routes/faq'
+import { Route as DefensesRouteImport } from './routes/defenses'
+import { Route as BattlePowerRouteImport } from './routes/battle-power'
+import { Route as ArchiveRouteImport } from './routes/archive'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as MobLevelsScanRouteImport } from './routes/mob-levels_.scan'
-import { Route as ApiTelegramGvgPinBpRouteImport } from './routes/api/telegram/gvg-pin-bp'
-import { Route as ApiTelegramGvgPinTowersRouteImport } from './routes/api/telegram/gvg-pin-towers'
-import { Route as ApiTelegramGvgTowerKeyboardRouteImport } from './routes/api/telegram/gvg-tower-keyboard'
+import { Route as MobLevelsEditRouteImport } from './routes/mob-levels_.edit'
+import { Route as FaqGuideIdRouteImport } from './routes/faq_.$guideId'
 import { Route as ApiTelegramGvgVideoSetupRouteImport } from './routes/api/telegram/gvg-video-setup'
+import { Route as ApiTelegramGvgTowerKeyboardRouteImport } from './routes/api/telegram/gvg-tower-keyboard'
+import { Route as ApiTelegramGvgPinTowersRouteImport } from './routes/api/telegram/gvg-pin-towers'
+import { Route as ApiTelegramGvgPinBpRouteImport } from './routes/api/telegram/gvg-pin-bp'
 import { Route as ApiPublicTelegramGvgVideoWebhookRouteImport } from './routes/api/public/telegram/gvg-video-webhook'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ArchiveRoute = ArchiveRouteImport.update({
-  id: '/archive',
-  path: '/archive',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BattlePowerRoute = BattlePowerRouteImport.update({
-  id: '/battle-power',
-  path: '/battle-power',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DefensesRoute = DefensesRouteImport.update({
-  id: '/defenses',
-  path: '/defenses',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FaqRoute = FaqRouteImport.update({
-  id: '/faq',
-  path: '/faq',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MobLevelsRoute = MobLevelsRouteImport.update({
-  id: '/mob-levels',
-  path: '/mob-levels',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MobsRoute = MobsRouteImport.update({
-  id: '/mobs',
-  path: '/mobs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProgressRoute = ProgressRouteImport.update({
-  id: '/progress',
-  path: '/progress',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TowersRoute = TowersRouteImport.update({
-  id: '/towers',
-  path: '/towers',
+const WalkthroughsRoute = WalkthroughsRouteImport.update({
+  id: '/walkthroughs',
+  path: '/walkthroughs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VideosRoute = VideosRouteImport.update({
@@ -79,19 +40,54 @@ const VideosRoute = VideosRouteImport.update({
   path: '/videos',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WalkthroughsRoute = WalkthroughsRouteImport.update({
-  id: '/walkthroughs',
-  path: '/walkthroughs',
+const TowersRoute = TowersRouteImport.update({
+  id: '/towers',
+  path: '/towers',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FaqGuideIdRoute = FaqGuideIdRouteImport.update({
-  id: '/faq_/$guideId',
-  path: '/faq/$guideId',
+const TelegramAdminRoute = TelegramAdminRouteImport.update({
+  id: '/telegram-admin',
+  path: '/telegram-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MobLevelsEditRoute = MobLevelsEditRouteImport.update({
-  id: '/mob-levels_/edit',
-  path: '/mob-levels/edit',
+const ProgressRoute = ProgressRouteImport.update({
+  id: '/progress',
+  path: '/progress',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MobsRoute = MobsRouteImport.update({
+  id: '/mobs',
+  path: '/mobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MobLevelsRoute = MobLevelsRouteImport.update({
+  id: '/mob-levels',
+  path: '/mob-levels',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DefensesRoute = DefensesRouteImport.update({
+  id: '/defenses',
+  path: '/defenses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BattlePowerRoute = BattlePowerRouteImport.update({
+  id: '/battle-power',
+  path: '/battle-power',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArchiveRoute = ArchiveRouteImport.update({
+  id: '/archive',
+  path: '/archive',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MobLevelsScanRoute = MobLevelsScanRouteImport.update({
@@ -99,28 +95,38 @@ const MobLevelsScanRoute = MobLevelsScanRouteImport.update({
   path: '/mob-levels/scan',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiTelegramGvgPinBpRoute = ApiTelegramGvgPinBpRouteImport.update({
-  id: '/api/telegram/gvg-pin-bp',
-  path: '/api/telegram/gvg-pin-bp',
+const MobLevelsEditRoute = MobLevelsEditRouteImport.update({
+  id: '/mob-levels_/edit',
+  path: '/mob-levels/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiTelegramGvgPinTowersRoute = ApiTelegramGvgPinTowersRouteImport.update({
-  id: '/api/telegram/gvg-pin-towers',
-  path: '/api/telegram/gvg-pin-towers',
+const FaqGuideIdRoute = FaqGuideIdRouteImport.update({
+  id: '/faq_/$guideId',
+  path: '/faq/$guideId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiTelegramGvgTowerKeyboardRoute =
-  ApiTelegramGvgTowerKeyboardRouteImport.update({
-    id: '/api/telegram/gvg-tower-keyboard',
-    path: '/api/telegram/gvg-tower-keyboard',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiTelegramGvgVideoSetupRoute =
   ApiTelegramGvgVideoSetupRouteImport.update({
     id: '/api/telegram/gvg-video-setup',
     path: '/api/telegram/gvg-video-setup',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiTelegramGvgTowerKeyboardRoute =
+  ApiTelegramGvgTowerKeyboardRouteImport.update({
+    id: '/api/telegram/gvg-tower-keyboard',
+    path: '/api/telegram/gvg-tower-keyboard',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiTelegramGvgPinTowersRoute = ApiTelegramGvgPinTowersRouteImport.update({
+  id: '/api/telegram/gvg-pin-towers',
+  path: '/api/telegram/gvg-pin-towers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTelegramGvgPinBpRoute = ApiTelegramGvgPinBpRouteImport.update({
+  id: '/api/telegram/gvg-pin-bp',
+  path: '/api/telegram/gvg-pin-bp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTelegramGvgVideoWebhookRoute =
   ApiPublicTelegramGvgVideoWebhookRouteImport.update({
     id: '/api/public/telegram/gvg-video-webhook',
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/mob-levels': typeof MobLevelsRoute
   '/mobs': typeof MobsRoute
   '/progress': typeof ProgressRoute
+  '/telegram-admin': typeof TelegramAdminRoute
   '/towers': typeof TowersRoute
   '/videos': typeof VideosRoute
   '/walkthroughs': typeof WalkthroughsRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/mob-levels': typeof MobLevelsRoute
   '/mobs': typeof MobsRoute
   '/progress': typeof ProgressRoute
+  '/telegram-admin': typeof TelegramAdminRoute
   '/towers': typeof TowersRoute
   '/videos': typeof VideosRoute
   '/walkthroughs': typeof WalkthroughsRoute
@@ -180,6 +188,7 @@ export interface FileRoutesById {
   '/mob-levels': typeof MobLevelsRoute
   '/mobs': typeof MobsRoute
   '/progress': typeof ProgressRoute
+  '/telegram-admin': typeof TelegramAdminRoute
   '/towers': typeof TowersRoute
   '/videos': typeof VideosRoute
   '/walkthroughs': typeof WalkthroughsRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
     | '/mob-levels'
     | '/mobs'
     | '/progress'
+    | '/telegram-admin'
     | '/towers'
     | '/videos'
     | '/walkthroughs'
@@ -224,6 +234,7 @@ export interface FileRouteTypes {
     | '/mob-levels'
     | '/mobs'
     | '/progress'
+    | '/telegram-admin'
     | '/towers'
     | '/videos'
     | '/walkthroughs'
@@ -245,6 +256,7 @@ export interface FileRouteTypes {
     | '/mob-levels'
     | '/mobs'
     | '/progress'
+    | '/telegram-admin'
     | '/towers'
     | '/videos'
     | '/walkthroughs'
@@ -267,6 +279,7 @@ export interface RootRouteChildren {
   MobLevelsRoute: typeof MobLevelsRoute
   MobsRoute: typeof MobsRoute
   ProgressRoute: typeof ProgressRoute
+  TelegramAdminRoute: typeof TelegramAdminRoute
   TowersRoute: typeof TowersRoute
   VideosRoute: typeof VideosRoute
   WalkthroughsRoute: typeof WalkthroughsRoute
@@ -282,67 +295,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/archive': {
-      id: '/archive'
-      path: '/archive'
-      fullPath: '/archive'
-      preLoaderRoute: typeof ArchiveRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/battle-power': {
-      id: '/battle-power'
-      path: '/battle-power'
-      fullPath: '/battle-power'
-      preLoaderRoute: typeof BattlePowerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/defenses': {
-      id: '/defenses'
-      path: '/defenses'
-      fullPath: '/defenses'
-      preLoaderRoute: typeof DefensesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/faq': {
-      id: '/faq'
-      path: '/faq'
-      fullPath: '/faq'
-      preLoaderRoute: typeof FaqRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mob-levels': {
-      id: '/mob-levels'
-      path: '/mob-levels'
-      fullPath: '/mob-levels'
-      preLoaderRoute: typeof MobLevelsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mobs': {
-      id: '/mobs'
-      path: '/mobs'
-      fullPath: '/mobs'
-      preLoaderRoute: typeof MobsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/progress': {
-      id: '/progress'
-      path: '/progress'
-      fullPath: '/progress'
-      preLoaderRoute: typeof ProgressRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/towers': {
-      id: '/towers'
-      path: '/towers'
-      fullPath: '/towers'
-      preLoaderRoute: typeof TowersRouteImport
+    '/walkthroughs': {
+      id: '/walkthroughs'
+      path: '/walkthroughs'
+      fullPath: '/walkthroughs'
+      preLoaderRoute: typeof WalkthroughsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/videos': {
@@ -352,25 +309,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VideosRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/walkthroughs': {
-      id: '/walkthroughs'
-      path: '/walkthroughs'
-      fullPath: '/walkthroughs'
-      preLoaderRoute: typeof WalkthroughsRouteImport
+    '/towers': {
+      id: '/towers'
+      path: '/towers'
+      fullPath: '/towers'
+      preLoaderRoute: typeof TowersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/faq_/$guideId': {
-      id: '/faq_/$guideId'
-      path: '/faq/$guideId'
-      fullPath: '/faq/$guideId'
-      preLoaderRoute: typeof FaqGuideIdRouteImport
+    '/telegram-admin': {
+      id: '/telegram-admin'
+      path: '/telegram-admin'
+      fullPath: '/telegram-admin'
+      preLoaderRoute: typeof TelegramAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/mob-levels_/edit': {
-      id: '/mob-levels_/edit'
-      path: '/mob-levels/edit'
-      fullPath: '/mob-levels/edit'
-      preLoaderRoute: typeof MobLevelsEditRouteImport
+    '/progress': {
+      id: '/progress'
+      path: '/progress'
+      fullPath: '/progress'
+      preLoaderRoute: typeof ProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mobs': {
+      id: '/mobs'
+      path: '/mobs'
+      fullPath: '/mobs'
+      preLoaderRoute: typeof MobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mob-levels': {
+      id: '/mob-levels'
+      path: '/mob-levels'
+      fullPath: '/mob-levels'
+      preLoaderRoute: typeof MobLevelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/defenses': {
+      id: '/defenses'
+      path: '/defenses'
+      fullPath: '/defenses'
+      preLoaderRoute: typeof DefensesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/battle-power': {
+      id: '/battle-power'
+      path: '/battle-power'
+      fullPath: '/battle-power'
+      preLoaderRoute: typeof BattlePowerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/archive': {
+      id: '/archive'
+      path: '/archive'
+      fullPath: '/archive'
+      preLoaderRoute: typeof ArchiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mob-levels_/scan': {
@@ -380,18 +386,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MobLevelsScanRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/telegram/gvg-pin-bp': {
-      id: '/api/telegram/gvg-pin-bp'
-      path: '/api/telegram/gvg-pin-bp'
-      fullPath: '/api/telegram/gvg-pin-bp'
-      preLoaderRoute: typeof ApiTelegramGvgPinBpRouteImport
+    '/mob-levels_/edit': {
+      id: '/mob-levels_/edit'
+      path: '/mob-levels/edit'
+      fullPath: '/mob-levels/edit'
+      preLoaderRoute: typeof MobLevelsEditRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/telegram/gvg-pin-towers': {
-      id: '/api/telegram/gvg-pin-towers'
-      path: '/api/telegram/gvg-pin-towers'
-      fullPath: '/api/telegram/gvg-pin-towers'
-      preLoaderRoute: typeof ApiTelegramGvgPinTowersRouteImport
+    '/faq_/$guideId': {
+      id: '/faq_/$guideId'
+      path: '/faq/$guideId'
+      fullPath: '/faq/$guideId'
+      preLoaderRoute: typeof FaqGuideIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/telegram/gvg-video-setup': {
+      id: '/api/telegram/gvg-video-setup'
+      path: '/api/telegram/gvg-video-setup'
+      fullPath: '/api/telegram/gvg-video-setup'
+      preLoaderRoute: typeof ApiTelegramGvgVideoSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/telegram/gvg-tower-keyboard': {
@@ -401,11 +414,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTelegramGvgTowerKeyboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/telegram/gvg-video-setup': {
-      id: '/api/telegram/gvg-video-setup'
-      path: '/api/telegram/gvg-video-setup'
-      fullPath: '/api/telegram/gvg-video-setup'
-      preLoaderRoute: typeof ApiTelegramGvgVideoSetupRouteImport
+    '/api/telegram/gvg-pin-towers': {
+      id: '/api/telegram/gvg-pin-towers'
+      path: '/api/telegram/gvg-pin-towers'
+      fullPath: '/api/telegram/gvg-pin-towers'
+      preLoaderRoute: typeof ApiTelegramGvgPinTowersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/telegram/gvg-pin-bp': {
+      id: '/api/telegram/gvg-pin-bp'
+      path: '/api/telegram/gvg-pin-bp'
+      fullPath: '/api/telegram/gvg-pin-bp'
+      preLoaderRoute: typeof ApiTelegramGvgPinBpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/telegram/gvg-video-webhook': {
@@ -427,6 +447,7 @@ const rootRouteChildren: RootRouteChildren = {
   MobLevelsRoute: MobLevelsRoute,
   MobsRoute: MobsRoute,
   ProgressRoute: ProgressRoute,
+  TelegramAdminRoute: TelegramAdminRoute,
   TowersRoute: TowersRoute,
   VideosRoute: VideosRoute,
   WalkthroughsRoute: WalkthroughsRoute,
