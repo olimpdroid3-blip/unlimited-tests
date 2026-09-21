@@ -31,3 +31,32 @@ export const sendTelegramAdminTest = createServerFn({ method: "POST" })
     const { sendTelegramTestMessage } = await import("@/lib/telegram-admin.server");
     return sendTelegramTestMessage(data);
   });
+
+export const syncTelegramRecipientsFn = createServerFn({ method: "POST" })
+  .inputValidator((data) => z.object({ token: z.string().min(1) }).parse(data))
+  .handler(async ({ data }) => {
+    const { syncTelegramRecipients } = await import("@/lib/telegram-admin.server");
+    return syncTelegramRecipients(data.token);
+  });
+
+export const listTelegramRecipientsFn = createServerFn({ method: "POST" })
+  .inputValidator((data) => z.object({ token: z.string().min(1) }).parse(data))
+  .handler(async ({ data }) => {
+    const { listTelegramRecipients } = await import("@/lib/telegram-admin.server");
+    return listTelegramRecipients(data.token);
+  });
+
+export const setTelegramRecipientEnabledFn = createServerFn({ method: "POST" })
+  .inputValidator((data) =>
+    z
+      .object({
+        token: z.string().min(1),
+        telegramUserId: z.number().int(),
+        enabled: z.boolean(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { setTelegramRecipientEnabled } = await import("@/lib/telegram-admin.server");
+    return setTelegramRecipientEnabled(data.token, data.telegramUserId, data.enabled);
+  });

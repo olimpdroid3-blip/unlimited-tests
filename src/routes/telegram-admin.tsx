@@ -1,13 +1,32 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AppHeader } from "@/components/AppHeader";
 import {
   checkTelegramAdminSession,
+  listTelegramRecipientsFn,
   loginTelegramAdmin,
   sendTelegramAdminTest,
+  setTelegramRecipientEnabledFn,
+  syncTelegramRecipientsFn,
 } from "@/lib/telegram-admin.functions";
+
+type Recipient = {
+  telegram_user_id: number;
+  username: string | null;
+  display_name: string | null;
+  member_status: string | null;
+  is_bot: boolean;
+  is_self: boolean;
+  is_deleted: boolean;
+  enabled: boolean;
+  in_group: boolean;
+};
+
+function isEligible(r: Recipient): boolean {
+  return !r.is_bot && !r.is_self && !r.is_deleted;
+}
 
 const SESSION_KEY = "telegram-admin-session";
 
@@ -28,6 +47,14 @@ function TelegramAdminPage() {
   const login = useServerFn(loginTelegramAdmin);
   const check = useServerFn(checkTelegramAdminSession);
   const sendTest = useServerFn(sendTelegramAdminTest);
+  const syncRecipients = useServerFn(syncTelegramRecipientsFn);
+  const listRecipients = useServerFn(listTelegramRecipientsFn);
+  const setRecipientEnabled = useServerFn(setTelegramRecipientEnabledFn);
+  const [recipients, setRecipients] = useState<Recipient[]>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [savingId, setSavingId] = useState<number | null>(null);
   const [recipient, setRecipient] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -86,6 +113,87 @@ function TelegramAdminPage() {
     }
   }
 
+  const loadRecipients = useCallback(async () => {
+    const token = sessionStorage.getItem(SESSION_KEY);
+    if (!token) return;
+    try {
+      const res = await listRecipients({ data: { token } });
+      if (res.ok) setRecipients(res.recipients as Recipient[]);
+      else setSyncStatus(res.error ?? "Не вдалося завантажити список.");
+    } catch {
+      setSyncStatus("Не вдалося завантажити список.");
+    }
+  }, [listRecipients]);
+
+  useEffect(() => {
+    if (!authed) return;
+    void loadRecipients();
+  }, [authed, loadRecipients]);
+
+  async function onSync() {
+    const token = sessionStorage.getItem(SESSION_KEY);
+    if (!token) {
+      setAuthed(false);
+      return;
+    }
+    setSyncing(true);
+    setSyncStatus("Оновлення…");
+    try {
+      const res = await syncRecipients({ data: { token } });
+      if (res.ok) {
+        await loadRecipients();
+        setSyncStatus("Список оновлено");
+      } else {
+        setSyncStatus(res.error ?? "Не вдалося оновити список.");
+      }
+    } catch {
+      setSyncStatus("Не вдалося оновити список.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  async function onToggleRecipient(row: Recipient, enabled: boolean) {
+    const token = sessionStorage.getItem(SESSION_KEY);
+    if (!token) {
+      setAuthed(false);
+      return;
+    }
+    setSavingId(row.telegram_user_id);
+    setRecipients((prev) =>
+      prev.map((r) => (r.telegram_user_id === row.telegram_user_id ? { ...r, enabled } : r)),
+    );
+    try {
+      const res = await setRecipientEnabled({
+        data: { token, telegramUserId: row.telegram_user_id, enabled },
+      });
+      if (!res.ok) {
+        setRecipients((prev) =>
+          prev.map((r) =>
+            r.telegram_user_id === row.telegram_user_id ? { ...r, enabled: !enabled } : r,
+          ),
+        );
+        setSyncStatus(res.error ?? "Не вдалося зберегти зміну.");
+      }
+    } catch {
+      setRecipients((prev) =>
+        prev.map((r) =>
+          r.telegram_user_id === row.telegram_user_id ? { ...r, enabled: !enabled } : r,
+        ),
+      );
+      setSyncStatus("Не вдалося зберегти зміну.");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  const query = search.trim().toLowerCase();
+  const visibleRecipients = query
+    ? recipients.filter((r) =>
+        `${r.display_name ?? ""} ${r.username ?? ""}`.toLowerCase().includes(query),
+      )
+    : recipients;
+  const eligibleCount = recipients.filter((r) => isEligible(r) && r.enabled).length;
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -121,6 +229,7 @@ function TelegramAdminPage() {
             </button>
           </form>
         ) : (
+          <>
           <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
             <label className="text-sm font-medium" htmlFor="test-recipient">
               Тестовий отримувач
@@ -171,6 +280,84 @@ function TelegramAdminPage() {
               {result ?? "Результат відправки з'явиться тут."}
             </div>
           </div>
+
+          <section className="mt-4 flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold">Учасники групи</h2>
+              <button
+                type="button"
+                onClick={() => void onSync()}
+                disabled={syncing}
+                className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium transition hover:border-primary/50 hover:bg-primary/10 disabled:opacity-50"
+              >
+                {syncing ? "Оновлення…" : "Оновити учасників"}
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span>У групі: {recipients.length}</span>
+              <span>Для розсилки: {eligibleCount}</span>
+              {syncStatus ? <span>{syncStatus}</span> : null}
+            </div>
+
+            <input
+              type="search"
+              placeholder="Пошук за ім'ям або @username"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary/60"
+            />
+
+            {visibleRecipients.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Список порожній. Натисніть «Оновити учасників».
+              </p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-border">
+                {visibleRecipients.map((row) => {
+                  const locked = !isEligible(row);
+                  return (
+                    <li key={row.telegram_user_id} className="flex items-start gap-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={row.enabled && !locked}
+                        disabled={locked || savingId === row.telegram_user_id}
+                        onChange={(e) => void onToggleRecipient(row, e.target.checked)}
+                        className="mt-1 size-4 shrink-0 accent-primary disabled:opacity-40"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-x-2 text-sm">
+                          <span className="truncate font-medium">
+                            {row.display_name ?? `ID ${row.telegram_user_id}`}
+                          </span>
+                          {row.username ? (
+                            <span className="text-muted-foreground">@{row.username}</span>
+                          ) : null}
+                          {row.is_bot ? (
+                            <span className="rounded border border-border px-1 text-[10px] uppercase text-muted-foreground">
+                              бот
+                            </span>
+                          ) : null}
+                          {row.is_self ? (
+                            <span className="rounded border border-border px-1 text-[10px] uppercase text-muted-foreground">
+                              цей акаунт
+                            </span>
+                          ) : null}
+                          {row.is_deleted ? (
+                            <span className="rounded border border-border px-1 text-[10px] uppercase text-muted-foreground">
+                              видалений
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{row.telegram_user_id}</div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+          </>
         )}
       </main>
     </div>
