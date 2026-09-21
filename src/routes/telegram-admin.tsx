@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import {
   checkTelegramAdminSession,
+  sendTelegramBroadcastFn,
   listTelegramRecipientsFn,
   loginTelegramAdmin,
   sendTelegramAdminTest,
@@ -47,6 +48,7 @@ function TelegramAdminPage() {
   const login = useServerFn(loginTelegramAdmin);
   const check = useServerFn(checkTelegramAdminSession);
   const sendTest = useServerFn(sendTelegramAdminTest);
+  const sendBroadcast = useServerFn(sendTelegramBroadcastFn);
   const syncRecipients = useServerFn(syncTelegramRecipientsFn);
   const listRecipients = useServerFn(listTelegramRecipientsFn);
   const setRecipientEnabled = useServerFn(setTelegramRecipientEnabledFn);
@@ -57,6 +59,11 @@ function TelegramAdminPage() {
   const [savingId, setSavingId] = useState<number | null>(null);
   const [recipient, setRecipient] = useState("");
   const [sending, setSending] = useState(false);
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [failures, setFailures] = useState<
+    { telegramUserId?: number; username?: string | null; error: string }[]
+  >([]);
 
 
   const [authed, setAuthed] = useState(false);
@@ -110,6 +117,34 @@ function TelegramAdminPage() {
       setResult("Не вдалося надіслати тестове повідомлення.");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function onBroadcast() {
+    const token = sessionStorage.getItem(SESSION_KEY);
+    if (!token) {
+      setAuthed(false);
+      return;
+    }
+    setConfirmOpen(false);
+    setBroadcasting(true);
+    setFailures([]);
+    setResult("Відправлення…");
+    try {
+      const res = await sendBroadcast({ data: { token, message } });
+      const total = res.attempted || res.sent + res.failed;
+      if (res.ok) {
+        setResult(`Надіслано: ${res.sent} із ${total}`);
+      } else if (res.sent > 0) {
+        setResult(`Надіслано: ${res.sent} із ${total}. Помилок: ${res.failed}`);
+      } else {
+        setResult(res.error ?? "Не вдалося надіслати.");
+      }
+      if (res.failures && res.failures.length > 0) setFailures(res.failures);
+    } catch {
+      setResult("Не вдалося виконати розсилку.");
+    } finally {
+      setBroadcasting(false);
     }
   }
 
@@ -268,18 +303,76 @@ function TelegramAdminPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setResult("Масова розсилка ще не підключена.")}
-                className="flex-1 rounded-lg border border-border bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
+                onClick={() => setConfirmOpen(true)}
+                disabled={broadcasting || message.trim().length === 0 || eligibleCount === 0}
+                title={eligibleCount === 0 ? "Немає вибраних отримувачів" : undefined}
+                className="flex-1 rounded-lg border border-border bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20 disabled:opacity-50"
               >
-                Надіслати всім
+                {broadcasting
+                  ? "Відправлення…"
+                  : eligibleCount === 0
+                    ? "Немає вибраних отримувачів"
+                    : "Надіслати всім"}
               </button>
             </div>
 
+            {eligibleCount === 0 ? (
+              <p className="text-xs text-muted-foreground">Немає вибраних отримувачів.</p>
+            ) : null}
 
             <div className="min-h-10 rounded-lg border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
               {result ?? "Результат відправки з'явиться тут."}
+              {failures.length > 0 ? (
+                <ul className="mt-2 flex flex-col gap-1 text-xs">
+                  {failures.slice(0, 10).map((f, i) => (
+                    <li key={i} className="truncate">
+                      {f.username ? `@${f.username}` : `ID ${f.telegramUserId ?? "?"}`} — {f.error}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           </div>
+
+          {confirmOpen ? (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4"
+              onClick={() => !broadcasting && setConfirmOpen(false)}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                className="w-full max-w-sm rounded-xl border border-border bg-card p-4 shadow-lg"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 className="text-sm font-semibold">
+                  Надіслати повідомлення всім вибраним учасникам?
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">Отримувачів: {eligibleCount}</p>
+                <p className="mt-2 max-h-32 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+                  {message.trim().slice(0, 500)}
+                </p>
+                <div className="mt-4 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmOpen(false)}
+                    disabled={broadcasting}
+                    className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium transition hover:bg-primary/10 disabled:opacity-50"
+                  >
+                    Скасувати
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void onBroadcast()}
+                    disabled={broadcasting}
+                    className="flex-1 rounded-lg border border-border bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20 disabled:opacity-50"
+                  >
+                    {broadcasting ? "Відправлення…" : "Так, надіслати"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <section className="mt-4 flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
