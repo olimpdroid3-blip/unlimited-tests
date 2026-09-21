@@ -280,6 +280,84 @@ function TelegramAdminPage() {
               {result ?? "Результат відправки з'явиться тут."}
             </div>
           </div>
+
+          <section className="mt-4 flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold">Учасники групи</h2>
+              <button
+                type="button"
+                onClick={() => void onSync()}
+                disabled={syncing}
+                className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium transition hover:border-primary/50 hover:bg-primary/10 disabled:opacity-50"
+              >
+                {syncing ? "Оновлення…" : "Оновити учасників"}
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span>У групі: {recipients.length}</span>
+              <span>Для розсилки: {eligibleCount}</span>
+              {syncStatus ? <span>{syncStatus}</span> : null}
+            </div>
+
+            <input
+              type="search"
+              placeholder="Пошук за ім'ям або @username"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary/60"
+            />
+
+            {visibleRecipients.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Список порожній. Натисніть «Оновити учасників».
+              </p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-border">
+                {visibleRecipients.map((row) => {
+                  const locked = !isEligible(row);
+                  return (
+                    <li key={row.telegram_user_id} className="flex items-start gap-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={row.enabled && !locked}
+                        disabled={locked || savingId === row.telegram_user_id}
+                        onChange={(e) => void onToggleRecipient(row, e.target.checked)}
+                        className="mt-1 size-4 shrink-0 accent-primary disabled:opacity-40"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-x-2 text-sm">
+                          <span className="truncate font-medium">
+                            {row.display_name ?? `ID ${row.telegram_user_id}`}
+                          </span>
+                          {row.username ? (
+                            <span className="text-muted-foreground">@{row.username}</span>
+                          ) : null}
+                          {row.is_bot ? (
+                            <span className="rounded border border-border px-1 text-[10px] uppercase text-muted-foreground">
+                              бот
+                            </span>
+                          ) : null}
+                          {row.is_self ? (
+                            <span className="rounded border border-border px-1 text-[10px] uppercase text-muted-foreground">
+                              цей акаунт
+                            </span>
+                          ) : null}
+                          {row.is_deleted ? (
+                            <span className="rounded border border-border px-1 text-[10px] uppercase text-muted-foreground">
+                              видалений
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{row.telegram_user_id}</div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+          </>
         )}
       </main>
     </div>
