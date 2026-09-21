@@ -59,6 +59,11 @@ function TelegramAdminPage() {
   const [savingId, setSavingId] = useState<number | null>(null);
   const [recipient, setRecipient] = useState("");
   const [sending, setSending] = useState(false);
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [failures, setFailures] = useState<
+    { telegramUserId?: number; username?: string | null; error: string }[]
+  >([]);
 
 
   const [authed, setAuthed] = useState(false);
