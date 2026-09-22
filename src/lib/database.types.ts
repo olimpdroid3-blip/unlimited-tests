@@ -364,6 +364,7 @@ export type Database = {
           placed: boolean;
           testing: boolean;
           destroyed: boolean;
+          do_not_attack: boolean;
           removed: boolean;
           previous_nickname: string | null;
           participants: Json | null;
@@ -380,6 +381,7 @@ export type Database = {
           placed?: boolean;
           testing?: boolean;
           destroyed?: boolean;
+          do_not_attack?: boolean;
           removed?: boolean;
           previous_nickname?: string | null;
           participants?: Json | null;
@@ -396,6 +398,7 @@ export type Database = {
           placed?: boolean;
           testing?: boolean;
           destroyed?: boolean;
+          do_not_attack?: boolean;
           removed?: boolean;
           previous_nickname?: string | null;
           participants?: Json | null;
@@ -416,6 +419,7 @@ export type Database = {
           placed: boolean;
           testing: boolean;
           destroyed: boolean;
+          do_not_attack: boolean;
           removed: boolean;
           previous_nickname: string | null;
           defense_variant: number | null;
@@ -434,6 +438,7 @@ export type Database = {
           placed?: boolean;
           testing?: boolean;
           destroyed?: boolean;
+          do_not_attack?: boolean;
           removed?: boolean;
           previous_nickname?: string | null;
           defense_variant?: number | null;
@@ -452,6 +457,7 @@ export type Database = {
           placed?: boolean;
           testing?: boolean;
           destroyed?: boolean;
+          do_not_attack?: boolean;
           removed?: boolean;
           previous_nickname?: string | null;
           defense_variant?: number | null;

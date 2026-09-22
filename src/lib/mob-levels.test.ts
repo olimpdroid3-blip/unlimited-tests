@@ -607,3 +607,43 @@ test("returns only changed mob classifications", () => {
     [{ id: "mob-2", mobType: "demon-captain", rarity: null }],
   );
 });
+
+test("ranks all players by the selected mob level, with missing levels last and ties by nickname", async () => {
+  const { resolveMobPlayers } = await import("./mob-levels.ts");
+  const players = [
+    { id: "missing", nickname: "Андрій" },
+    { id: "low", nickname: "Богдан" },
+    { id: "high-b", nickname: "Ярослав" },
+    { id: "high-a", nickname: "Василь" },
+  ];
+  const levels = [
+    { playerId: "low", mobId: "mob-1", level: 2, updatedAt: "" },
+    { playerId: "high-b", mobId: "mob-1", level: 10, updatedAt: "" },
+    { playerId: "high-a", mobId: "mob-1", level: 10, updatedAt: "" },
+    { playerId: "missing", mobId: "mob-2", level: 30, updatedAt: "" },
+    { playerId: "deleted", mobId: "mob-1", level: 30, updatedAt: "" },
+  ];
+  assert.deepEqual(resolveMobPlayers(players, levels, "mob-1"), [
+    { id: "high-a", nickname: "Василь", level: 10 },
+    { id: "high-b", nickname: "Ярослав", level: 10 },
+    { id: "low", nickname: "Богдан", level: 2 },
+    { id: "missing", nickname: "Андрій", level: null },
+  ]);
+  assert.equal(players[0].id, "missing");
+  assert.deepEqual(resolveMobPlayers([], levels, "mob-1"), []);
+  assert.ok(resolveMobPlayers(players, [], "mob-1").every(({ level }) => level === null));
+});
+
+test("local mob lookup includes saved levels and respects removals", async () => {
+  const repository = createLocalStorageMobLevelsRepository(createMemoryStorage());
+  await repository.upsertMany([
+    { playerId: "p1", mobId: "m1", level: 5 },
+    { playerId: "p2", mobId: "m1", level: 9 },
+    { playerId: "p1", mobId: "m2", level: 30 },
+  ]);
+  await repository.remove("p1", "m1");
+  assert.deepEqual(
+    (await repository.getByMob("m1")).map(({ playerId, level }) => ({ playerId, level })),
+    [{ playerId: "p2", level: 9 }],
+  );
+});

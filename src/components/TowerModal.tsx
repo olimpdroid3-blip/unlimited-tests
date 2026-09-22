@@ -1,13 +1,21 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useState } from "react";
+import { ChevronDown, Settings2, X } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/db";
 import { toast } from "sonner";
-import { normalizeParticipants, type TowerParticipant } from "@/lib/tower-participants";
+import {
+  normalizeParticipants,
+  getTowerOwnerIndex,
+  type TowerGroup,
+  type TowerParticipant,
+} from "@/lib/tower-participants";
 import { TowerParticipantsEditor } from "@/components/TowerParticipantsEditor";
 import { notifyTower, dropTowerRequest, markTowerWebOrigin } from "@/lib/tower-notify.functions";
 import { fileToDataUrl, uploadScreenshot } from "@/lib/screenshot-upload";
 import { HeroPicker, type HeroOption } from "@/components/HeroPicker";
+import { PlayerSelectField } from "@/components/PlayerSelectField";
 import { MobPicker } from "@/components/MobPicker";
 import { getDefenseMobSelection } from "@/lib/defenses";
 import { mobCatalogRepository } from "@/lib/mob-levels-ui";
@@ -31,6 +39,7 @@ type Tower = {
   testing?: boolean | null;
   destroyed?: boolean | null;
   removed?: boolean | null;
+  do_not_attack?: boolean | null;
   previous_nickname?: string | null;
   screenshot_url?: string | null;
   screenshot_path?: string | null;
@@ -46,7 +55,7 @@ export function TowerModal({
   onVariantChanged,
   group,
 }: {
-  group: { towerIds: string[]; placedTowerIds: string[]; participants: TowerParticipant[] };
+  group: TowerGroup;
   towerId: string | null;
   open: boolean;
   existing: Tower | undefined;
@@ -70,9 +79,36 @@ export function TowerModal({
   const [runCode, setRunCode] = useState("");
   const [heroSlots, setHeroSlots] = useState<Array<string | null>>([null, null, null, null, null]);
   const [mobSlots, setMobSlots] = useState<Array<string | null>>([null, null, null, null, null]);
+  const [defensePlayerId, setDefensePlayerId] = useState<string | undefined>();
   const [savingDefense, setSavingDefense] = useState(false);
   const [sendingTg, setSendingTg] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    setSettingsOpen(false);
+  }, [open, towerId]);
+
+  const playersQuery = useQuery({
+    queryKey: ["nickname-options"],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("battle_power")
+        .select("id,nickname")
+        .order("nickname");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const matchingPlayers = (playersQuery.data ?? []).filter(
+    (player) => player.nickname.trim().toLowerCase() === nickname.trim().toLowerCase(),
+  );
+  const selectedDefensePlayerId =
+    defensePlayerId ?? (matchingPlayers.length === 1 ? matchingPlayers[0].id : undefined);
+  useEffect(() => {
+    setDefensePlayerId(undefined);
+  }, [open, towerId, nickname]);
 
   const { data: heroes = [] } = useQuery({
     queryKey: ["heroes"],
@@ -109,14 +145,15 @@ export function TowerModal({
 
   const groupKey = JSON.stringify(group.participants);
   const groupIdsKey = JSON.stringify(group.towerIds);
+  const savedOwner = existing?.nickname || existing?.previous_nickname;
   const participantsDirty = JSON.stringify(participants) !== groupKey;
   useEffect(() => {
     if (!open) return;
     const saved = JSON.parse(groupKey) as TowerParticipant[];
     setParticipants(saved);
-    setSelectedParticipant(0);
+    setSelectedParticipant(getTowerOwnerIndex(saved, { nickname: savedOwner }));
     // Status refetches must not discard unsaved participant edits.
-  }, [open, towerId, groupKey, groupIdsKey]);
+  }, [open, towerId, groupKey, groupIdsKey, savedOwner]);
 
   useEffect(() => {
     if (lightboxOpen) {
@@ -203,21 +240,12 @@ export function TowerModal({
   const handleSaveDefense = async () => {
     if (chosenHeroes.length < 1) return toast.error("Оберіть хоча б одного героя");
     if (!selectedMobIds) return toast.error("Оберіть від 2 до 5 мобів без пропусків");
-    const nick = nickname.trim();
-    if (!nick) return toast.error("Спочатку вкажіть нік");
+    if (!selectedDefensePlayerId) return toast.error("Оберіть гравця зі списку БС для проходки");
     setSavingDefense(true);
     try {
-      const { data: player, error: playerError } = await supabase
-        .from("battle_power")
-        .select("id")
-        .ilike("nickname", nick)
-        .maybeSingle();
-      if (playerError) throw playerError;
-      if (!player) return toast.error("Гравця не знайдено. Перевірте нік у списку БС");
-
       // Reuse the already-saved tower screenshot, or upload the freshly picked file.
       let url = screenshotUrl;
-      if (!url && screenshotFile) {
+      if (screenshotFile) {
         url = (await uploadScreenshot("defense-screenshots", screenshotFile, "tower")).url;
         setScreenshotUrl(url);
       }
@@ -225,7 +253,7 @@ export function TowerModal({
       const { error } = await supabase.rpc("create_defense_with_details", {
         p_screenshot_url: url,
         p_run_code: runCode.trim() || null,
-        p_player_id: player.id,
+        p_player_id: selectedDefensePlayerId,
         p_comment: `Вежа ${towerId}${notes.trim() ? ` — ${notes.trim()}` : ""}`,
         p_hero_ids: chosenHeroes,
         p_mob_ids: selectedMobIds,
@@ -294,10 +322,20 @@ export function TowerModal({
           }}
           className={`fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2 duration-200 ${lightboxOpen ? "pointer-events-none" : ""}`}
         >
-          <div className="flex items-start justify-between gap-2">
+          <div className="sticky -top-5 z-20 -mx-5 -mt-5 flex items-center justify-between gap-2 border-b border-border bg-card px-5 py-3">
             <Dialog.Title className="text-lg font-semibold text-foreground">
               🏰 Башня {towerId}
             </Dialog.Title>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                aria-label="Закрити модалку"
+                title="Закрити"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </Dialog.Close>
           </div>
           <Dialog.Description className="sr-only">Редагування вежі {towerId}</Dialog.Description>
 
@@ -306,21 +344,23 @@ export function TowerModal({
               <legend className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Позначки дефу
               </legend>
-              {(["breached", "testing", "destroyed", "removed"] as const).map((flag) => (
-                <label key={flag} className="flex cursor-pointer items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={status[flag]}
-                    disabled={busy}
-                    onChange={(event) => void changeStatus(flag, event.target.checked)}
-                    className="h-4 w-4 accent-primary"
-                  />
-                  {TOWER_STATUS_LABELS[flag]}
-                </label>
-              ))}
+              {(["breached", "testing", "destroyed", "removed", "do_not_attack"] as const).map(
+                (flag) => (
+                  <label key={flag} className="flex cursor-pointer items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={status[flag]}
+                      disabled={busy}
+                      onChange={(event) => void changeStatus(flag, event.target.checked)}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    {TOWER_STATUS_LABELS[flag]}
+                  </label>
+                ),
+              )}
               <p className="text-xs text-muted-foreground">
-                Можна вибрати кілька. Позначки зберігаються одразу. «Знищений» також означає
-                «Пробитий». «Зберегти» залишає позначку «Знятий».
+                Можна вибрати кілька. Позначки зберігаються одразу. «Пробитий» і «Знищений»
+                взаємовиключні. «Зберегти» залишає позначку «Знятий».
               </p>
             </fieldset>
             {status.removed && (
@@ -337,12 +377,6 @@ export function TowerModal({
                 </button>
               </div>
             )}
-            <TowerDefenseVariantSelect
-              towerId={towerId}
-              value={defenseVariant}
-              onChanged={onVariantChanged}
-              disabled={busy || participantsDirty}
-            />
             {group.towerIds.length > 1 && (
               <p className="text-sm text-muted-foreground">
                 Спільні ніки та коментарі для комірок: {group.towerIds.join(", ")}
@@ -352,6 +386,27 @@ export function TowerModal({
               <p className="text-sm text-muted-foreground">
                 Цей деф виставлено: {group.placedTowerIds.join(", ")}
               </p>
+            )}
+            {group.activeParticipants.length > 0 && (
+              <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+                <p className="font-semibold">Зараз виставлено у</p>
+                <p>{group.activeParticipants.map((entry) => entry.nickname).join(", ")}</p>
+              </div>
+            )}
+            {group.previousParticipants.length > 0 && (
+              <div className="rounded-lg border border-border bg-secondary p-3 text-sm">
+                <p className="mb-2 font-semibold">У кого був цей деф</p>
+                <ul className="space-y-2">
+                  {group.previousParticipants.map((entry) => (
+                    <li key={entry.nickname}>
+                      <strong>{entry.nickname}</strong>
+                      {entry.comment && (
+                        <p className="whitespace-pre-wrap text-muted-foreground">{entry.comment}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
             <TowerParticipantsEditor
               value={participants}
@@ -374,7 +429,7 @@ export function TowerModal({
               </p>
             )}
             {participants.length > 1 && (
-              <Field label="Нік для проходки та Telegram">
+              <Field label="У кого виставлено деф у цій комірці">
                 <select
                   value={selectedParticipant}
                   onChange={(event) => setSelectedParticipant(Number(event.target.value))}
@@ -386,6 +441,10 @@ export function TowerModal({
                     </option>
                   ))}
                 </select>
+                <p className="text-xs text-muted-foreground">
+                  Цей нік зберігається як власник розстановки та використовується для проходки й
+                  Telegram.
+                </p>
               </Field>
             )}
             <Field label="Пробуди">
@@ -445,62 +504,113 @@ export function TowerModal({
             </Field>
           </div>
 
-          {(status.breached || status.destroyed) && (
-            <div className="mt-4 space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-3">
-              <div className="text-xs font-semibold uppercase tracking-wider text-primary">
-                🛡 Додати до бази захистів
-              </div>
-              <input
-                value={runCode}
-                onChange={(e) => setRunCode(e.target.value)}
-                className="w-full rounded-lg border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary"
-                placeholder="Код проходки <GVG>...</GVG>"
-              />
-              <div className="space-y-2">
-                {heroSlots.map((value, index) => (
-                  <HeroPicker
-                    key={index}
-                    heroes={heroes}
-                    value={value}
-                    placeholder={`Герой ${index + 1}`}
-                    excludeIds={heroSlots.filter((v, i): v is string => !!v && i !== index)}
-                    onChange={(id) =>
-                      setHeroSlots((prev) => prev.map((v, i) => (i === index ? id : v)))
-                    }
-                  />
-                ))}
-              </div>
-              <div className="space-y-2">
-                {mobSlots.map((value, index) => (
-                  <div key={index} className="flex flex-col gap-1.5">
-                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Моб {index + 1}
-                      {index < 2 && <span className="ml-1 text-destructive">*</span>}
-                    </span>
-                    <MobPicker
-                      mobs={mobs}
-                      value={value}
-                      placeholder={`Оберіть моба ${index + 1}`}
-                      excludeIds={chosenMobs}
-                      onChange={(id) =>
-                        setMobSlots((prev) => prev.map((v, i) => (i === index ? id : v)))
-                      }
-                    />
-                  </div>
-                ))}
-              </div>
+          <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen} className="mt-4">
+            <CollapsibleTrigger asChild>
               <button
                 type="button"
-                disabled={
-                  savingDefense || chosenHeroes.length === 0 || !selectedMobIds || !nickname.trim()
-                }
-                onClick={handleSaveDefense}
-                className="w-full rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
+                className="flex w-full items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm font-medium text-secondary-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                💾 Зберегти код проходки
+                <Settings2 className="h-4 w-4" aria-hidden="true" />
+                Додаткові налаштування
+                <ChevronDown
+                  className={`ml-auto h-4 w-4 transition-transform ${settingsOpen ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                />
               </button>
-            </div>
-          )}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3">
+              <TowerDefenseVariantSelect
+                towerId={towerId}
+                value={defenseVariant}
+                onChanged={onVariantChanged}
+                disabled={busy || participantsDirty}
+              />
+              {(status.breached || status.destroyed) && (
+                <div className="mt-4 space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-primary">
+                    🛡 Додати до бази захистів
+                  </div>
+                  <input
+                    value={runCode}
+                    onChange={(e) => setRunCode(e.target.value)}
+                    className="w-full rounded-lg border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary"
+                    placeholder="Код проходки <GVG>...</GVG>"
+                  />
+                  <PlayerSelectField
+                    id="tower-defense-player"
+                    value={selectedDefensePlayerId}
+                    players={playersQuery.data ?? []}
+                    disabled={savingDefense || playersQuery.isLoading}
+                    onValueChange={setDefensePlayerId}
+                  />
+                  {playersQuery.isError ? (
+                    <button
+                      type="button"
+                      onClick={() => void playersQuery.refetch()}
+                      className="text-sm text-destructive underline"
+                    >
+                      Не вдалося завантажити гравців. Повторити
+                    </button>
+                  ) : !selectedDefensePlayerId && !playersQuery.isLoading ? (
+                    <p className="text-xs text-muted-foreground">
+                      Оберіть гравця з бази БС. Вибір для проходки не змінює власника вежі.
+                    </p>
+                  ) : null}
+                  <div className="space-y-2">
+                    {heroSlots.map((value, index) => (
+                      <HeroPicker
+                        key={index}
+                        heroes={heroes}
+                        value={value}
+                        placeholder={`Герой ${index + 1}`}
+                        excludeIds={heroSlots.filter((v, i): v is string => !!v && i !== index)}
+                        onChange={(id) =>
+                          setHeroSlots((prev) => prev.map((v, i) => (i === index ? id : v)))
+                        }
+                      />
+                    ))}
+                  </div>
+                  <div className="space-y-2">
+                    {mobSlots.map((value, index) => (
+                      <div key={index} className="flex flex-col gap-1.5">
+                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          Моб {index + 1}
+                          {index < 2 && <span className="ml-1 text-destructive">*</span>}
+                        </span>
+                        <MobPicker
+                          mobs={mobs}
+                          value={value}
+                          placeholder={`Оберіть моба ${index + 1}`}
+                          excludeIds={chosenMobs}
+                          onChange={(id) =>
+                            setMobSlots((prev) => prev.map((v, i) => (i === index ? id : v)))
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={
+                      savingDefense ||
+                      chosenHeroes.length === 0 ||
+                      !selectedMobIds ||
+                      !selectedDefensePlayerId
+                    }
+                    onClick={handleSaveDefense}
+                    className="w-full rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
+                  >
+                    {savingDefense ? "Збереження…" : "💾 Зберегти код проходки"}
+                  </button>
+                  {(chosenHeroes.length === 0 || !selectedMobIds) && (
+                    <p className="text-xs text-muted-foreground">
+                      Для збереження оберіть хоча б одного героя та від 2 до 5 мобів без пропусків.
+                    </p>
+                  )}
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
 
           {confirmDelete ? (
             <div className="mt-5 rounded-lg border border-destructive/40 bg-destructive/10 p-3">

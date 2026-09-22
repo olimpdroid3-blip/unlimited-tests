@@ -30,6 +30,7 @@ type Row = {
   testing?: boolean | null;
   destroyed?: boolean | null;
   removed?: boolean | null;
+  do_not_attack?: boolean | null;
   breached?: boolean | null;
   previous_nickname?: string | null;
   archived_at: string;

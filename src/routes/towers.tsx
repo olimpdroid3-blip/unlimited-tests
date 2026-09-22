@@ -9,7 +9,12 @@ import { TowerModal } from "@/components/TowerModal";
 import { MirrorOrderModal } from "@/components/MirrorOrderModal";
 import { isMirrorRow, MIRROR_PREFIX, VALID_TOWER_IDS } from "@/lib/mirror-order";
 import * as Dialog from "@radix-ui/react-dialog";
-import { getTowerStatusFlags, getTowerStatuses, TOWER_STATUS_LABELS } from "@/lib/tower-status";
+import {
+  getTowerCardStatusFlags,
+  getTowerStatusFlags,
+  getTowerStatuses,
+  TOWER_STATUS_LABELS,
+} from "@/lib/tower-status";
 
 export const Route = createFileRoute("/towers")({
   head: () => ({
@@ -34,18 +39,11 @@ type Tower = {
   testing?: boolean | null;
   destroyed?: boolean | null;
   removed?: boolean | null;
+  do_not_attack?: boolean | null;
   previous_nickname?: string | null;
   screenshot_url?: string | null;
   screenshot_path?: string | null;
 };
-
-const COMPACT_STATUS_LABELS = {
-  placed: "Вист.",
-  breached: "Проб.",
-  testing: "Тест",
-  destroyed: "Знищ.",
-  removed: "Знятий",
-} as const;
 
 const COLUMNS = [
   { num: 1, label: "I", color: "text-col-i" },
@@ -120,7 +118,7 @@ function HomePage() {
   const map = new Map(realTowers.map((t) => [t.tower_id, t]));
   const selectedGroup = selected
     ? getTowerGroup(selected, realTowers, variants)
-    : { towerIds: [], placedTowerIds: [], participants: [] };
+    : getTowerGroup("", [], []);
   const existing = selected ? map.get(selected) : undefined;
 
   const openTower = (id: string) => {
@@ -224,8 +222,19 @@ function HomePage() {
                       const tower = map.get(id);
                       const variant = variantsByTower.get(id);
                       const group = getTowerGroup(id, realTowers, variants);
-                      const status = getTowerStatusFlags(tower);
-                      const statuses = getTowerStatuses(tower);
+                      const status = getTowerCardStatusFlags(
+                        tower,
+                        group.placedTowerIds.length > 0,
+                        group.placedTowerIds.includes(id),
+                      );
+                      const destroyedWithoutCopies =
+                        status.destroyed && group.towerIds.length === 1;
+                      const hideDetails = status.do_not_attack || destroyedWithoutCopies;
+                      const statuses = getTowerStatuses(status).filter((flag) => {
+                        if (status.do_not_attack) return flag === "do_not_attack";
+                        if (destroyedWithoutCopies) return flag === "destroyed";
+                        return true;
+                      });
                       const active = status.placed;
                       const breached = status.breached;
                       const mirror = mirrorRequested.has(id);
@@ -235,21 +244,23 @@ function HomePage() {
                           onClick={() => openTower(id)}
                           aria-label={[
                             id,
-                            variant != null ? `К${variant}` : null,
+                            !hideDetails && variant != null ? `К${variant}` : null,
                             ...statuses.map((flag) => TOWER_STATUS_LABELS[flag]),
-                            status.removed
-                              ? `Був: ${tower?.previous_nickname || "нік не вказаний"}`
-                              : null,
+                            ...(hideDetails
+                              ? []
+                              : group.activeParticipants.map(
+                                  (participant) => participant.nickname,
+                                )),
                           ]
                             .filter(Boolean)
                             .join(" ")}
                           className={[
-                            "relative grid min-h-14 min-w-0 grid-cols-1 grid-rows-[1rem_1.25rem_auto] content-start items-start gap-1 rounded-md px-1.5 py-1.5 text-left text-xs font-semibold transition-colors duration-200 active:scale-95 sm:min-h-16 sm:grid-rows-[1.25rem_1.25rem_auto_auto] sm:rounded-lg sm:px-3 sm:text-sm",
+                            "relative isolate overflow-hidden [&>span]:relative [&>span]:z-10 grid min-h-14 min-w-0 grid-cols-1 grid-rows-[1rem_1.25rem_auto] content-start items-start gap-1 rounded-md px-1.5 py-1.5 text-left text-xs font-semibold transition-colors duration-200 active:scale-95 sm:min-h-16 sm:grid-rows-[1.25rem_1.25rem_auto_auto] sm:rounded-lg sm:px-3 sm:text-sm",
                             "border",
-                            status.removed
-                              ? "border-dashed border-violet-500 bg-violet-50 text-violet-950 dark:border-violet-400 dark:bg-violet-950 dark:text-violet-100"
+                            status.do_not_attack
+                              ? "border-red-700 bg-red-700 text-white"
                               : status.destroyed
-                                ? "border-red-700 bg-red-700 text-white"
+                                ? "border-border bg-tower-idle text-tower-idle-text hover:text-foreground"
                                 : status.testing
                                   ? "border-blue-700 bg-blue-700 text-white"
                                   : breached
@@ -261,6 +272,22 @@ function HomePage() {
                                         : "border-border bg-tower-idle text-tower-idle-text hover:text-foreground",
                           ].join(" ")}
                         >
+                          {!status.do_not_attack && status.destroyed && (
+                            <svg
+                              aria-hidden="true"
+                              viewBox="0 0 100 100"
+                              preserveAspectRatio="none"
+                              className="pointer-events-none absolute inset-0 z-0 h-full w-full text-red-500/50"
+                            >
+                              <path
+                                d="M0 0L100 100M100 0L0 100"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                vectorEffect="non-scaling-stroke"
+                              />
+                            </svg>
+                          )}
                           <span className="flex items-center gap-1 sm:gap-2">
                             <span className="hidden h-2 w-2 shrink-0 rounded-full bg-current opacity-70 sm:block" />
                             <span className="whitespace-nowrap font-mono leading-4 sm:tracking-wide">
@@ -268,7 +295,7 @@ function HomePage() {
                             </span>
                           </span>
                           <span className="flex h-5 items-start">
-                            {variant != null && (
+                            {!hideDetails && variant != null && (
                               <span
                                 title={`Варіант дефу К${variant}`}
                                 className="whitespace-nowrap rounded border border-current/30 px-1 font-mono text-[10px] font-bold leading-4 sm:px-1.5 sm:text-xs"
@@ -283,24 +310,23 @@ function HomePage() {
                                 key={flag}
                                 title={TOWER_STATUS_LABELS[flag]}
                                 className={[
-                                  "max-w-full rounded text-[9px] leading-3 sm:px-1 sm:py-0.5 sm:text-xs",
-                                  flag === "breached"
-                                    ? "border border-emerald-400 bg-emerald-700 px-0.5 py-0.5 text-white"
-                                    : flag === "removed"
-                                      ? "border border-violet-400 bg-violet-700 px-0.5 py-0.5 text-white"
-                                      : "sm:border sm:border-current/30",
+                                  "max-w-full break-words rounded text-center text-[9px] leading-3 sm:px-1 sm:py-0.5 sm:text-xs",
+                                  flag === "do_not_attack"
+                                    ? "border border-red-300 bg-red-800 px-0.5 py-0.5 text-white"
+                                    : flag === "breached"
+                                      ? "border border-emerald-400 bg-emerald-700 px-0.5 py-0.5 text-white"
+                                      : flag === "removed"
+                                        ? "border border-violet-400 bg-violet-700 px-0.5 py-0.5 text-white"
+                                        : "sm:border sm:border-current/30",
                                 ].join(" ")}
                               >
-                                <span className="sm:hidden">{COMPACT_STATUS_LABELS[flag]}</span>
-                                <span className="hidden sm:inline">
-                                  {TOWER_STATUS_LABELS[flag]}
-                                </span>
+                                {TOWER_STATUS_LABELS[flag]}
                               </span>
                             ))}
                           </span>
-                          {group.participants.length > 0 && (
+                          {!hideDetails && group.activeParticipants.length > 0 && (
                             <span className="space-y-1 text-[10px] font-normal leading-tight sm:text-xs [overflow-wrap:anywhere]">
-                              {group.participants.map((participant) => (
+                              {group.activeParticipants.map((participant) => (
                                 <span
                                   key={participant.nickname}
                                   className="block"
@@ -308,7 +334,7 @@ function HomePage() {
                                 >
                                   <strong>{participant.nickname}</strong>
                                   {participant.comment && (
-                                    <span className="block whitespace-pre-wrap opacity-80">
+                                    <span className="hidden whitespace-pre-wrap opacity-80 sm:block">
                                       {participant.comment}
                                     </span>
                                   )}
@@ -316,22 +342,16 @@ function HomePage() {
                               ))}
                             </span>
                           )}
-                          {group.towerIds.length > 1 && group.placedTowerIds.length > 0 && (
-                            <span className="text-[9px] font-normal sm:text-xs [overflow-wrap:anywhere]">
-                              Виставлено: {group.placedTowerIds.join(", ")}
-                            </span>
-                          )}
-                          {group.towerIds.length > 1 && (
-                            <span className="text-[9px] font-normal sm:text-xs [overflow-wrap:anywhere]">
+                          {!hideDetails &&
+                            group.towerIds.length > 1 &&
+                            group.placedTowerIds.length > 0 && (
+                              <span className="hidden text-[9px] font-normal sm:block sm:text-xs [overflow-wrap:anywhere]">
+                                Виставлено: {group.placedTowerIds.join(", ")}
+                              </span>
+                            )}
+                          {!hideDetails && group.towerIds.length > 1 && (
+                            <span className="hidden text-[9px] font-normal sm:block sm:text-xs [overflow-wrap:anywhere]">
                               Комірки: {group.towerIds.join(", ")}
-                            </span>
-                          )}
-                          {status.removed && (
-                            <span
-                              title={`Був: ${tower?.previous_nickname || "нік не вказаний"}`}
-                              className="hidden text-xs font-normal leading-tight xl:block [overflow-wrap:anywhere]"
-                            >
-                              Був: {tower?.previous_nickname || "нік не вказаний"}
                             </span>
                           )}
                         </button>

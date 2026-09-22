@@ -224,7 +224,9 @@ export async function upsertPlacedTower(
 
   const { data: existing } = await supabaseAdmin
     .from("towers")
-    .select("placed, breached, testing, destroyed, removed, nickname, previous_nickname, notes")
+    .select(
+      "placed, breached, testing, destroyed, removed, do_not_attack, nickname, previous_nickname, notes",
+    )
     .eq("tower_id", towerId)
     .maybeSingle();
 
@@ -284,7 +286,9 @@ export async function markPlacedTowerBreached(
 ): Promise<{ ok: boolean; existed: boolean; error?: string }> {
   const { data: existing, error: readError } = await supabaseAdmin
     .from("towers")
-    .select("placed, breached, testing, destroyed, removed, nickname, previous_nickname")
+    .select(
+      "placed, breached, testing, destroyed, removed, do_not_attack, nickname, previous_nickname",
+    )
     .eq("tower_id", towerId)
     .maybeSingle();
   if (readError) return { ok: false, existed: false, error: readError.message };

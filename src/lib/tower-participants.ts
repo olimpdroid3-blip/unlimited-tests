@@ -7,6 +7,7 @@ type ParticipantTower = {
   participants?: unknown;
   placed?: boolean | null;
   removed?: boolean | null;
+  destroyed?: boolean | null;
 };
 type Variant = { tower_id: string; variant: number };
 
@@ -57,15 +58,45 @@ export function getTowerGroup(
           .filter((entry) => entry.variant === variant)
           .map((entry) => entry.tower_id)
           .sort();
+  const groupTowers = towerIds.flatMap((id) => towers.filter((tower) => tower.tower_id === id));
+  const activeTowers = groupTowers.filter((tower) => tower.placed && !tower.removed);
+  const participants = normalizeParticipants(groupTowers.flatMap(readTowerParticipants));
+  // The shared participant list contains history, not the current owner of each cell.
+  const activeParticipants = normalizeParticipants(
+    activeTowers.flatMap((tower) => {
+      const nickname = tower.nickname?.trim();
+      if (!nickname) return [];
+      const participant = readTowerParticipants(tower).find((entry) => entry.nickname === nickname);
+      return [{ nickname, comment: participant?.comment ?? tower.notes ?? "" }];
+    }),
+  );
+  const activeNames = new Set(activeParticipants.map((entry) => entry.nickname));
+  const previousParticipants = normalizeParticipants([
+    ...participants,
+    ...groupTowers.flatMap((tower) => {
+      const nickname =
+        tower.previous_nickname || (!activeTowers.includes(tower) ? tower.nickname : null);
+      return nickname ? [{ nickname, comment: tower.notes ?? "" }] : [];
+    }),
+  ]).filter((entry) => !activeNames.has(entry.nickname));
   return {
     towerIds,
-    placedTowerIds: towerIds.filter((id) =>
-      towers.some((tower) => tower.tower_id === id && tower.placed && !tower.removed),
-    ),
-    participants: normalizeParticipants(
-      towerIds.flatMap((id) =>
-        readTowerParticipants(towers.find((tower) => tower.tower_id === id)),
-      ),
-    ),
+    placedTowerIds: activeTowers.map((tower) => tower.tower_id!),
+    participants,
+    activeParticipants,
+    previousParticipants,
   };
+}
+
+export type TowerGroup = ReturnType<typeof getTowerGroup>;
+
+export function getTowerOwnerIndex(
+  participants: readonly TowerParticipant[],
+  tower: ParticipantTower | undefined,
+): number {
+  const nickname = tower?.nickname?.trim() || tower?.previous_nickname?.trim();
+  return Math.max(
+    0,
+    participants.findIndex((entry) => entry.nickname.trim() === nickname),
+  );
 }
