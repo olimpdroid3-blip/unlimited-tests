@@ -46,6 +46,7 @@ export interface MobLevelsGateway {
   listMobs(): Promise<MobRow[]>;
   updateMobNames(inputs: MobNameRowInput[]): Promise<MobRow[]>;
   updateMobClassifications(inputs: MobClassificationRowInput[]): Promise<MobRow[]>;
+  listMobLevels(mobId: string): Promise<PlayerMobLevelRow[]>;
   listPlayerLevels(playerId: string): Promise<PlayerMobLevelRow[]>;
   upsertPlayerLevels(inputs: PlayerMobLevelRowInput[]): Promise<PlayerMobLevelRow[]>;
   deletePlayerLevel(playerId: string, mobId: string): Promise<void>;
@@ -79,6 +80,11 @@ export function createSupabaseMobCatalogRepository(
 
 export function createSupabaseMobLevelsRepository(gateway: MobLevelsGateway): MobLevelsRepository {
   return {
+    async getByMob(mobId) {
+      if (!mobId.trim()) return [];
+      return (await gateway.listMobLevels(mobId)).map(mapPlayerMobLevelRow);
+    },
+
     async getByPlayer(playerId) {
       if (!playerId.trim()) return [];
       return (await gateway.listPlayerLevels(playerId)).map(mapPlayerMobLevelRow);

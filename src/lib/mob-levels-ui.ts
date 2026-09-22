@@ -47,6 +47,16 @@ const supabaseMobLevelsGateway: MobLevelsGateway = {
     );
   },
 
+  async listMobLevels(mobId) {
+    const { data, error } = await supabase
+      .from("player_mob_levels")
+      .select("player_id,mob_id,level,updated_at")
+      .eq("mob_id", mobId)
+      .order("level", { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
   async listPlayerLevels(playerId) {
     const { data, error } = await supabase
       .from("player_mob_levels")

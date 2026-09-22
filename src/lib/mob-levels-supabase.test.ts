@@ -46,6 +46,9 @@ function createMemoryGateway(): MobLevelsGateway {
       });
       return mobs.filter((mob) => inputs.some(({ id }) => id === mob.id));
     },
+    async listMobLevels(mobId) {
+      return levels.filter(({ mob_id }) => mob_id === mobId);
+    },
     async listPlayerLevels(playerId) {
       return levels.filter(({ player_id }) => player_id === playerId);
     },
@@ -151,4 +154,35 @@ test("rejects an invalid level before writing to the gateway", async () => {
     repository.upsertMany([{ playerId: "player-01", mobId: "mob-01", level: 31 }]),
     /Рівень моба має бути цілим числом від 1 до 30/,
   );
+});
+
+test("loads one mob across players without including their other mobs", async () => {
+  const repository = createSupabaseMobLevelsRepository(createMemoryGateway());
+  await repository.upsertMany([
+    { playerId: "player-02", mobId: "mob-01", level: 12 },
+    { playerId: "player-02", mobId: "mob-02", level: 30 },
+  ]);
+  assert.deepEqual(
+    (await repository.getByMob("mob-01")).map(({ playerId, mobId, level }) => ({
+      playerId,
+      mobId,
+      level,
+    })),
+    [
+      { playerId: "player-01", mobId: "mob-01", level: 7 },
+      { playerId: "player-02", mobId: "mob-01", level: 12 },
+    ],
+  );
+  assert.deepEqual(await repository.getByMob("unknown"), []);
+  assert.deepEqual(await repository.getByMob("  "), []);
+});
+
+test("propagates mob level read failures instead of reporting missing levels", async () => {
+  const repository = createSupabaseMobLevelsRepository({
+    ...createMemoryGateway(),
+    async listMobLevels() {
+      throw new Error("Read failed");
+    },
+  });
+  await assert.rejects(repository.getByMob("mob-01"), /Read failed/);
 });

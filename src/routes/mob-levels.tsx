@@ -6,6 +6,7 @@ import { Search } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { PlayerSelectField } from "@/components/PlayerSelectField";
 import { Input } from "@/components/ui/input";
+import { MobPlayersView } from "@/components/MobPlayersView";
 import { MobSortMenu } from "@/components/MobSortMenu";
 import { findPlayerIdByNickname, getNickCookie } from "@/lib/nickname";
 import {
@@ -44,6 +45,7 @@ export const Route = createFileRoute("/mob-levels")({
 function MobLevelsPage() {
   const { playerId } = Route.useSearch();
   const navigate = Route.useNavigate();
+  const [viewMode, setViewMode] = useState<"player" | "mob">("player");
   const [filter, setFilter] = useState("");
   const [sortMode, setSortMode] = useState<MobSortMode>("default");
 
@@ -60,18 +62,18 @@ function MobLevelsPage() {
   const selectedPlayerId = players.some((player) => player.id === playerId) ? playerId : undefined;
 
   useEffect(() => {
-    if (selectedPlayerId || players.length === 0) return;
+    if (viewMode !== "player" || selectedPlayerId || players.length === 0) return;
 
     const savedPlayerId = findPlayerIdByNickname(players, getNickCookie());
     if (!savedPlayerId) return;
 
     void navigate({ search: { playerId: savedPlayerId } });
-  }, [navigate, players, selectedPlayerId]);
+  }, [navigate, players, selectedPlayerId, viewMode]);
 
   const levelsQuery = useQuery({
     queryKey: ["mob-levels", selectedPlayerId],
     queryFn: () => mobLevelsRepository.getByPlayer(selectedPlayerId!),
-    enabled: Boolean(selectedPlayerId && catalog.length > 0),
+    enabled: Boolean(viewMode === "player" && selectedPlayerId && catalog.length > 0),
   });
 
   const visibleMobs = useMemo(() => {
@@ -81,7 +83,8 @@ function MobLevelsPage() {
     );
   }, [catalog, filter, levelsQuery.data, sortMode]);
 
-  const queryError = playersQuery.error ?? catalogQuery.error ?? levelsQuery.error;
+  const queryError =
+    playersQuery.error ?? catalogQuery.error ?? (viewMode === "player" ? levelsQuery.error : null);
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -101,50 +104,72 @@ function MobLevelsPage() {
               Перегляд мобів і рівнів кожного учасника.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              to="/mob-levels/edit"
-              search={{ playerId: selectedPlayerId }}
-              className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
-            >
-              ✏️ Редагувати рівні
-            </Link>
-            {selectedPlayerId ? (
+          {viewMode === "player" && (
+            <div className="flex flex-wrap items-center gap-2">
               <Link
-                to="/mob-levels/scan"
+                to="/mob-levels/edit"
                 search={{ playerId: selectedPlayerId }}
                 className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
               >
-                📷 Завантажити скріншот
+                ✏️ Редагувати рівні
               </Link>
-            ) : (
-              <span
-                aria-disabled="true"
-                title="Спочатку оберіть гравця"
-                className="cursor-not-allowed rounded-lg border border-border bg-secondary px-3 py-2 text-sm font-medium text-muted-foreground opacity-60"
-              >
-                📷 Завантажити скріншот
-              </span>
-            )}
-          </div>
+              {selectedPlayerId ? (
+                <Link
+                  to="/mob-levels/scan"
+                  search={{ playerId: selectedPlayerId }}
+                  className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
+                >
+                  📷 Завантажити скріншот
+                </Link>
+              ) : (
+                <span
+                  aria-disabled="true"
+                  title="Спочатку оберіть гравця"
+                  className="cursor-not-allowed rounded-lg border border-border bg-secondary px-3 py-2 text-sm font-medium text-muted-foreground opacity-60"
+                >
+                  📷 Завантажити скріншот
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
-        <section className="mt-5 rounded-2xl border border-border bg-card/60 p-4">
-          <PlayerSelectField
-            id="mob-level-player"
-            value={selectedPlayerId}
-            players={players}
-            disabled={playersQuery.isLoading || players.length === 0}
-            onValueChange={(nextPlayerId) => {
-              setFilter("");
-              void navigate({
-                search: {
-                  playerId: nextPlayerId,
-                },
-              });
-            }}
-          />
-        </section>
+        <div
+          className="mt-5 inline-flex gap-1 rounded-lg bg-muted p-1"
+          role="group"
+          aria-label="Режим перегляду рівнів"
+        >
+          {(["player", "mob"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              aria-pressed={viewMode === mode}
+              onClick={() => setViewMode(mode)}
+              className={`rounded-md px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${viewMode === mode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {mode === "player" ? "За гравцем" : "За мобом"}
+            </button>
+          ))}
+        </div>
+
+        {viewMode === "player" && (
+          <section className="mt-5 rounded-2xl border border-border bg-card/60 p-4">
+            <PlayerSelectField
+              id="mob-level-player"
+              value={selectedPlayerId}
+              players={players}
+              disabled={playersQuery.isLoading || players.length === 0}
+              onValueChange={(nextPlayerId) => {
+                setFilter("");
+                void navigate({
+                  search: {
+                    playerId: nextPlayerId,
+                  },
+                });
+              }}
+            />
+          </section>
+        )}
 
         {queryError && (
           <p className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
@@ -170,14 +195,22 @@ function MobLevelsPage() {
           />
         )}
 
-        {!queryError && catalog.length > 0 && !selectedPlayerId && (
+        {!queryError && catalogQuery.isLoading && (
+          <p className="mt-5 text-sm text-muted-foreground">Завантаження мобів…</p>
+        )}
+
+        {!queryError && viewMode === "mob" && catalog.length > 0 && players.length > 0 && (
+          <MobPlayersView catalog={catalog} players={players} />
+        )}
+
+        {!queryError && viewMode === "player" && catalog.length > 0 && !selectedPlayerId && (
           <EmptyState
             title="Оберіть гравця"
             description="Після вибору ніку тут з’являться його моби та рівні."
           />
         )}
 
-        {!queryError && catalog.length > 0 && selectedPlayerId && (
+        {!queryError && viewMode === "player" && catalog.length > 0 && selectedPlayerId && (
           <section className="mt-5">
             <div className="flex flex-wrap gap-2">
               <div className="relative min-w-0 flex-1">

@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getTowerStatuses, getTowerStatusUpdate, getTowerSaveUpdate } from "./tower-status.ts";
+import {
+  getTowerStatuses,
+  getTowerStatusUpdate,
+  getTowerSaveUpdate,
+  getTowerCardStatusFlags,
+} from "./tower-status.ts";
 
 test("shows breached, testing and removed at the same time", () => {
   assert.deepEqual(getTowerStatuses({ breached: true, testing: true, removed: true }), [
@@ -53,21 +58,37 @@ test("unchecking removed preserves history without marking the defense as placed
   assert.equal(next.breached, true);
 });
 
-test("destroyed implies breached without clearing testing or removed", () => {
-  const next = getTowerStatusUpdate({ testing: true, removed: true }, "destroyed", true, "");
-  assert.deepEqual(getTowerStatuses(next), ["breached", "testing", "destroyed", "removed"]);
+test("destroyed replaces breached without clearing testing or removed", () => {
+  const next = getTowerStatusUpdate(
+    { breached: true, testing: true, removed: true },
+    "destroyed",
+    true,
+    "",
+  );
+  assert.equal(next.breached, false);
+  assert.deepEqual(getTowerStatuses(next), ["testing", "destroyed", "removed"]);
 });
 
-test("unchecking destroyed leaves breached set; unchecking breached also clears destroyed", () => {
-  assert.equal(
-    getTowerStatusUpdate({ destroyed: true, breached: true }, "destroyed", false, "").breached,
-    true,
-  );
-  assert.equal(
-    getTowerStatusUpdate({ destroyed: true, breached: true, testing: true }, "breached", false, "")
-      .destroyed,
-    false,
-  );
+test("selecting breached clears destroyed", () => {
+  const next = getTowerStatusUpdate({ destroyed: true }, "breached", true, "");
+  assert.equal(next.destroyed, false);
+  assert.deepEqual(getTowerStatuses(next), ["breached"]);
+});
+
+test("legacy records with both flags show only destroyed and normalize on save", () => {
+  const legacy = { breached: true, destroyed: true };
+  assert.deepEqual(getTowerStatuses(legacy), ["destroyed"]);
+  assert.equal(getTowerSaveUpdate(legacy, "Owner").breached, false);
+});
+
+test("unchecking destroyed does not restore breached", () => {
+  const next = getTowerStatusUpdate({ destroyed: true, breached: true }, "destroyed", false, "");
+  assert.deepEqual(getTowerStatuses(next), []);
+});
+
+test("unchecking breached preserves destroyed", () => {
+  const next = getTowerStatusUpdate({ destroyed: true }, "breached", false, "");
+  assert.deepEqual(getTowerStatuses(next), ["destroyed"]);
 });
 
 test("legacy and empty records retain their existing meaning", () => {
@@ -106,4 +127,42 @@ test("status toggles alone do not mark an empty tower as placed", () => {
   assert.equal(getTowerStatusUpdate(undefined, "testing", true, "Viewer").placed, false);
   assert.equal(getTowerSaveUpdate(undefined, "Viewer").placed, true);
   assert.equal(getTowerStatusUpdate({ placed: true }, "removed", true, "Viewer").placed, false);
+});
+
+test("do not attack can be enabled and removed independently", () => {
+  const next = getTowerStatusUpdate({ testing: true }, "do_not_attack", true, "");
+  assert.deepEqual(getTowerStatuses(next), ["testing", "do_not_attack"]);
+  assert.equal(next.placed, false);
+  const cleared = getTowerStatusUpdate(next, "do_not_attack", false, "");
+  assert.deepEqual(getTowerStatuses(cleared), ["testing"]);
+});
+
+test("saving and changing other statuses preserves do not attack", () => {
+  const existing = { do_not_attack: true, breached: true };
+  assert.equal(getTowerSaveUpdate(existing, "Owner").do_not_attack, true);
+  const next = getTowerStatusUpdate(existing, "destroyed", true, "Owner");
+  assert.deepEqual(getTowerStatuses(next), ["destroyed", "do_not_attack"]);
+});
+
+test("an inactive copy shows placement instead of its historical damage when another copy is active", () => {
+  const flags = getTowerCardStatusFlags(
+    { removed: true, destroyed: true, do_not_attack: true },
+    true,
+    false,
+  );
+  assert.deepEqual(getTowerStatuses(flags), ["placed", "do_not_attack"]);
+});
+
+test("without active copies the card keeps local damage but has no placed tag", () => {
+  const flags = getTowerCardStatusFlags({ placed: true, destroyed: true }, false, false);
+  assert.deepEqual(getTowerStatuses(flags), ["destroyed"]);
+});
+
+test("an active copy retains its own testing and breached markers", () => {
+  const flags = getTowerCardStatusFlags(
+    { placed: true, breached: true, testing: true },
+    true,
+    true,
+  );
+  assert.deepEqual(getTowerStatuses(flags), ["placed", "breached", "testing"]);
 });

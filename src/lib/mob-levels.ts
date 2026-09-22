@@ -76,6 +76,7 @@ export interface StorageLike {
 }
 
 export interface MobLevelsRepository {
+  getByMob(mobId: string): Promise<PlayerMobLevel[]>;
   getByPlayer(playerId: string): Promise<PlayerMobLevel[]>;
   upsertMany(levels: PlayerMobLevelInput[]): Promise<PlayerMobLevel[]>;
   remove(playerId: string, mobId: string): Promise<void>;
@@ -185,6 +186,10 @@ export function createLocalStorageMobLevelsRepository(
   }
 
   return {
+    async getByMob(mobId) {
+      return readAll().filter((level) => level.mobId === mobId);
+    },
+
     async getByPlayer(playerId) {
       return readAll().filter((level) => level.playerId === playerId);
     },
@@ -540,4 +545,17 @@ function rarityRank(rarity: MobRarity | null): number {
   if (rarity === "legendary") return 0;
   if (rarity === "epic") return 1;
   return 2;
+}
+
+export function resolveMobPlayers(
+  players: readonly PlayerOption[],
+  levels: readonly PlayerMobLevel[],
+  mobId: string,
+): (PlayerOption & { level: number | null })[] {
+  const levelsByPlayer = new Map(
+    levels.filter((entry) => entry.mobId === mobId).map((entry) => [entry.playerId, entry.level]),
+  );
+  return players
+    .map((player) => ({ ...player, level: levelsByPlayer.get(player.id) ?? null }))
+    .sort((a, b) => (b.level ?? 0) - (a.level ?? 0) || a.nickname.localeCompare(b.nickname, "uk"));
 }
