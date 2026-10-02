@@ -189,16 +189,15 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
         }
 
         const { supabaseAdmin } = await import("@/lib/db.server");
-        const { data: source, error: sourceError } = await supabaseAdmin
-          .from("telegram_sources")
-          .select("id")
-          .eq("telegram_chat_id", chatId)
-          .eq("telegram_thread_id", threadId ?? 0)
-          .eq("active", true)
-          .maybeSingle();
-
-        if (sourceError) {
-          console.error("[gvg-video-webhook] source lookup failed", sourceError.message);
+        const { getTelegramSourcesCache } = await import("@/lib/telegram-sources-cache.server");
+        let source: string | null;
+        try {
+          source = await getTelegramSourcesCache().findSource(chatId, threadId ?? 0);
+        } catch (error) {
+          console.error(
+            "[gvg-video-webhook] source lookup failed",
+            error instanceof Error ? error.message : String(error),
+          );
           return Response.json({ ok: true, error: "source-lookup-failed" });
         }
         if (!source) return Response.json({ ok: true, ignored: "source-not-allowed" });
