@@ -12,6 +12,10 @@ export type TowerOrigin = {
   telegram_message_link: string | null;
   site_url: string | null;
   created_at: string;
+  /** Unique id of the placement this origin belongs to (one per add). */
+  record_id?: string | null;
+  /** Nickname of the placement; a different current nickname means another record. */
+  nickname?: string | null;
 };
 
 export type TowerSourceLink = { url: string };
@@ -88,8 +92,17 @@ export function parseTowerBreachCallback(
 export function getTowerSourceLink(
   towerId: string,
   origins: readonly TowerOrigin[],
+  currentNickname?: string | null,
 ): TowerSourceLink | null {
   const origin = origins.find((candidate) => candidate.tower_id === towerId);
+  // Never borrow the post of an earlier record for the same position.
+  if (
+    origin?.nickname &&
+    currentNickname != null &&
+    origin.nickname.trim().toLowerCase() !== currentNickname.trim().toLowerCase()
+  ) {
+    return null;
+  }
   if (origin?.source === "telegram" && origin.telegram_message_link) {
     return { url: origin.telegram_message_link };
   }
@@ -102,7 +115,7 @@ export function renderTowerLine(
   origins: readonly TowerOrigin[],
   suffix = "",
 ): string {
-  const source = getTowerSourceLink(towerId, origins);
+  const source = getTowerSourceLink(towerId, origins, nickname);
   const label = `🏰 Вежа ${escapeHtml(towerId)} — ${escapeHtml(nickname ?? "?")}${suffix}`;
   return source ? `<a href="${escapeHtmlAttribute(source.url)}">${label}</a>` : label;
 }

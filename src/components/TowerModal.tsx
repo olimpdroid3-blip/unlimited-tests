@@ -221,7 +221,17 @@ export function TowerModal({
         },
       });
       if (error) throw error;
-      if (!existing) await markTowerWebOrigin({ data: { towerId } });
+      // A new record (first fill, re-placement or another player) gets its own
+      // origin, so the Telegram list never links to an earlier record's post.
+      const isNewRecord =
+        !existing ||
+        placeAgain ||
+        (existing.nickname ?? "").trim().toLowerCase() !== nickname.trim().toLowerCase();
+      if (isNewRecord) {
+        await markTowerWebOrigin({
+          data: { towerId, nickname: nickname.trim(), replace: !!existing },
+        });
+      }
       // Filling the tower fulfils any pending request: shared removal deletes
       // the bot's update message, the marker row and posts the "➖" update.
       if (update.placed) {
