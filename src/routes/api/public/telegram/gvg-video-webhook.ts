@@ -86,6 +86,7 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const t0 = Date.now();
         const botToken = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
         if (!botToken) {
           console.error("[gvg-video-webhook] TELEGRAM_GVG_VIDEO_BOT_TOKEN is not configured");
@@ -119,18 +120,23 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
             }
           | undefined;
         if (callback?.id) {
+          const kind = (callback.data ?? "").split(":").slice(0, 2).join(":");
+          const done = (handled: string) => {
+            console.log(`[gvg-video-webhook] callback ${kind} ${handled} in ${Date.now() - t0}ms`);
+            return Response.json({ ok: true, handled });
+          };
           const review = await import("@/lib/gvg-pending-defense-form.server");
           if (await review.handlePendingDefenseCallback(callback)) {
-            return Response.json({ ok: true, handled: "pending-defense-callback" });
+            return done("pending-defense-callback");
           }
 
           const { handleTowerFormCallback } = await import("@/lib/gvg-tower-form.server");
           if (await handleTowerFormCallback(callback)) {
-            return Response.json({ ok: true, handled: "tower-form-callback" });
+            return done("tower-form-callback");
           }
           const { handleCallbackQuery } = await import("@/lib/gvg-video-bot.server");
           await handleCallbackQuery(callback);
-          return Response.json({ ok: true, handled: "callback" });
+          return done("callback");
         }
 
         const message = pickMessage(update);
@@ -176,6 +182,7 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
         if (isTowerTopic && (message.text ?? "").trim() === "/+") {
           const mod = await import("@/lib/gvg-tower-list.server");
           const result = await mod.handleTowerListCommand();
+          console.log(`[gvg-video-webhook] /+ handled in ${Date.now() - t0}ms`);
           return Response.json({ ok: true, handled: "tower-list", result });
         }
 
@@ -185,7 +192,10 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
             ...(message as Record<string, unknown>),
             message_thread_id: threadId ?? undefined,
           } as Parameters<typeof form.handleTowerWorkflowMessage>[0]);
-          if (handled) return Response.json({ ok: true, handled: "tower-form" });
+          if (handled) {
+            console.log(`[gvg-video-webhook] tower-form handled in ${Date.now() - t0}ms`);
+            return Response.json({ ok: true, handled: "tower-form" });
+          }
         }
 
         const { supabaseAdmin } = await import("@/lib/db.server");

@@ -95,3 +95,45 @@ test("breached towers are marked in the shared list", () => {
     "🏰 Вежа 2.4.2 — Fakra ✅",
   );
 });
+
+test("a re-added tower links only to its own record's post", () => {
+  const first = origin({
+    nickname: "Fakra",
+    record_id: "r1",
+    telegram_message_id: 1327,
+    telegram_message_link: "https://t.me/c/3978316922/8/1327",
+  });
+  assert.equal(
+    getTowerSourceLink("1.1.1", [first], "Fakra")?.url,
+    "https://t.me/c/3978316922/8/1327",
+  );
+  // Another player re-adds 1.1.1 but the old origin is still around: no stale link.
+  assert.equal(getTowerSourceLink("1.1.1", [first], "Romio"), null);
+  assert.equal(renderTowerLine("1.1.1", "Romio", [first]), "🏰 Вежа 1.1.1 — Romio");
+  // The new record replaces the origin and gets its own post.
+  const second = origin({
+    nickname: "Romio",
+    record_id: "r2",
+    telegram_message_id: 1481,
+    telegram_message_link: "https://t.me/c/3978316922/8/1481",
+  });
+  assert.equal(
+    getTowerSourceLink("1.1.1", [second], "romio")?.url,
+    "https://t.me/c/3978316922/8/1481",
+  );
+});
+
+test("different positions keep their own links", () => {
+  const a = origin({
+    tower_id: "1.1.1",
+    nickname: "A",
+    telegram_message_link: "https://t.me/c/1/8/10",
+  });
+  const b = origin({
+    tower_id: "2.1.1",
+    nickname: "B",
+    telegram_message_link: "https://t.me/c/1/8/20",
+  });
+  assert.equal(getTowerSourceLink("2.1.1", [a, b], "B")?.url, "https://t.me/c/1/8/20");
+  assert.equal(getTowerSourceLink("1.1.1", [a, b], "A")?.url, "https://t.me/c/1/8/10");
+});

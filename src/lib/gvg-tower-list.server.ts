@@ -47,7 +47,7 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
   const mark = (step: string) => console.log(`[tower-list] +${Date.now() - t0}ms ${step}`);
   const [{ data, error }, origins] = await Promise.all([
     supabaseAdmin
-    .from("towers")
+      .from("towers")
       .select("tower_id, nickname, screenshot_url, breached, removed, placed"),
     listTowerOrigins(),
   ]);
