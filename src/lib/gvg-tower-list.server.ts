@@ -2,10 +2,7 @@
 // topic, then deletes all previously tracked bot messages in that topic.
 import { supabaseAdmin } from "@/lib/db.server";
 import { isMirrorRow, MIRROR_PREFIX } from "@/lib/mirror-order";
-import {
-  deleteTelegramMessage,
-  ensureTowerSourceDeleteButton,
-} from "@/lib/gvg-tower-notify.server";
+import { deleteTelegramMessage } from "@/lib/gvg-tower-notify.server";
 import { drainBotMessages, setBotMessages } from "@/lib/gvg-bot-messages.server";
 import { listTowerOrigins } from "@/lib/tower-origin.server";
 import {
@@ -46,9 +43,15 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
   const token = process.env["TELEGRAM_GVG_VIDEO_BOT_TOKEN"];
   if (!token) return { ok: false, error: "TELEGRAM_GVG_VIDEO_BOT_TOKEN is not configured" };
 
-  const { data, error } = await supabaseAdmin
-    .from("towers")
-    .select("tower_id, nickname, screenshot_url, breached, removed, placed");
+  const t0 = Date.now();
+  const mark = (step: string) => console.log(`[tower-list] +${Date.now() - t0}ms ${step}`);
+  const [{ data, error }, origins] = await Promise.all([
+    supabaseAdmin
+      .from("towers")
+      .select("tower_id, nickname, screenshot_url, breached, removed, placed"),
+    listTowerOrigins(),
+  ]);
+  mark("towers + origins loaded");
   if (error) {
     console.error("[tower-list] towers fetch failed", error.message);
     return { ok: false, error: error.message };
@@ -64,14 +67,6 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
     .filter((r) => isMirrorRow(r.tower_id))
     .sort((a, b) => compareTowerIds(a.tower_id, b.tower_id));
 
-  const origins = await listTowerOrigins();
-  await Promise.all(
-    origins.flatMap((origin) =>
-      origin.source === "telegram" && origin.telegram_message_id
-        ? [ensureTowerSourceDeleteButton(origin.telegram_message_id, origin.tower_id)]
-        : [],
-    ),
-  );
   const lines: string[] = [];
   for (const r of filled) {
     lines.push(
@@ -92,6 +87,7 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
     ],
   };
 
+  mark("list built");
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -116,15 +112,16 @@ export async function handleTowerListCommand(): Promise<{ ok: boolean; error?: s
     return { ok: false, error: json.description ?? "telegram-error" };
   }
 
+  mark("list sent");
   const newId = json.result.message_id;
   // Delete every previously tracked bot message, keep only the fresh list.
   const stale = await drainBotMessages([newId]);
   console.log(`[tower-list] deleting ${stale.length} stale bot messages`);
-  for (const id of stale) {
-    await deleteTelegramMessage(id);
-  }
+  await Promise.all(stale.map((id) => deleteTelegramMessage(id).catch(() => undefined)));
+  mark("stale lists deleted");
   // Single authoritative write so a stale read can never resurrect old ids.
   await setBotMessages([newId], "list");
+  mark("done");
 
   return { ok: true };
 }

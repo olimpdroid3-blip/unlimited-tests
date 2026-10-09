@@ -230,6 +230,12 @@ export async function upsertPlacedTower(
     .eq("tower_id", towerId)
     .maybeSingle();
 
+  // A new placement is a new record: drop the previous record's source post
+  // link first so it can never leak onto this one (even if posting fails).
+  await deleteTowerOrigin(towerId).catch((originError) =>
+    console.error("[tower-origin] previous source cleanup failed", originError),
+  );
+
   // Reuse the shared status model so flags never drift from the website.
   const update = getTowerSaveUpdate(existing ?? undefined, nickname, { placeAgain: true });
 
@@ -270,6 +276,8 @@ export async function upsertPlacedTower(
       telegram_message_link: sourceMessage.messageLink,
       site_url: null,
       created_at: new Date().toISOString(),
+      record_id: crypto.randomUUID(),
+      nickname,
     }).catch((originError) =>
       console.error("[tower-origin] telegram source write failed", originError),
     );

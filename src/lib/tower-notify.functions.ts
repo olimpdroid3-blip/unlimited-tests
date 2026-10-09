@@ -53,7 +53,15 @@ export const dropTowerRequest = createServerFn({ method: "POST" })
 
 /** Records that the current tower entry was created or updated on the website. */
 export const markTowerWebOrigin = createServerFn({ method: "POST" })
-  .inputValidator((data) => z.object({ towerId: z.string().min(1) }).parse(data))
+  .inputValidator((data) =>
+    z
+      .object({
+        towerId: z.string().min(1),
+        nickname: z.string().max(100).optional(),
+        replace: z.boolean().optional(),
+      })
+      .parse(data),
+  )
   .handler(async ({ data }) => {
     const [{ saveTowerOrigin }, { buildTowerSiteUrl }] = await Promise.all([
       import("@/lib/tower-origin.server"),
@@ -67,8 +75,11 @@ export const markTowerWebOrigin = createServerFn({ method: "POST" })
         telegram_message_link: null,
         site_url: buildTowerSiteUrl(data.towerId),
         created_at: new Date().toISOString(),
+        record_id: crypto.randomUUID(),
+        nickname: data.nickname?.trim() || null,
       },
-      false,
+      // A new placement on the site replaces the previous record's origin.
+      data.replace === true,
     );
     return { ok: true };
   });
