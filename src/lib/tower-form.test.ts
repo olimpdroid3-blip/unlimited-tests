@@ -16,7 +16,9 @@ import {
   isTowerWorkflowThread,
   isUpdateOnlyThread,
   isWalkthroughReviewThread,
-  resolveAdminNickname,
+  NO_NICKNAME_TEXT,
+  NOT_MEMBER_TEXT,
+  resolveMemberNickname,
   TOWER_CHAT_ID,
   type TowerForm,
 } from "./tower-form.ts";
