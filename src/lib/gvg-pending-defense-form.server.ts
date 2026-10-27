@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/db.server";
-import { resolveAdminNickname, WALKTHROUGH_REVIEW_THREAD_ID } from "@/lib/tower-form";
+import { resolveMemberNickname, WALKTHROUGH_REVIEW_THREAD_ID } from "@/lib/tower-form";
 
 export const REVIEW_CHAT_ID = -1003978316922;
 export const REVIEW_THREAD_ID = WALKTHROUGH_REVIEW_THREAD_ID;
@@ -358,11 +358,11 @@ async function storePhoto(fileId: string): Promise<{ url: string; path: string }
 export async function startPendingDefenseForm(userId: number): Promise<void> {
   await cleanupExpiredForms();
 
-  const member = await tg<{ status?: string; custom_title?: string }>("getChatMember", {
+  const member = await tg<{ status?: string; custom_title?: string; tag?: string }>("getChatMember", {
     chat_id: REVIEW_CHAT_ID,
     user_id: userId,
   });
-  const resolved = resolveAdminNickname(member.ok ? member.result : null);
+  const resolved = resolveMemberNickname(member.ok ? member.result : null);
   if (!resolved.ok) {
     const warningId = await send(resolved.error);
     if (warningId) setTimeout(() => void del(warningId), 15_000);
