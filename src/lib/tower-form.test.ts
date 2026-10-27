@@ -16,7 +16,9 @@ import {
   isTowerWorkflowThread,
   isUpdateOnlyThread,
   isWalkthroughReviewThread,
-  resolveAdminNickname,
+  NO_NICKNAME_TEXT,
+  NOT_MEMBER_TEXT,
+  resolveMemberNickname,
   TOWER_CHAT_ID,
   type TowerForm,
 } from "./tower-form.ts";
@@ -103,21 +105,50 @@ test("the module exposes no bottom reply keyboard anymore", async () => {
   assert.equal("BTN_MIRROR_KB" in mod, false);
 });
 
-test("non-admins cannot start the form", () => {
-  assert.equal(resolveAdminNickname({ status: "member", custom_title: "Fakra" }).ok, false);
-  assert.equal(resolveAdminNickname(null).ok, false);
-});
-
-test("admins without custom_title cannot start the form", () => {
-  assert.equal(resolveAdminNickname({ status: "administrator" }).ok, false);
-  assert.equal(resolveAdminNickname({ status: "administrator", custom_title: "  " }).ok, false);
-});
-
-test("nickname comes from custom_title only", () => {
-  assert.deepEqual(resolveAdminNickname({ status: "creator", custom_title: " Fakra " }), {
+test("regular member uses trimmed member tag", () => {
+  assert.deepEqual(resolveMemberNickname({ status: "member", tag: " Fakra " }), {
     ok: true,
     nickname: "Fakra",
   });
+});
+
+test("member without tag is rejected as missing nickname", () => {
+  assert.deepEqual(resolveMemberNickname({ status: "member" }), {
+    ok: false,
+    error: NO_NICKNAME_TEXT,
+  });
+  assert.equal(resolveMemberNickname({ status: "member", tag: "   " }).ok, false);
+});
+
+test("member custom_title is not accepted instead of tag", () => {
+  assert.equal(resolveMemberNickname({ status: "member", custom_title: "Fakra" }).ok, false);
+});
+
+test("administrator and creator keep custom_title", () => {
+  assert.deepEqual(resolveMemberNickname({ status: "administrator", custom_title: " Adm " }), {
+    ok: true,
+    nickname: "Adm",
+  });
+  assert.deepEqual(resolveMemberNickname({ status: "creator", custom_title: " Fakra " }), {
+    ok: true,
+    nickname: "Fakra",
+  });
+});
+
+test("admin tag does not replace a missing custom_title", () => {
+  assert.equal(resolveMemberNickname({ status: "administrator", tag: "Fakra" }).ok, false);
+  assert.equal(resolveMemberNickname({ status: "creator", custom_title: "  ", tag: "X" }).ok, false);
+});
+
+test("non-members and unknown statuses are denied", () => {
+  for (const m of [null, undefined, {}, { status: "left", tag: "A" }, { status: "kicked", tag: "A" }, { status: "restricted", tag: "A" }, { status: "weird", tag: "A" }]) {
+    assert.deepEqual(resolveMemberNickname(m), { ok: false, error: NOT_MEMBER_TEXT });
+  }
+});
+
+test("no fallback to profile names", () => {
+  const m = { status: "member", username: "fakra", first_name: "F", last_name: "K" } as never;
+  assert.equal(resolveMemberNickname(m).ok, false);
 });
 
 test("confirmation is allowed only once and only for a complete form", () => {

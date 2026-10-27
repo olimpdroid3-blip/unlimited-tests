@@ -31,7 +31,7 @@ import {
   isFormExpired,
   isTowerWorkflowThread,
   NEED_PHOTO_TEXT,
-  resolveAdminNickname,
+  resolveMemberNickname,
   STEP_COMMENT_TEXT,
   STEP_POSITION_TEXT,
   STEP_SCREENSHOT_TEXT,
@@ -317,11 +317,11 @@ export async function startTowerForm(
   userId: number,
   triggerMessageId?: number,
 ): Promise<void> {
-  const member = await tg<{ status?: string; custom_title?: string }>("getChatMember", {
+  const member = await tg<{ status?: string; custom_title?: string; tag?: string }>("getChatMember", {
     chat_id: chatId,
     user_id: userId,
   });
-  const resolved = resolveAdminNickname(member.ok ? member.result : null);
+  const resolved = resolveMemberNickname(member.ok ? member.result : null);
   if (!resolved.ok) {
     const warnId = await send(chatId, resolved.error);
 

@@ -67,23 +67,35 @@ export function isWalkthroughReviewThread(chatId: number, threadId: number | nul
   return chatId === TOWER_CHAT_ID && (threadId ?? 0) === WALKTHROUGH_REVIEW_THREAD_ID;
 }
 
-export type ChatMemberInfo = { status?: string; custom_title?: string | null } | null | undefined;
+export type ChatMemberInfo =
+  | { status?: string; custom_title?: string | null; tag?: string | null }
+  | null
+  | undefined;
 
-export const NOT_ADMIN_TEXT = "⛔ Додавання вежі доступне лише адміністраторам групи.";
-export const NO_TITLE_TEXT =
-  "⛔ Для вашого акаунта не задано ігровий нік (custom title в групі). Зверніться до власника групи.";
+export const NOT_MEMBER_TEXT = "⛔ Ця форма доступна лише учасникам групи.";
+export const NO_NICKNAME_TEXT =
+  "⛔ Для вашого акаунта не задано ігровий нік у групі (тег учасника або титул адміністратора). Зверніться до власника групи.";
 
-/** The game nickname comes only from the admin custom_title — never username. */
-export function resolveAdminNickname(
+/**
+ * Game nickname for the add-tower and walkthrough forms:
+ * regular members → their Telegram member `tag`;
+ * administrators/creator → their `custom_title`.
+ * Never falls back to username / first_name / last_name.
+ */
+export function resolveMemberNickname(
   member: ChatMemberInfo,
 ): { ok: true; nickname: string } | { ok: false; error: string } {
   const status = member?.status ?? "";
-  if (status !== "administrator" && status !== "creator") {
-    return { ok: false, error: NOT_ADMIN_TEXT };
+  let nickname: string;
+  if (status === "member") {
+    nickname = (member?.tag ?? "").trim();
+  } else if (status === "administrator" || status === "creator") {
+    nickname = (member?.custom_title ?? "").trim();
+  } else {
+    return { ok: false, error: NOT_MEMBER_TEXT };
   }
-  const title = (member?.custom_title ?? "").trim();
-  if (!title) return { ok: false, error: NO_TITLE_TEXT };
-  return { ok: true, nickname: title };
+  if (!nickname) return { ok: false, error: NO_NICKNAME_TEXT };
+  return { ok: true, nickname };
 }
 
 export function isFormExpired(form: Pick<TowerForm, "expires_at">, now = Date.now()): boolean {
