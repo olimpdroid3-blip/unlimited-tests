@@ -407,8 +407,8 @@ export async function handleTowerWorkflowMessage(message: {
   document?: { file_id?: string; mime_type?: string };
 }): Promise<boolean> {
   const chatId = message.chat?.id;
-  const userId = message.from?.id;
   if (!chatId || !isValidTowerActor(message.from)) return false;
+  const userId = message.from.id;
   if (!isTowerWorkflowThread(chatId, message.message_thread_id ?? null)) return false;
 
   const text = (message.text ?? "").trim();
@@ -650,7 +650,6 @@ export async function handleTowerFormCallback(cb: {
       await handleTowerListCommand();
       return true;
     }
-    const userId = cb.from?.id;
     if (!isValidTowerActor(cb.from)) {
       await answer(cb.id);
       return true;
