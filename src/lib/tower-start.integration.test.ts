@@ -11,7 +11,8 @@ if (!process.versions.bun) {
   const { mock } = await import(bunModule) as { mock: { module: (path: string, factory: () => unknown) => void } };
   let forms: TowerForm[] = [];
   let calls: { method: string; body: Record<string, unknown> }[] = [];
-  let lookup: "success" | "api-failure" | "http-failure" | "exception" = "success";
+  type LookupMode = "success" | "api-failure" | "http-failure" | "exception";
+  let lookup: LookupMode = "success";
   let member: ChatMemberInfo;
   const storage = {
     list: async () => ({ data: [], error: null }),
@@ -57,7 +58,7 @@ if (!process.versions.bun) {
   }
 
   const actor = { id: 123456, username: "actual_actor", first_name: "Actual", last_name: "Actor" };
-  const cases: { label: string; member: ChatMemberInfo; nickname: string; lookup?: typeof lookup; actor?: TowerActor }[] = [
+  const cases: { label: string; member: ChatMemberInfo; nickname: string; lookup?: LookupMode; actor?: TowerActor }[] = [
     { label: "member with tag", member: { status: "member", tag: " Clan " }, nickname: "Clan" },
     { label: "member without tag", member: { status: "member" }, nickname: "@actual_actor" },
     { label: "admin with title", member: { status: "administrator", custom_title: " Boss " }, nickname: "Boss" },
