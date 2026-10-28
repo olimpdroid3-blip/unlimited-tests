@@ -30,14 +30,16 @@ import {
   FORM_TTL_MS,
   isFormExpired,
   isTowerWorkflowThread,
+  isValidTowerActor,
   NEED_PHOTO_TEXT,
-  resolveMemberNickname,
+  resolveTowerNickname,
   STEP_COMMENT_TEXT,
   STEP_POSITION_TEXT,
   STEP_SCREENSHOT_TEXT,
   TOWER_CHAT_ID,
   TOWER_WORK_THREAD_ID,
   type TowerForm,
+  type TowerActor,
 } from "@/lib/tower-form";
 
 const STATE_BUCKET = "defense-screenshots";
@@ -314,22 +316,17 @@ async function storeTelegramPhoto(
  */
 export async function startTowerForm(
   chatId: number,
-  userId: number,
+  actor: TowerActor | undefined,
   triggerMessageId?: number,
 ): Promise<void> {
+  if (chatId !== TOWER_CHAT_ID || !isValidTowerActor(actor)) return;
+  const userId = actor.id;
+  // tg catches HTTP/API/transport failures. A failed lookup must never block entry.
   const member = await tg<{ status?: string; custom_title?: string; tag?: string }>("getChatMember", {
-    chat_id: chatId,
+    chat_id: TOWER_CHAT_ID,
     user_id: userId,
   });
-  const resolved = resolveMemberNickname(member.ok ? member.result : null);
-  if (!resolved.ok) {
-    const warnId = await send(chatId, resolved.error);
-
-    // Keep the topic tidy: the refusal and the tap disappear shortly after.
-    if (triggerMessageId) await del(chatId, triggerMessageId);
-    if (warnId) setTimeout(() => void del(chatId, warnId), 15_000);
-    return;
-  }
+  const nickname = resolveTowerNickname(member.ok ? member.result : null, actor);
 
   // One active form per user: restart cleanly if an old one is around.
   const existing = await findFormByUser(userId);
@@ -345,7 +342,7 @@ export async function startTowerForm(
     chat_id: chatId,
     thread_id: TOWER_WORK_THREAD_ID,
     user_id: userId,
-    nickname: resolved.nickname,
+    nickname,
     step: "position",
     tower_id: null,
     screenshot_url: null,
@@ -361,7 +358,7 @@ export async function startTowerForm(
 
   // Greeting confirms whose form it is; the next message carries the step
   // prompt with its inline "Скасувати" button.
-  const greetId = await send(chatId, `👤 ${resolved.nickname}`);
+  const greetId = await send(chatId, `👤 ${nickname}`);
   form = await trackBot(form, greetId);
 
   const promptId = await send(chatId, STEP_POSITION_TEXT, keyboardFor("position", id.slice(0, 8)));
@@ -403,7 +400,7 @@ export async function handleTowerWorkflowMessage(message: {
   message_id?: number;
   chat?: { id?: number };
   message_thread_id?: number;
-  from?: { id?: number };
+  from?: TowerActor;
   text?: string;
   caption?: string;
   photo?: TgPhotoSize[];
@@ -411,7 +408,7 @@ export async function handleTowerWorkflowMessage(message: {
 }): Promise<boolean> {
   const chatId = message.chat?.id;
   const userId = message.from?.id;
-  if (!chatId || !userId) return false;
+  if (!chatId || !isValidTowerActor(message.from)) return false;
   if (!isTowerWorkflowThread(chatId, message.message_thread_id ?? null)) return false;
 
   const text = (message.text ?? "").trim();
@@ -425,7 +422,7 @@ export async function handleTowerWorkflowMessage(message: {
   }
 
   if (text === BTN_ADD) {
-    await startTowerForm(chatId, userId, message.message_id);
+    await startTowerForm(chatId, message.from, message.message_id);
     return true;
   }
 
@@ -530,7 +527,7 @@ async function submitForm(form: TowerForm): Promise<void> {
 export async function handleTowerFormCallback(cb: {
   id: string;
   data?: string;
-  from?: { id?: number };
+  from?: TowerActor;
   message?: { message_id?: number; chat?: { id?: number }; message_thread_id?: number };
 }): Promise<boolean> {
   const data = (cb.data ?? "").trim();
@@ -654,13 +651,13 @@ export async function handleTowerFormCallback(cb: {
       return true;
     }
     const userId = cb.from?.id;
-    if (!userId) {
+    if (!isValidTowerActor(cb.from)) {
       await answer(cb.id);
       return true;
     }
     // Same workflow as the old reply-keyboard button, without a trigger message.
     await answer(cb.id);
-    await startTowerForm(panelChatId, userId);
+    await startTowerForm(panelChatId, cb.from);
     return true;
   }
 

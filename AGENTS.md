@@ -10,3 +10,5 @@
 > the editor, so keep the branch in a working state.
 
 <!-- LOVABLE:END -->
+
+- Keep tower-start nickname enrichment separate from `resolveMemberNickname`, which enforces walkthrough membership rules, so opening tower forms never depends on Telegram role lookup success.

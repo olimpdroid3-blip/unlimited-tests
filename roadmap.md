@@ -6,3 +6,5 @@
 - [x] Відкривати конкретну вежу за прямим посиланням із Telegram.
 - [x] Перевірити тести та роботу preview.
 - [x] Дозволити учасникам з тегом (status member) форми додавання вежі та скріншота проходки.
+- [ ] Open tower-add forms for any valid initiating actor, with best-effort nickname enrichment; preserve walkthrough checks.
+- [ ] Run regression tests and inspect restarted preview/webhook health without live messages or record changes.
