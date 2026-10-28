@@ -19,6 +19,8 @@ import {
   NO_NICKNAME_TEXT,
   NOT_MEMBER_TEXT,
   resolveMemberNickname,
+  resolveTowerNickname,
+  isValidTowerActor,
   TOWER_CHAT_ID,
   type TowerForm,
 } from "./tower-form.ts";
@@ -149,6 +151,40 @@ test("non-members and unknown statuses are denied", () => {
 test("no fallback to profile names", () => {
   const m = { status: "member", username: "fakra", first_name: "F", last_name: "K" } as never;
   assert.equal(resolveMemberNickname(m).ok, false);
+});
+
+test("tower member uses tag, but opens without one using actor username", () => {
+  const actor = { id: 123, username: " player " };
+  assert.equal(resolveTowerNickname({ status: "member", tag: " Clan " }, actor), "Clan");
+  assert.equal(resolveTowerNickname({ status: "member", custom_title: "Not a member tag" }, actor), "@player");
+});
+
+test("tower admin/owner uses custom title, falling back to actor not admin tag", () => {
+  for (const status of ["administrator", "creator"]) {
+    assert.equal(resolveTowerNickname({ status, custom_title: " Boss " }, { id: 123 }), "Boss");
+    assert.equal(resolveTowerNickname({ status, custom_title: " ", tag: "Wrong" }, { id: 123, username: "player" }), "@player");
+  }
+});
+
+test("tower restricted/unknown/failed lookup never denies a nickname", () => {
+  assert.equal(resolveTowerNickname({ status: "restricted", tag: " Clan " }, { id: 123 }), "Clan");
+  for (const member of [null, undefined, {}, { status: "restricted" }, { status: "left" }, { status: "kicked" }, { status: "unknown" }]) {
+    assert.equal(resolveTowerNickname(member, { id: 123, username: "player" }), "@player");
+  }
+});
+
+test("tower fallback preference is actor username then trimmed full name then real ID", () => {
+  assert.equal(resolveTowerNickname(null, { id: 456, username: "@player", first_name: "First", last_name: "Last" }), "@player");
+  assert.equal(resolveTowerNickname(null, { id: 456, username: " ", first_name: " First ", last_name: " Last " }), "First Last");
+  assert.equal(resolveTowerNickname(null, { id: 456, last_name: " Last " }), "Last");
+  assert.equal(resolveTowerNickname(null, { id: 456, first_name: " ", last_name: " " }), "Telegram 456");
+});
+
+test("tower actor ID must be an actual positive safe integer", () => {
+  assert.equal(isValidTowerActor({ id: 456 }), true);
+  for (const actor of [null, undefined, {}, { id: 0 }, { id: -1 }, { id: 1.5 }, { id: NaN }, { id: Infinity }, { id: Number.MAX_SAFE_INTEGER + 1 }]) {
+    assert.equal(isValidTowerActor(actor), false);
+  }
 });
 
 test("confirmation is allowed only once and only for a complete form", () => {

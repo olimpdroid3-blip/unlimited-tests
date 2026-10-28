@@ -72,12 +72,38 @@ export type ChatMemberInfo =
   | null
   | undefined;
 
+/** The actual message/callback actor, never the bot's callback message author. */
+export type TowerActor = {
+  id?: number;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+};
+
+export function isValidTowerActor(actor: TowerActor | null | undefined): actor is TowerActor & { id: number } {
+  return typeof actor?.id === "number" && Number.isSafeInteger(actor.id) && actor.id > 0;
+}
+
+/** Role lookup enriches tower display names only; it never grants/denies entry. */
+export function resolveTowerNickname(member: ChatMemberInfo, actor: TowerActor & { id: number }): string {
+  const title = member?.status === "administrator" || member?.status === "creator"
+    ? member.custom_title?.trim()
+    : member?.status === "member" || member?.status === "restricted"
+      ? member.tag?.trim()
+      : undefined;
+  if (title) return title;
+  const username = actor.username?.trim().replace(/^@+/, "");
+  if (username) return `@${username}`;
+  const fullName = [actor.first_name?.trim(), actor.last_name?.trim()].filter(Boolean).join(" ");
+  return fullName || `Telegram ${actor.id}`;
+}
+
 export const NOT_MEMBER_TEXT = "⛔ Ця форма доступна лише учасникам групи.";
 export const NO_NICKNAME_TEXT =
   "⛔ Для вашого акаунта не задано ігровий нік у групі (тег учасника або титул адміністратора). Зверніться до власника групи.";
 
 /**
- * Game nickname for the add-tower and walkthrough forms:
+ * Strict game nickname for the walkthrough form (not tower entry):
  * regular members → their Telegram member `tag`;
  * administrators/creator → their `custom_title`.
  * Never falls back to username / first_name / last_name.

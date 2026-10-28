@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHash, timingSafeEqual } from "crypto";
+import type { TowerActor } from "@/lib/tower-form";
 
 export function deriveWebhookSecret(botToken: string): string {
   return createHash("sha256").update(`gvg-video-webhook:${botToken}`).digest("base64url");
@@ -16,7 +17,7 @@ type TgMessage = {
   message_thread_id?: number;
   date?: number;
   chat?: { id?: number; type?: string; username?: string; title?: string };
-  from?: { id?: number; username?: string; first_name?: string };
+  from?: TowerActor;
   text?: string;
   caption?: string;
   video?: unknown;
@@ -115,7 +116,7 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
           | {
               id: string;
               data?: string;
-              from?: { id?: number };
+              from?: TowerActor;
               message?: { message_id?: number; chat?: { id?: number }; message_thread_id?: number };
             }
           | undefined;
