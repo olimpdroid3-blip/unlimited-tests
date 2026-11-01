@@ -308,7 +308,7 @@ function MobLevelsEditorPage() {
       <Toaster position="top-center" richColors />
       <AppHeader />
 
-      <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-12 pt-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-12 pt-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <Link
@@ -367,7 +367,7 @@ function MobLevelsEditorPage() {
 
         {!queryError && catalog.length > 0 && selectedPlayerId && (
           <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-            <section className="space-y-3">
+            <section>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <h2 className="font-semibold">Моби гравця</h2>
@@ -388,6 +388,7 @@ function MobLevelsEditorPage() {
                 </div>
               )}
 
+              <div className="grid gap-3 xl:grid-cols-2 min-[1900px]:grid-cols-3">
               {draftRows.map(({ mob, level }) => {
                 const mobName = nameDraftById.get(mob.id) ?? mob.name;
                 const classification = classificationDraftById.get(mob.id) ?? mob;
@@ -495,6 +496,7 @@ function MobLevelsEditorPage() {
                   </article>
                 );
               })}
+              </div>
             </section>
 
             <aside className="h-fit rounded-2xl border border-border bg-card/60 p-4 lg:sticky lg:top-24">
