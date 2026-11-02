@@ -90,7 +90,7 @@ function MobLevelsPage() {
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <AppHeader />
 
-      <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-12 pt-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-12 pt-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <Link
@@ -241,7 +241,7 @@ function MobLevelsPage() {
             )}
 
             {visibleMobs.length > 0 && (
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {visibleMobs.map(({ mob, level }) => (
                   <article
                     key={mob.id}
