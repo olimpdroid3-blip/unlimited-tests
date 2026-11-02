@@ -323,7 +323,7 @@ function BattlePowerPage() {
       <AppHeader />
       <Toaster position="top-center" />
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-3 pb-10 pt-6">
+      <main className="mx-auto w-full max-w-3xl min-[1920px]:max-w-7xl flex-1 px-3 pb-10 pt-6">
         <Link
           to={RESOURCE_BACK_LINKS["/battle-power"].to}
           className="inline-flex rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs text-secondary-foreground transition hover:bg-accent"
@@ -407,111 +407,32 @@ function BattlePowerPage() {
           </div>
         )}
 
-        <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card/60">
-          <table className="w-full table-fixed border-collapse text-[10px] min-[360px]:text-[11px] sm:text-base">
-            <colgroup>
-              <col style={{ width: "30%" }} />
-              {[1, 2, 3, 4, 5, 6].map((column) => (
-                <col key={column} style={{ width: "11.6667%" }} />
-              ))}
-            </colgroup>
-            <thead>
-              <tr className="border-b border-border text-muted-foreground">
-                <th className="px-1 py-2 text-left font-semibold sm:px-2">Гравець</th>
-                <th className="px-0.5 py-2 text-center font-semibold sm:px-1">БС #1</th>
-                <th className="px-0.5 py-2 text-center font-semibold sm:px-1">БС #2</th>
-                <th className="px-0.5 py-2 text-center font-semibold sm:px-1">БС #3</th>
-                <th className="px-0.5 py-2 text-center font-semibold sm:px-1">БС #4</th>
-                <th className="px-0.5 py-2 text-center font-semibold sm:px-1">БС #5</th>
-                <th className="px-0.5 py-2 text-center font-semibold sm:px-1">
-                  <span className="sm:hidden">Сер.</span>
-                  <span className="hidden sm:inline">Середній БС</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading && (
-                <tr>
-                  <td colSpan={7} className="p-4 text-center text-xs text-muted-foreground">
-                    Завантаження…
-                  </td>
-                </tr>
-              )}
-              {!isLoading && data.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="p-4 text-center text-xs text-muted-foreground">
-                    Записів поки немає
-                  </td>
-                </tr>
-              )}
-              {sortedData.map((r) => {
-                const averagePower = calculateAverageBattlePower(r);
-                const displayedPowers = [
-                  r.power1,
-                  r.power2,
-                  r.power3,
-                  r.power4,
-                  r.power5,
-                  averagePower,
-                ];
-                const displayedCrowns = [
-                  r.power1_crowned,
-                  r.power2_crowned,
-                  r.power3_crowned,
-                  r.power4_crowned,
-                  r.power5_crowned,
-                  false,
-                ];
-
-                return (
-                  <tr key={r.id} className="border-b border-border/50 last:border-0">
-                    <td className="px-1 py-2 sm:px-2">
-                      <div className="flex min-w-0 items-center gap-0.5 sm:gap-1">
-                        <span className="min-w-0 flex-1 truncate font-bold" title={r.nickname}>
-                          {r.nickname}
-                        </span>
-                        <button
-                          onClick={() => openEdit(r)}
-                          aria-label={`Редагувати ${r.nickname}`}
-                          className="shrink-0 cursor-pointer rounded-md px-0.5 py-1 text-[10px] font-medium text-muted-foreground transition hover:bg-primary/10 hover:text-primary sm:px-1 sm:text-[11px]"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => setDeleteId(r.id)}
-                          aria-label={`Видалити ${r.nickname}`}
-                          className="shrink-0 cursor-pointer rounded-md px-0.5 py-1 text-[10px] font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive sm:px-1 sm:text-[11px]"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </td>
-                    {displayedPowers.map((power, index) => (
-                      <td key={index} className="px-0.5 py-2 text-center sm:px-1">
-                        <div className="flex flex-col items-center justify-end leading-none">
-                          <span className="flex h-3 items-center sm:h-3.5">
-                            {displayedCrowns[index] && (
-                              <Crown
-                                className="size-3 text-amber-500 sm:size-3.5"
-                                fill="currentColor"
-                                aria-label="Значення з пробудою"
-                              />
-                            )}
-                          </span>
-                          <span
-                            className="mt-0.5 font-mono font-semibold tabular-nums"
-                            style={power == null ? undefined : { color: powerColor(power) }}
-                          >
-                            {fmt(power)}
-                          </span>
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="mt-4 grid min-[1920px]:grid-cols-2 gap-4">
+          <BattlePowerTable
+            rows={sortedData.slice(0, Math.ceil(sortedData.length / 2))}
+            isLoading={isLoading}
+            isEmpty={data.length === 0}
+            onEdit={openEdit}
+            onDelete={setDeleteId}
+            className="min-[1920px]:hidden"
+            hiddenRows={sortedData.slice(Math.ceil(sortedData.length / 2))}
+          />
+          <BattlePowerTable
+            rows={sortedData.slice(0, Math.ceil(sortedData.length / 2))}
+            isLoading={isLoading}
+            isEmpty={false}
+            onEdit={openEdit}
+            onDelete={setDeleteId}
+            className="hidden min-[1920px]:block"
+          />
+          <BattlePowerTable
+            rows={sortedData.slice(Math.ceil(sortedData.length / 2))}
+            isLoading={false}
+            isEmpty={false}
+            onEdit={openEdit}
+            onDelete={setDeleteId}
+            className="hidden min-[1920px]:block"
+          />
         </div>
 
         <div className="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1.5 rounded-xl border border-border bg-card/60 px-3 py-3 text-[10px] sm:text-[11px]">
@@ -683,6 +604,135 @@ function BattlePowerPage() {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
+    </div>
+  );
+}
+
+function BattlePowerTable({
+  rows,
+  hiddenRows,
+  isLoading,
+  isEmpty,
+  onEdit,
+  onDelete,
+  className,
+}: {
+  rows: BattlePowerRow[];
+  hiddenRows?: BattlePowerRow[];
+  isLoading: boolean;
+  isEmpty: boolean;
+  onEdit: (r: BattlePowerRow) => void;
+  onDelete: (id: string) => void;
+  className?: string;
+}) {
+  const allRows = hiddenRows ? [...rows, ...hiddenRows] : rows;
+
+  return (
+    <div className={`overflow-hidden rounded-xl border border-border bg-card/60 ${className ?? ""}`}>
+      <table className="w-full table-fixed border-collapse text-[10px] min-[360px]:text-[11px] sm:text-base">
+        <colgroup>
+          <col style={{ width: "30%" }} />
+          {[1, 2, 3, 4, 5, 6].map((column) => (
+            <col key={column} style={{ width: "11.6667%" }} />
+          ))}
+        </colgroup>
+        <thead>
+          <tr className="border-b border-border text-muted-foreground">
+            <th className="px-1 py-2 text-left font-semibold sm:px-2">Гравець</th>
+            <th className="px-0.5 py-2 text-center font-semibold sm:px-1">БС #1</th>
+            <th className="px-0.5 py-2 text-center font-semibold sm:px-1">БС #2</th>
+            <th className="px-0.5 py-2 text-center font-semibold sm:px-1">БС #3</th>
+            <th className="px-0.5 py-2 text-center font-semibold sm:px-1">БС #4</th>
+            <th className="px-0.5 py-2 text-center font-semibold sm:px-1">БС #5</th>
+            <th className="px-0.5 py-2 text-center font-semibold sm:px-1">
+              <span className="sm:hidden">Сер.</span>
+              <span className="hidden sm:inline">Середній БС</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {isLoading && (
+            <tr>
+              <td colSpan={7} className="p-4 text-center text-xs text-muted-foreground">
+                Завантаження…
+              </td>
+            </tr>
+          )}
+          {!isLoading && isEmpty && (
+            <tr>
+              <td colSpan={7} className="p-4 text-center text-xs text-muted-foreground">
+                Записів поки немає
+              </td>
+            </tr>
+          )}
+          {allRows.map((r) => {
+            const averagePower = calculateAverageBattlePower(r);
+            const displayedPowers = [
+              r.power1,
+              r.power2,
+              r.power3,
+              r.power4,
+              r.power5,
+              averagePower,
+            ];
+            const displayedCrowns = [
+              r.power1_crowned,
+              r.power2_crowned,
+              r.power3_crowned,
+              r.power4_crowned,
+              r.power5_crowned,
+              false,
+            ];
+
+            return (
+              <tr key={r.id} className="border-b border-border/50 last:border-0">
+                <td className="px-1 py-2 sm:px-2">
+                  <div className="flex min-w-0 items-center gap-0.5 sm:gap-1">
+                    <span className="min-w-0 flex-1 truncate font-bold" title={r.nickname}>
+                      {r.nickname}
+                    </span>
+                    <button
+                      onClick={() => onEdit(r)}
+                      aria-label={`Редагувати ${r.nickname}`}
+                      className="shrink-0 cursor-pointer rounded-md px-0.5 py-1 text-[10px] font-medium text-muted-foreground transition hover:bg-primary/10 hover:text-primary sm:px-1 sm:text-[11px]"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => onDelete(r.id)}
+                      aria-label={`Видалити ${r.nickname}`}
+                      className="shrink-0 cursor-pointer rounded-md px-0.5 py-1 text-[10px] font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive sm:px-1 sm:text-[11px]"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </td>
+                {displayedPowers.map((power, index) => (
+                  <td key={index} className="px-0.5 py-2 text-center sm:px-1">
+                    <div className="flex flex-col items-center justify-end leading-none">
+                      <span className="flex h-3 items-center sm:h-3.5">
+                        {displayedCrowns[index] && (
+                          <Crown
+                            className="size-3 text-amber-500 sm:size-3.5"
+                            fill="currentColor"
+                            aria-label="Значення з пробудою"
+                          />
+                        )}
+                      </span>
+                      <span
+                        className="mt-0.5 font-mono font-semibold tabular-nums"
+                        style={power == null ? undefined : { color: powerColor(power) }}
+                      >
+                        {fmt(power)}
+                      </span>
+                    </div>
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
