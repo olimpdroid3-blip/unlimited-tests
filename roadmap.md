@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] Integrate current-match scouting into towers and scoped Telegram position replies.
+- [ ] Replace website clear-all with server-side snapshot/archive/atomic reset and cleanup warnings.
+- [ ] Verify mocked regressions and preview without live resets or Telegram messages.
+
 - [x] Зберігати джерело активної вежі та її пряму Telegram/site адресу без зміни схеми БД.
 - [x] Створювати постійне Telegram-повідомлення для веж, доданих ботом.
 - [x] Додати компактні source-кнопки, «Додати вежу» та загальну кнопку сайту до списку.
