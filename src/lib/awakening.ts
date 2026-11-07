@@ -45,7 +45,9 @@ export function parseScoutingPosition(text: string): string | null {
 }
 
 export function scoutingRequestPosition(chatId: number, threadId: number | null, text: string, formHandled: boolean): string | null {
-  return !formHandled && isTowerWorkflowThread(chatId, threadId) ? parseScoutingPosition(text) : null;
+  if (formHandled || !isTowerWorkflowThread(chatId, threadId)) return null;
+  const compact = /^([1-4])([1-6])([1-2])$/.exec(text.trim());
+  return parseScoutingPosition(compact ? compact.slice(1).join(".") : text);
 }
 
 export function awakeningLabel(value: number | null): string {
@@ -67,7 +69,7 @@ export function formatScoutingReply(position: string, report?: ScoutingReport): 
   if (!report) return `Розвідки для вежі ${position} у поточному матчі ще немає.`;
   const heroes = Array.from({ length: 5 }, (_, index) => {
     const hero = report.heroes[index];
-    return `${index + 1}. ${hero ? plainName(hero.name) : "Невідомий герой"} — БС: ${formatBp(hero?.bp ?? null)}; ${awakeningLabel(hero?.awakening ?? null)}`;
+    return `${index + 1}. ${hero ? plainName(hero.name) : "Невідомий герой"} ${awakeningLabel(hero?.awakening ?? null)} — БС: ${formatBp(hero?.bp ?? null)}`;
   });
   return [
     `Розвідка суперника — ${position}`,
@@ -75,8 +77,6 @@ export function formatScoutingReply(position: string, report?: ScoutingReport): 
     `Загальна БС: ${formatBp(report.total_bp)}`,
     ...heroes,
     `Знімок: ${scoutingDate(report.captured_at)}`,
-    `Отримано: ${scoutingDate(report.received_at)}`,
-    "Пробуди розраховані; «невідомо» не означає A0.",
   ].join("\n");
 }
 

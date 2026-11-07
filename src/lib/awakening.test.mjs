@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseScoutingPosition,awakeningLabel,formatScoutingReply,prepareAwakeningArchive,executeAwakeningReset} from './awakening.ts';
+import {parseScoutingPosition,scoutingRequestPosition,awakeningLabel,formatScoutingReply,prepareAwakeningArchive,executeAwakeningReset} from './awakening.ts';
 import {routeScoutingMessage} from './awakening-routing.ts';
 import {TOWER_CHAT_ID,TOWER_WORK_THREAD_ID} from './tower-form.ts';
 
@@ -17,6 +17,29 @@ test('unknown awakening stays unknown, literal player strings cannot add lines',
   assert.match(formatScoutingReply('1.1.1'),/ще немає/);
 });
 const message={chatId:TOWER_CHAT_ID,threadId:TOWER_WORK_THREAD_ID,userId:123,text:'1 1 1',formHandled:false};
+test('Telegram accepts compact, spaced and dotted positions within the same limits',()=>{
+  for(let c=1;c<=4;c++) for(let t=1;t<=6;t++) for(let d=1;d<=2;d++) {
+    for(const input of [`${c}${t}${d}`,`${c} ${t} ${d}`,`${c}.${t}.${d}`]) {
+      assert.equal(scoutingRequestPosition(TOWER_CHAT_ID,TOWER_WORK_THREAD_ID,input,false),`${c}.${t}.${d}`);
+    }
+  }
+  for(const input of ['000','171','113','511','1111','tower 111','11 1']) {
+    assert.equal(scoutingRequestPosition(TOWER_CHAT_ID,TOWER_WORK_THREAD_ID,input,false),null);
+  }
+  assert.equal(scoutingRequestPosition(TOWER_CHAT_ID,4,'111',false),null);
+  assert.equal(scoutingRequestPosition(TOWER_CHAT_ID,TOWER_WORK_THREAD_ID,'111',true),null);
+});
+test('Telegram places awakening after the hero name and ends at the snapshot date',()=>{
+  const result=formatScoutingReply('1.1.1',{player_name:'Player',total_bp:30,heroes:[
+    {name:'Ghan',bp:10,awakening:0},{name:'Count Dracula',bp:20,awakening:5}
+  ],captured_at:'2026-11-07T16:23:02Z',received_at:'2026-11-07T17:00:00Z'});
+  assert.match(result,/^1\. Ghan A0 — БС: 10$/m);
+  assert.match(result,/^2\. Count Dracula A5 — БС: 20$/m);
+  assert.match(result.split('\n').at(-1),/^Знімок: .*UTC$/);
+  assert.ok(!result.includes('Отримано:'));
+  assert.ok(!result.includes('розраховані'));
+  assert.ok(!result.includes('не означає A0'));
+});
 test('other chats, topics, missing actor and handled forms perform no IO',async()=>{
   for(const patch of [{chatId:123},{threadId:4},{threadId:108},{userId:0},{formHandled:true},{text:'hello'}]) {
     let touched=false;const io={handleInteractive:async()=>{touched=true;return false;},read:async()=>{touched=true;},send:async()=>{touched=true;}};
