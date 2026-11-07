@@ -199,6 +199,13 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
           }
         }
 
+        if (towerConst.isTowerWorkflowThread(chatId, threadId) && message.from?.id && message.text) {
+          const { handleAwakeningMessage } = await import("@/lib/awakening-telegram.server");
+          if (await handleAwakeningMessage({ chatId, threadId, userId: message.from.id, text: message.text, formHandled: false })) {
+            return Response.json({ ok: true, handled: "awakening-or-interactive-form" });
+          }
+        }
+
         const { supabaseAdmin } = await import("@/lib/db.server");
         const { getTelegramSourcesCache } = await import("@/lib/telegram-sources-cache.server");
         let source: string | null;

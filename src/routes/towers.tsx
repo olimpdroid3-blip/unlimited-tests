@@ -1,6 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { AwakeningScouting } from "@/components/AwakeningScouting";
+import { clearTowersAndScouting, getAwakeningScouting } from "@/lib/awakening.functions";
 import { supabase } from "@/lib/db";
 import { AppHeader } from "@/components/AppHeader";
 import { Toaster } from "@/components/ui/sonner";
@@ -11,7 +15,6 @@ import { isMirrorRow, MIRROR_PREFIX, VALID_TOWER_IDS } from "@/lib/mirror-order"
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   getTowerCardStatusFlags,
-  getTowerStatusFlags,
   getTowerStatuses,
   TOWER_STATUS_LABELS,
 } from "@/lib/tower-status";
@@ -23,6 +26,8 @@ export const Route = createFileRoute("/towers")({
       { name: "description", content: "48 веж GvG — швидкий трекер проходки." },
       { property: "og:title", content: "Вежі — GvG" },
       { property: "og:description", content: "48 веж GvG — швидкий трекер проходки." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: HomePage,
@@ -88,6 +93,13 @@ function HomePage() {
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
   const [mirrorOpen, setMirrorOpen] = useState(false);
+  const clearAtomic = useServerFn(clearTowersAndScouting);
+  const readScouting = useServerFn(getAwakeningScouting);
+  const scouting = useQuery({
+    queryKey: ["awakening-scouting"],
+    queryFn: () => readScouting(),
+    refetchInterval: 60_000,
+  });
 
   const { data: towers = [], refetch } = useQuery({
     queryKey: ["towers"],
@@ -133,55 +145,20 @@ function HomePage() {
 
   const handleClearAll = async () => {
     setBusy(true);
-    if (towers.length > 0 || variants.length > 0) {
-      const archiveIds = new Set([
-        ...realTowers.map((tower) => tower.tower_id),
-        ...variantsByTower.keys(),
-      ]);
-      const archiveRows = [...archiveIds].map((id) => ({
-        tower_id: id,
-        participants: getTowerGroup(id, realTowers, variants).participants,
-        nickname: map.get(id)?.nickname ?? null,
-        awakenings: map.get(id)?.awakenings ?? null,
-        notes: map.get(id)?.notes ?? null,
-        defense_variant: variantsByTower.get(id) ?? null,
-        ...getTowerStatusFlags(map.get(id)),
-        previous_nickname: map.get(id)?.previous_nickname ?? null,
-        // Tower screenshots are wiped along with the records; only copies
-        // already saved into the defenses database survive.
-        screenshot_url: null,
-      }));
-      const { error: archErr } = await supabase.from("towers_archive").insert(archiveRows);
-      if (archErr) {
-        setBusy(false);
-        return;
-      }
-      const screenshotPaths = realTowers
-        .map((t) => t.screenshot_path)
-        .filter((path): path is string => Boolean(path));
-      if (screenshotPaths.length > 0) {
-        await supabase.storage.from("defense-screenshots").remove(screenshotPaths);
-      }
-      const { error: delErr } = await supabase.from("towers").delete().neq("tower_id", "");
-      if (delErr) {
-        setBusy(false);
-        return;
-      }
-      const { error: variantError } = await supabase
-        .from("tower_defense_variants")
-        .delete()
-        .neq("tower_id", "");
-      if (variantError) {
-        setBusy(false);
-        return;
-      }
+    try {
+      const result = await clearAtomic({ data: { confirmation: "згоден" } });
+      if (!result.ok) toast.error(result.error);
+      else if (result.cleanupWarning) toast.warning(result.cleanupWarning);
+      else toast.success("Вежі архівовано. Розпочато новий матч розвідки.");
+    } catch {
+      toast.error("Не вдалося підтвердити результат очищення. Дані оновлюються; перевірте їх перед повторною спробою.");
+    } finally {
+      setClearOpen(false);
+      setConfirmOpen(false);
+      setConfirmText("");
+      await Promise.all([refetch(), refetchVariants(), scouting.refetch()]);
+      setBusy(false);
     }
-    setBusy(false);
-    setClearOpen(false);
-    setConfirmOpen(false);
-    setConfirmText("");
-    refetch();
-    refetchVariants();
   };
 
   // Second-step confirmation: proceed only if the user typed "згоден"
@@ -390,6 +367,8 @@ function HomePage() {
             <span>Видалити всі записи</span>
           </button>
         </div>
+
+        <AwakeningScouting data={scouting.data} loading={scouting.isFetching} error={scouting.isError} onRefresh={() => void scouting.refetch()} />
       </main>
 
       <MirrorOrderModal
