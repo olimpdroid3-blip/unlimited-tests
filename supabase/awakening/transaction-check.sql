@@ -1,0 +1,31 @@
+begin;
+do $test$
+declare b jsonb := '{"schema_version":1,"report_id":"cc23b4f3-ff62-5ae7-ac3b-07381a75f91c","scouting_id":"bd8a79ee-3bb9-4f2c-bcb3-3b0fb0aeb451","scouting_revision":1,"reports":[{"tower_position":"2.4.1","player_name":"Uhtred","total_bp":605151,"captured_at":"2026-11-07T18:24:35+03:00","heroes":[{"name":"Oren","bp":145310,"awakening":5},{"name":"Valara","bp":152313,"awakening":5},{"name":"Khadgrim","bp":121073,"awakening":1},{"name":"Eirlys","bp":84243,"awakening":2},{"name":"Talula","bp":102212,"awakening":1}]},{"tower_position":"2.4.2","player_name":"Uhtred","total_bp":549230,"captured_at":"2026-11-07T18:24:35+03:00","heroes":[{"name":"Ghan","bp":97992,"awakening":0},{"name":"Count Dracula","bp":137785,"awakening":5},{"name":"Carnelian","bp":88362,"awakening":0},{"name":"Jezebelle","bp":133466,"awakening":0},{"name":"Rivenhald","bp":91625,"awakening":3}]}],"match_id":"opaque-server-match-id"}'::jsonb; a jsonb; m uuid; n uuid; b2 jsonb;
+begin
+ insert into awakening_private.matches(scope) values('__awakening_atomic_validation__') returning match_id into m;
+ insert into awakening_private.tokens(token_hash,scope) values(repeat('e',64),'__awakening_atomic_validation__');
+ b:=jsonb_set(b,'{match_id}',to_jsonb(m::text));
+ b2:=b;
+ b2:=jsonb_set(b2,'{reports,0,tower_position}','"1.1.1"'::jsonb);
+ b2:=jsonb_set(b2,'{reports,1,tower_position}','"1.1.2"'::jsonb);
+ b:=jsonb_set(b,'{reports}',(b->'reports')||(b2->'reports'));
+ a:=public.awakening_import(repeat('e',64),b,'four-positions');
+ if a->>'ok' is distinct from 'true' then raise exception '4 records: %',a; end if;
+ b2:=jsonb_set(b2,'{scouting_revision}','2'::jsonb);
+ b2:=jsonb_set(b2,'{report_id}',to_jsonb(gen_random_uuid()::text));
+ b2:=jsonb_set(b2,'{reports,0,heroes,0,awakening}','null'::jsonb);
+ a:=public.awakening_import(repeat('e',64),b2,'two-positions');
+ if a->>'ok' is distinct from 'true' then raise exception 'update: %',a; end if;
+ if jsonb_array_length(public.awakening_read('__awakening_atomic_validation__',null)->'reports')<>4 then raise exception 'Missing positions deleted'; end if;
+ if public.awakening_read('__awakening_atomic_validation__','1.1.1')#>'{reports,0,heroes,0,awakening}' <> 'null'::jsonb then raise exception 'Unknown awakening lost'; end if;
+ b2:=jsonb_set(b2,'{scouting_revision}','3'::jsonb);
+ b2:=jsonb_set(b2,'{report_id}',to_jsonb(gen_random_uuid()::text));
+ b2:=jsonb_set(b2,'{reports,1,total_bp}','1'::jsonb);
+ if public.awakening_import(repeat('e',64),b2,'invalid')->>'ok' is distinct from 'false' then raise exception 'Invalid partial package accepted'; end if;
+ if (select count(*) from awakening_private.imports where scope='__awakening_atomic_validation__')<>2 then raise exception 'Partial write'; end if;
+ n:=public.awakening_reset_match('__awakening_atomic_validation__',m);
+ if jsonb_array_length(public.awakening_read('__awakening_atomic_validation__',null)->'reports')<>0 then raise exception 'Old scouting visible'; end if;
+ if (select count(*) from awakening_private.defenses where scope='__awakening_atomic_validation__')<>4 then raise exception 'Archive lost'; end if;
+ if (select count(*) from awakening_private.imports where scope='__awakening_atomic_validation__')<>2 then raise exception 'Dedupe lost'; end if;
+end $test$;
+rollback;
