@@ -39,8 +39,10 @@ begin
     removed boolean,previous_nickname text,participants jsonb,do_not_attack boolean);
  select coalesce(jsonb_agg(screenshot_path) filter(where screenshot_path is not null),'[]'::jsonb)
    into v_paths from public.towers;
- delete from public.tower_defense_variants;
- delete from public.towers;
+ delete from public.tower_defense_variants
+   where tower_id in (select item->>'tower_id' from jsonb_array_elements(p_snapshot->'variants') item);
+ delete from public.towers
+   where tower_id in (select item->>'tower_id' from jsonb_array_elements(p_snapshot->'towers') item);
  v_new:=public.awakening_reset_match('nonameclan',v_match);
  return jsonb_build_object('ok',true,'match_id',v_new,'screenshot_paths',v_paths);
 end $$;

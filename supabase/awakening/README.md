@@ -30,3 +30,12 @@ automatically identified as belonging to the previous match.
 `transaction-check.sql` tests only its own test scope inside a rolled-back
 transaction. `src/lib/awakening.test.mjs` tests website/bot logic with mocked IO.
 Live resets and Telegram test messages are not part of automated verification.
+
+On 2026-11-09 migration `awakening_reset_delete_snapshot_rows_with_where`
+fixed the PostgREST `safeupdate` rejection (`DELETE requires a WHERE clause`,
+SQLSTATE 21000). Both deletions now explicitly select IDs from the already
+verified snapshot. Safety settings and RPC permissions are unchanged.
+`fix-safe-reset.sql` preserves that patch. `reset-rollback-check.sql` verifies
+archiving, empty tower/variant tables, empty current scouting, match rotation,
+stale-snapshot rejection and a second reset with no towers. Its nested
+subtransaction and outer transaction roll back every data change.
