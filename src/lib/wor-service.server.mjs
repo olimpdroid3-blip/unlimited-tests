@@ -653,6 +653,8 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
       const isRegistration =
         registration && registration[1].toLowerCase() === (s.settings.activation_command ?? "reg");
       if (registration && !isCommand && !isRegistration) return false;
+      if (!isCallback && !isRegistration && (chat?.type !== "private" || String(chat.id) !== id))
+        return false;
       if (isRegistration) {
         if (
           registration[2] &&

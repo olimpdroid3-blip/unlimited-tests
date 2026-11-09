@@ -320,6 +320,7 @@ test("registration expiry, custom server command and unrelated group commands", 
   assert.equal(f.state.requests[0].requester, undefined);
   assert.ok(f.calls.some((x) => x.method === "sendMessage" && x.params.text.includes("истёк")));
   assert.equal(await f.service.bot(msg("/other K7M2-9Q4X")), false);
+  assert.equal(await f.service.bot(msg("/devices K7M2-9Q4X")), false);
 });
 test("poll pending, proof validation, topic-only confirmation and one-time concurrent issue", async () => {
   const f = await fixture(),

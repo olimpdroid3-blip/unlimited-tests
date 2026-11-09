@@ -34,6 +34,22 @@ owner's offline update/table signing key remains separate and absent from server
 
 ## Telegram checks
 
+Short-command update: POST /api/wor/start now returns `command` such as
+`/reg 6KAM-X9D7` and the clan topic link. The code is random, expires after
+10 minutes, is stored hashed, and still requires the initiating member's button
+confirmation. The bot reports successful activation after the program receives
+its license. `activation_command` is service-only configurable; clients must use
+the complete returned command. Legacy deep links and admin login remain supported.
+
+Live Telegram inspection for this update returned status=administrator,
+receives_bare_commands=true and no registered commands in default/all-group/chat
+scopes. `/reg` was absent in pre-existing source handlers. The saved clan roster
+lists only our bot. A second bot's private implementation cannot be inspected
+without its access; no second bot is known from the available roster.
+Production start returned a bare `/reg` command, expiry=600, interval=3 and the
+correct topic link; its proof-based poll returned 202. No live clan message was
+sent by the operator test. Local registration/security tests and build passed.
+
 - Existing bot: @gvg_video_index_bot.
 - Clan: -1003978316922; actual type supergroup, forum=true.
 - Bot's getChatMember status: administrator. can_manage_topics=false: it can use
