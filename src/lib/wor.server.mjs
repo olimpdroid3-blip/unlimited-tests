@@ -110,7 +110,7 @@ export async function handleWor(request) {
       const state = await store.read();
       return json({status:"ok",enabled:state.data.settings.enabled===true});
     } catch (error) {
-      const reason = /^WOR_(CONFIG|STATE|STORAGE_\d+)$/.test(error?.message ?? "") ? error.message : "WOR_NETWORK";
+      const reason = /^WOR_(CONFIG|STATE|STORAGE_\d+|TRANSPORT_[A-Z]+|RESPONSE_JSON)$/.test(error?.message ?? "") ? error.message : "WOR_NETWORK";
       return json({status:"error",code:"server_error",message:"Сервис временно недоступен.",reason},503);
     }
   }
