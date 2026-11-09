@@ -1,5 +1,19 @@
 # WoR Collector — production status, 2026-11-09
 
+## Current rate limits
+
+- Global: 1200 requests/minute/IP.
+- POST start: 180/10 minutes/IP and 12/10 minutes/machine/IP.
+- POST poll: 30/minute/request/IP.
+- Telegram reg: unchanged 6/10 minutes/user. Renew/admin-specific quotas unchanged.
+- Start formatting errors consume global quota only. Fixed windows remain atomic;
+  rejects never extend the window. HTTP 429 includes an integer Retry-After from
+  the stored window end, with a conservative full-window fallback if unavailable.
+- Tests cover exact boundaries, shared IP, independent machine/request counters,
+  window expiration, non-consumption on 400, and Retry-After on compact file errors.
+- No device, membership, poll proof, license signature or Telegram approval rule
+  changes. Client JSON app_version continues to require major.minor.patch.
+
 ## Current artifact update
 
 File endpoints now require only refresh_secret and X-Machine-Code, with the same

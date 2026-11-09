@@ -63,6 +63,12 @@ export function createWorStore() {
     read,
     transaction,
     rpc,
+    async rateWindow(key) {
+      const rows = await (
+        await request("/rest/v1/wor_rate?key=eq." + encodeURIComponent(key) + "&select=window_end")
+      ).json();
+      return rows[0]?.window_end;
+    },
     get: (object) => request("/storage/v1/object/authenticated/wor-private/" + object),
     put: (object, body, type = "application/octet-stream") =>
       request("/storage/v1/object/wor-private/" + object, {

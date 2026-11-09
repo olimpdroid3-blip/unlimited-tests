@@ -96,7 +96,7 @@ test("private runtime configuration defaults off and environment can force-disab
   );
 });
 
-async function fixture() {
+async function fixture({ enforceRates = false } = {}) {
   const pair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
   const pk = base64url(await crypto.subtle.exportKey("pkcs8", pair.privateKey));
   let state = {
@@ -123,6 +123,7 @@ async function fixture() {
     statuses = new Map();
   let denyRate = false,
     tgError = false;
+  const rateRows = new Map();
   const store = {
     read: async () => ({ revision: 0, data: structuredClone(state) }),
     transaction: (fn) => {
@@ -135,7 +136,22 @@ async function fixture() {
       queue = next.catch(() => {});
       return next;
     },
-    rpc: async (name) => (name === "wor_license_key" ? pk : !denyRate),
+    rpc: async (name, args) => {
+      if (name === "wor_license_key") return pk;
+      if (denyRate) return false;
+      if (enforceRates && name === "wor_rate_take") {
+        let row = rateRows.get(args.k);
+        if (!row || row.end < timestamp) {
+          row = { end: timestamp + args.seconds * 1000, attempts: 0 };
+          rateRows.set(args.k, row);
+        }
+        row.attempts++;
+        return row.attempts <= args.max_attempts;
+      }
+      return true;
+    },
+    rateWindow: async (key) =>
+      rateRows.has(key) ? new Date(rateRows.get(key).end).toISOString() : undefined,
     get: async (object) => {
       if (!objects.has(object)) throw Error("missing");
       return new Response(objects.get(object));
@@ -215,6 +231,7 @@ async function fixture() {
     objects,
     calls,
     statuses,
+    rateRows,
     get state() {
       return state;
     },
@@ -248,6 +265,81 @@ test("strict license payload UTF-8, order and independent Ed25519 verification",
   );
   assert.throws(() => licensePayload("AAAA-BBBB-CCCC-1111", "Тест", "2030-01-01"));
   assert.throws(() => licensePayload("AAAA-BBBB-CCCC-DDDD", "Тест", "2030-02-30"));
+});
+
+test("start validates before quotas and permits 12 starts per machine/IP with precise retry", async () => {
+  const f = await fixture({ enforceRates: true });
+  const valid = {
+    machine_code: "AAAA-BBBB-CCCC-DDDD",
+    app_version: "1.0.0",
+    poll_hash: await sha256("proof"),
+  };
+  const start = (b) => f.service.http(f.req("/api/wor/start", b));
+  for (const b of [
+    { ...valid, app_version: "1.2" },
+    { ...valid, poll_hash: "invalid" },
+    { ...valid, machine_code: "invalid" },
+    { ...valid, extra: "invalid" },
+  ])
+    assert.equal((await start(b)).status, 400);
+  const machineKey = await sha256("start_machine|192.0.2.1|" + valid.machine_code),
+    ipKey = await sha256("start|192.0.2.1|");
+  assert.equal(f.rateRows.has(machineKey), false);
+  assert.equal(f.rateRows.has(ipKey), false);
+  for (let i = 0; i < 12; i++) assert.equal((await start(valid)).status, 200);
+  let denied = await start(valid);
+  assert.equal(denied.status, 429);
+  assert.equal(denied.headers.get("Retry-After"), "600");
+  assert.equal((await denied.json()).code, "rate_limited");
+  assert.equal(f.rateRows.get(ipKey).attempts, 12);
+  assert.equal((await start({ ...valid, machine_code: "AAAA-BBBB-CCCC-EEEE" })).status, 200);
+  f.advance(120000);
+  denied = await start(valid);
+  assert.equal(denied.headers.get("Retry-After"), "480");
+  f.advance(480001);
+  assert.equal((await start(valid)).status, 200);
+});
+
+test("shared IP supports 180 starts across machines but blocks the 181st", async () => {
+  const f = await fixture({ enforceRates: true }),
+    poll_hash = await sha256("proof"),
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const body = (i) => ({
+    machine_code: "AAAA-BBBB-CCCC-" + alphabet[i % 32].repeat(3) + alphabet[Math.floor(i / 32)],
+    app_version: "1.0.0",
+    poll_hash,
+  });
+  for (let i = 0; i < 180; i++)
+    assert.equal((await f.service.http(f.req("/api/wor/start", body(i)))).status, 200);
+  const denied = await f.service.http(f.req("/api/wor/start", body(180)));
+  assert.equal(denied.status, 429);
+  assert.equal(denied.headers.get("Retry-After"), "600");
+});
+
+test("poll has 30/minute per request/IP, separate requests do not share that bucket", async () => {
+  const f = await fixture({ enforceRates: true }),
+    r = await f.start();
+  for (let i = 0; i < 30; i++) assert.equal((await f.poll(r)).status, 202);
+  let denied = await f.poll(r);
+  assert.equal(denied.status, 429);
+  assert.equal(denied.headers.get("Retry-After"), "60");
+  const other = await f.start("AAAA-BBBB-CCCC-EEEE");
+  assert.equal((await f.poll(other)).status, 202);
+  f.advance(20000);
+  denied = await f.poll(r);
+  assert.equal(denied.headers.get("Retry-After"), "40");
+  f.advance(40001);
+  assert.equal((await f.poll(r)).status, 202);
+});
+
+test("global budget is 1200/minute and compact file errors retain Retry-After", async () => {
+  const f = await fixture({ enforceRates: true });
+  for (let i = 0; i < 1200; i++)
+    assert.equal((await f.service.http(f.req("/api/wor/admin"))).status, 401);
+  const denied = await f.service.http(f.req("/api/wor/tables"));
+  assert.equal(denied.status, 429);
+  assert.equal(denied.headers.get("Retry-After"), "60");
+  assert.deepEqual(Object.keys(await denied.json()).sort(), ["code", "message"]);
 });
 
 test("short registration command is server-provided, hashed, topic-bound and single-use", async () => {

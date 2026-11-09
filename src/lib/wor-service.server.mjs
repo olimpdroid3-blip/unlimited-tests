@@ -47,8 +47,10 @@ export const json = (data, status = 200, extra = {}) =>
       ...extra,
     },
   });
-export const faultResponse = (c, status = 403) =>
-  json({ status: "error", code: c, message: messages[c] ?? messages.denied }, status);
+export const faultResponse = (c, status = 403, headers = {}) =>
+  json({ status: "error", code: c, message: messages[c] ?? messages.denied }, status, headers);
+const faultHeaders = (error) =>
+  error.retryAfter ? { "Retry-After": String(error.retryAfter) } : {};
 const secret = (value) => {
   try {
     if (decode(value).length !== 32) fail("denied", 400);
@@ -121,14 +123,24 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
   const membershipCache = new Map();
   async function limit(req, scope, count = 60, seconds = 60, id = "") {
     const ip = req?.headers.get("CF-Connecting-IP") ?? "unknown";
+    const key = await sha256(scope + "|" + ip + "|" + id);
     if (
       !(await store.rpc("wor_rate_take", {
-        k: await sha256(scope + "|" + ip + "|" + id),
+        k: key,
         max_attempts: count,
         seconds,
       }))
-    )
-      fail("rate_limited", 429);
+    ) {
+      const error = new WorFault("rate_limited", 429);
+      error.retryAfter = seconds;
+      try {
+        const end = Date.parse(await store.rateWindow?.(key));
+        if (Number.isFinite(end)) error.retryAfter = Math.max(1, Math.ceil((end - clock()) / 1000));
+      } catch {
+        /* A conservative full-window delay remains available. */
+      }
+      throw error;
+    }
   }
   async function membership(id, settings, force = false) {
     const key = settings.clan_chat_id + ":" + id,
@@ -231,7 +243,7 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
     const b = await body(req, ["request_id", "poll_secret"]);
     secret(b.request_id);
     secret(b.poll_secret);
-    await limit(req, "poll", 22, 60, b.request_id);
+    await limit(req, "poll", 30, 60, b.request_id);
     const digest = await sha256(b.poll_secret),
       { data: before } = await store.read();
     const prior = before.requests.find((x) => x.id === b.request_id && x.kind === kind);
@@ -328,12 +340,14 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
     if (!p.startsWith("/api/wor/") && !p.startsWith("/downloads/")) return null;
     try {
       if (url.protocol !== "https:") fail("denied", 400);
-      await limit(req, "global", 180);
+      await limit(req, "global", 1200);
       if (p === "/api/wor/start" && req.method === "POST") {
-        await limit(req, "start", 5, 600);
         const b = await body(req, ["machine_code", "app_version", "poll_hash"]);
         machine(b.machine_code);
         version(b.app_version);
+        secret(b.poll_hash);
+        await limit(req, "start_machine", 12, 600, b.machine_code);
+        await limit(req, "start", 180, 600);
         return newRequest(req, "activation", b);
       }
       if (p === "/api/wor/poll" && req.method === "POST") return await poll(req, "activation");
@@ -630,7 +644,7 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
       }
       return faultResponse("denied", 404);
     } catch (e) {
-      if (e instanceof WorFault) return faultResponse(e.code, e.status);
+      if (e instanceof WorFault) return faultResponse(e.code, e.status, faultHeaders(e));
       console.error("WOR_SERVER_ERROR");
       return faultResponse("server_error", 503);
     }
@@ -881,7 +895,7 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
       try {
         result = await http(req);
       } catch (e) {
-        if (e instanceof WorFault) result = faultResponse(e.code, e.status);
+        if (e instanceof WorFault) result = faultResponse(e.code, e.status, faultHeaders(e));
         else {
           console.error("WOR_SERVER_ERROR");
           result = faultResponse("server_error", 503);
@@ -893,7 +907,12 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
         (["/api/wor/tables", "/api/wor/update"].includes(path) || path.startsWith("/downloads/"))
       ) {
         const error = await result.json();
-        return json({ code: error.code, message: error.message }, result.status);
+        const retry = result.headers.get("Retry-After");
+        return json(
+          { code: error.code, message: error.message },
+          result.status,
+          retry ? { "Retry-After": retry } : {},
+        );
       }
       return result;
     },

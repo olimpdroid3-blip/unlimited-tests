@@ -183,11 +183,23 @@ special 202 body above. Bad fields: HTTP 400 `denied`. Missing owner session:
 401 `denied`. Rate limit: 429. Temporary failures/unpublished data: 503
 `server_error`. No traceback, request token, game data or personal data is logged.
 
-Limits: global 180/minute/IP; starts 5/10 minutes/IP; admin login starts
-3/10 minutes/IP; poll 22/minute/request/IP; renew 10/minute/machine/IP;
+Limits: global 1200/minute/IP; validated starts 180/10 minutes/IP plus
+12/10 minutes/machine/IP; admin login starts 3/10 minutes/IP;
+poll 30/minute/request/IP; renew 10/minute/machine/IP;
 bot actions 30/minute/user. Only Cloudflare's CF-Connecting-IP is trusted,
 never client-supplied X-Forwarded-For. Requests without it share a fallback
 bucket. Store RPCs are service-only and counters are atomic.
+
+Start validates Content-Type, JSON, exact fields, machine_code, app_version and
+poll_hash before consuming either start quota. Rejected formatting still counts
+toward the global budget. The per-machine/IP quota is checked before the IP-only
+start quota, so repeat attempts from one blocked machine do not exhaust the
+shared start-IP quota. Windows are fixed from their first request; rejected
+requests do not extend the window. HTTP 429 includes Retry-After as integer
+seconds to that counter window end, without changing JSON response fields.
+The client should keep polling its existing request, honor Retry-After, and
+avoid calling start automatically on each retry. Telegram registration remains
+6 attempts per 10 minutes per Telegram ID; no membership/device proof is relaxed.
 
 ## Ed25519 licenses
 
