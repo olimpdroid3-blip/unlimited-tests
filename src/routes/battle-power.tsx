@@ -628,13 +628,14 @@ function BattlePowerTable({
   const allRows = hiddenRows ? [...rows, ...hiddenRows] : rows;
 
   return (
-    <div className={`overflow-hidden rounded-xl border border-border bg-card/60 ${className ?? ""}`}>
+    <div
+      className={`overflow-hidden rounded-xl border border-border bg-card/60 ${className ?? ""}`}
+    >
       <table className="w-full table-fixed border-collapse text-[10px] min-[360px]:text-[11px] sm:text-base">
         <colgroup>
-          <col style={{ width: "30%" }} />
-          {[1, 2, 3, 4, 5, 6].map((column) => (
-            <col key={column} style={{ width: "11.6667%" }} />
-          ))}
+          <col className="w-[30%]" />
+          <col span={5} />
+          <col className="w-[11.6667%] sm:w-24" />
         </colgroup>
         <thead>
           <tr className="border-b border-border text-muted-foreground">
