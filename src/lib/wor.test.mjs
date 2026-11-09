@@ -14,6 +14,28 @@ import {
 import { createWorService } from "./wor-service.server.mjs";
 import { worAdminPage } from "./wor-ui.server.mjs";
 import { handleWor, handleWorUpdate, worEnabled } from "./wor.server.mjs";
+import { createWorStore } from "./wor-store.server.mjs";
+
+test("Worker fetch uses supported manual redirects and rejects upstream redirects", async () => {
+  const originalFetch=globalThis.fetch, oldUrl=process.env.GVG_SUPABASE_URL, oldKey=process.env.GVG_SUPABASE_SERVICE_ROLE_KEY;
+  try {
+    process.env.GVG_SUPABASE_URL="https://database.example.test/";
+    process.env.GVG_SUPABASE_SERVICE_ROLE_KEY="test-server-key";
+    globalThis.fetch=async (url,init)=>{
+      assert.equal(url,"https://database.example.test/rest/v1/wor_state?id=eq.true&select=revision,data");
+      assert.equal(init.redirect,"manual");
+      return Response.json([{revision:1,data:{settings:{enabled:true}}}]);
+    };
+    const repository=createWorStore();
+    assert.equal((await repository.read()).data.settings.enabled,true);
+    globalThis.fetch=async()=>new Response(null,{status:302,headers:{Location:"https://attacker.example.test"}});
+    await assert.rejects(repository.read(),/WOR_STORAGE_302/);
+  }finally{
+    globalThis.fetch=originalFetch;
+    if(oldUrl===undefined)delete process.env.GVG_SUPABASE_URL;else process.env.GVG_SUPABASE_URL=oldUrl;
+    if(oldKey===undefined)delete process.env.GVG_SUPABASE_SERVICE_ROLE_KEY;else process.env.GVG_SUPABASE_SERVICE_ROLE_KEY=oldKey;
+  }
+});
 
 test("new server feature is off by default, including its bot hook", async () => {
   const old = process.env.WOR_ENABLED;

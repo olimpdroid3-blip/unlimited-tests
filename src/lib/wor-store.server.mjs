@@ -6,7 +6,7 @@ export function createWorStore() {
     let r;
     try { r = await fetch(url.replace(/\/$/, "") + path, {
       ...init,
-      redirect: "error",
+      redirect: "manual",
       headers: { apikey: key, Authorization: "Bearer " + key, ...init.headers },
       signal: init.signal ?? AbortSignal.timeout(15000),
     }); } catch(error) {

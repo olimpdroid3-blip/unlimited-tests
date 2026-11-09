@@ -9,7 +9,7 @@ async function telegram(method, params) {
   if (!token) throw Error("WOR_BOT_CONFIG");
   const r = await fetch("https://api.telegram.org/bot" + token + "/" + method, {
     method: "POST",
-    redirect: "error",
+    redirect: "manual",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
     signal: AbortSignal.timeout(10000),
