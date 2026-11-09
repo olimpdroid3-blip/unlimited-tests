@@ -7,9 +7,9 @@ that an endpoint has been deployed.
 
 The feature is off by default. A server `WOR_ENABLED` override takes precedence;
 otherwise the service-only `wor_state.data.settings.enabled` must be true.
-Bootstrap uses server `WOR_BOOTSTRAP_SHA256` or the service-only settings
-`bootstrap_sha256`, never an embedded operator secret. This supports activation
-and emergency shutdown without an AI turn or a hosting secret-management UI.
+The production key has been initialized. The one-time bootstrap HTTP handler
+and operator credential have been removed. Production public artifacts and
+verification limits are recorded in WOR_STATUS.md.
 An isolated preview must use a separate database, test bot and test clan forum;
 do not repoint the live bot at a review branch.
 

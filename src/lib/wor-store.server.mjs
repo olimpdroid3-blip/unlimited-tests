@@ -4,19 +4,27 @@ export function createWorStore() {
       key = process.env.GVG_SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) throw Error("WOR_CONFIG");
     let r;
-    try { r = await fetch(url.replace(/\/$/, "") + path, {
-      ...init,
-      redirect: "manual",
-      headers: { apikey: key, Authorization: "Bearer " + key, ...init.headers },
-      signal: init.signal ?? AbortSignal.timeout(15000),
-    }); } catch(error) {
+    try {
+      r = await fetch(url.replace(/\/$/, "") + path, {
+        ...init,
+        redirect: "manual",
+        headers: { apikey: key, Authorization: "Bearer " + key, ...init.headers },
+        signal: init.signal ?? AbortSignal.timeout(15000),
+      });
+    } catch (error) {
       // Map common transport failures to fixed codes; never expose a URL,
       // credentials, response body or raw exception text.
       const message = String(error?.message ?? "");
-      const cause = message.includes("Invalid URL") || message.includes("parse URL") ? "URL"
-        : message.includes("signal") || message.includes("AbortSignal") ? "SIGNAL"
-        : message.includes("Illegal invocation") ? "INVOCATION"
-        : error?.name === "TimeoutError" ? "TIMEOUT" : "FETCH";
+      const cause =
+        message.includes("Invalid URL") || message.includes("parse URL")
+          ? "URL"
+          : message.includes("signal") || message.includes("AbortSignal")
+            ? "SIGNAL"
+            : message.includes("Illegal invocation")
+              ? "INVOCATION"
+              : error?.name === "TimeoutError"
+                ? "TIMEOUT"
+                : "FETCH";
       throw Error("WOR_TRANSPORT_" + cause);
     }
     if (!r.ok) throw Error("WOR_STORAGE_" + r.status);
@@ -32,8 +40,12 @@ export function createWorStore() {
     ).json();
   async function read() {
     let rows;
-    try { rows = await (await request("/rest/v1/wor_state?id=eq.true&select=revision,data")).json(); }
-    catch(error) { if(String(error?.message??"").startsWith("WOR_"))throw error;throw Error("WOR_RESPONSE_JSON"); }
+    try {
+      rows = await (await request("/rest/v1/wor_state?id=eq.true&select=revision,data")).json();
+    } catch (error) {
+      if (String(error?.message ?? "").startsWith("WOR_")) throw error;
+      throw Error("WOR_RESPONSE_JSON");
+    }
     if (rows.length !== 1) throw Error("WOR_STATE");
     return rows[0];
   }
