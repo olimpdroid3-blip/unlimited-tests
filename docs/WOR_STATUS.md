@@ -5,7 +5,9 @@ This is the connected Tower Keeper alliance website repository: local origin and
 Lovable project `33e3ef01-cf16-4bfd-9d4e-cc28e96d83d2` share base commit
 `2617b5fb3b4fec368a73fa145508758c0d75f38d`.
 Review branch: `feature/wor-telegram-activation-review`. Target for eventual
-review only: `main`. The user has explicitly withheld production publication.
+review: `main`. The user subsequently explicitly authorized production
+publication, with no Lovable AI-credit usage. GitHub synchronization and native
+`lovable_deploy_project` are the publishing path; no AI messages are sent.
 
 ## Implemented locally
 
@@ -44,16 +46,15 @@ the private bucket and daily snapshot job exist. Rolled-back service-role checks
 passed for CAS conflict rejection, snapshot creation and atomic rate limiting.
 The license Vault secret has not yet been generated.
 
-Only a separate review branch is authorized for push. Do not push to `main`,
-merge, run Lovable publication or change the production bot webhook. No GitHub
+Production publication is now authorized. Do not change the production bot webhook. No GitHub
 Actions workflows exist in this repository checkout. The connected Lovable
 project still reports the base main commit above before the branch push.
 
-`WOR_ENABLED` must equal `true` in server environment to enable any new HTTP or
-bot behavior. It is off by default. The existing bot hook immediately returns
-false while off, preserving legacy routing. Bootstrap credentials/hashes are
-not embedded in Git: an operator must configure `WOR_BOOTSTRAP_SHA256` on the
-server to initialize a deliberately enabled isolated test/deployment environment.
+An explicit server `WOR_ENABLED` overrides the flag; otherwise only a service-role
+operator may enable `wor_state.data.settings.enabled`. Missing configuration
+defaults off. Unrelated bot messages never read the WOR database. Bootstrap
+accepts `WOR_BOOTSTRAP_SHA256` from server environment or `bootstrap_sha256` from
+the same service-only settings. No operator credential/hash is embedded in Git.
 
 The production Ed25519 pair has **not been generated**. Consequently there is
 no real public key or test certificate to report yet. Local tests use disposable
@@ -65,8 +66,8 @@ test keys, which must never be presented as the production key.
 2. Database CAS, rate and snapshot tests passed in a rolled-back transaction.
    Advisors report the intentionally closed RLS tables without client policies.
    No game tables are changed.
-3. Push only the authorized review branch. Review and test it without a merge.
-   Production publication and changing production environment remain forbidden.
+3. User-authorized main synchronization is complete; finish native publication
+   and server initialization without a Lovable AI turn.
 4. Only in a separately authorized environment, set `WOR_ENABLED=true` and a
    server `WOR_BOOTSTRAP_SHA256` for a newly generated operator credential.
    Invoke one-use `/api/wor/bootstrap` from the operator process. It generates key material entirely

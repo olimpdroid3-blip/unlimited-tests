@@ -21,12 +21,40 @@ async function telegram(method, params) {
 }
 const service = createWorService({ store, telegram });
 
+// Runtime environment overrides the private server configuration. An unset
+// flag still defaults to off; only a service-role operator can enable in DB.
+export async function worEnabled(repository = store, env = process.env) {
+  if (env.WOR_ENABLED !== undefined) return env.WOR_ENABLED === "true";
+  try {
+    return (await repository.read()).data.settings.enabled === true;
+  } catch {
+    return false;
+  }
+}
+
+function isWorCandidate(update) {
+  if (
+    typeof update.callback_query?.data === "string" &&
+    update.callback_query.data.startsWith("wor:")
+  )
+    return true;
+  const message = update.message;
+  return (
+    message?.chat?.type === "private" &&
+    typeof message.text === "string" &&
+    /^\/(?:start(?:@[A-Za-z0-9_]+)?\s+[A-Za-z0-9_-]{43}|(?:devices|revoke|ban|unban|limit)(?:@[A-Za-z0-9_]+)?(?:\s.*)?)$/.test(
+      message.text.trim(),
+    )
+  );
+}
+
 // The operator configures a one-use credential hash as a server secret.
 // No environment-specific bootstrap credential or hash is shipped in Git.
 async function bootstrap(req) {
   if (req.method !== "POST") return faultResponse("denied", 405);
   const auth = req.headers.get("Authorization") ?? "";
-  const expected = process.env.WOR_BOOTSTRAP_SHA256;
+  const expected =
+    process.env.WOR_BOOTSTRAP_SHA256 ?? (await store.read()).data.settings.bootstrap_sha256;
   if (!expected || !auth.startsWith("Bearer ") || !safeEqual(await sha256(auth.slice(7)), expected))
     return faultResponse("denied");
   const { data: state } = await store.read();
@@ -77,7 +105,7 @@ async function bootstrap(req) {
   });
 }
 export async function handleWor(request) {
-  if (process.env.WOR_ENABLED !== "true") return faultResponse("server_error", 503);
+  if (!(await worEnabled())) return faultResponse("server_error", 503);
   const p = new URL(request.url).pathname;
   if (new URL(request.url).protocol !== "https:") return faultResponse("denied", 400);
   if (p === "/wor/admin") return worAdminPage();
@@ -92,5 +120,5 @@ export async function handleWor(request) {
   }
   return service.http(request);
 }
-export const handleWorUpdate = (update) =>
-  process.env.WOR_ENABLED === "true" ? service.bot(update) : Promise.resolve(false);
+export const handleWorUpdate = async (update) =>
+  isWorCandidate(update) && (await worEnabled()) ? service.bot(update) : false;

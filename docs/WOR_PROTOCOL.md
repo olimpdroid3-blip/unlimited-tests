@@ -5,9 +5,11 @@ Implementation contract, 2026-11-09. Production base URL:
 is recorded separately in `WOR_STATUS.md`; an address here alone does not mean
 that an endpoint has been deployed.
 
-The feature is off by default. `WOR_ENABLED=true` is required in server
-environment for WOR HTTP/bot handling; leave it unset for safe review. Bootstrap
-requires a server `WOR_BOOTSTRAP_SHA256`, never an embedded operator secret.
+The feature is off by default. A server `WOR_ENABLED` override takes precedence;
+otherwise the service-only `wor_state.data.settings.enabled` must be true.
+Bootstrap uses server `WOR_BOOTSTRAP_SHA256` or the service-only settings
+`bootstrap_sha256`, never an embedded operator secret. This supports activation
+and emergency shutdown without an AI turn or a hosting secret-management UI.
 An isolated preview must use a separate database, test bot and test clan forum;
 do not repoint the live bot at a review branch.
 

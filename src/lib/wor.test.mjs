@@ -13,12 +13,13 @@ import {
 } from "./wor-crypto.mjs";
 import { createWorService } from "./wor-service.server.mjs";
 import { worAdminPage } from "./wor-ui.server.mjs";
-import { handleWor, handleWorUpdate } from "./wor.server.mjs";
+import { handleWor, handleWorUpdate, worEnabled } from "./wor.server.mjs";
 
 test("new server feature is off by default, including its bot hook", async () => {
   const old = process.env.WOR_ENABLED;
+  const oldBootstrap = process.env.WOR_BOOTSTRAP_SHA256;
   try {
-    delete process.env.WOR_ENABLED;
+    process.env.WOR_ENABLED = "false";
     assert.equal(await handleWorUpdate({ message: { text: "/devices" } }), false);
     assert.equal(
       (await handleWor(new Request("https://example.test/api/wor/start", { method: "POST" })))
@@ -27,7 +28,7 @@ test("new server feature is off by default, including its bot hook", async () =>
     );
     process.env.WOR_ENABLED = "true";
     assert.equal(await handleWorUpdate({ callback_query: { data: "tower:list" } }), false);
-    delete process.env.WOR_BOOTSTRAP_SHA256;
+    process.env.WOR_BOOTSTRAP_SHA256 = await sha256("test-operator-credential");
     assert.equal(
       (
         await handleWor(
@@ -42,7 +43,27 @@ test("new server feature is off by default, including its bot hook", async () =>
   } finally {
     if (old === undefined) delete process.env.WOR_ENABLED;
     else process.env.WOR_ENABLED = old;
+    if (oldBootstrap === undefined) delete process.env.WOR_BOOTSTRAP_SHA256;
+    else process.env.WOR_BOOTSTRAP_SHA256 = oldBootstrap;
   }
+});
+
+test("private runtime configuration defaults off and environment can force-disable", async () => {
+  const repo = (enabled) => ({ read: async () => ({ data: { settings: { enabled } } }) });
+  assert.equal(await worEnabled(repo(undefined), {}), false);
+  assert.equal(await worEnabled(repo(true), {}), true);
+  assert.equal(await worEnabled(repo(true), { WOR_ENABLED: "false" }), false);
+  assert.equal(
+    await worEnabled(
+      {
+        read: async () => {
+          throw Error("unavailable");
+        },
+      },
+      {},
+    ),
+    false,
+  );
 });
 
 async function fixture() {
