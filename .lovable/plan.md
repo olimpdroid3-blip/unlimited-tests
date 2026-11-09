@@ -1,35 +1,47 @@
-# Отчёт: имена участников и права в Telegram-боте (без изменений кода)
+# Отчёт: текущее состояние перед внедрением лицензий Windows-программы
 
-Код не менялся. Этот отчёт — только ответ на вопрос; по нему нечего «утверждать», кроме согласия, что изменения не нужны.
+Только анализ, код не менялся. Если подтвердите, следующим шагом можно спроектировать `/wor/activate` и API лицензий.
 
-## 1. Как бот формирует имя
-- **Вежі (thread 8) и «Додати код» (thread 4):** имя = только `custom_title` из `getChatMember`. Без title — отказ `NO_TITLE_TEXT`. username / first_name / last_name не используются.
-- **Видео (индексация):** автор = `custom_title`; если его нет — строка «Невідомий автор». Отдельно в `telegram_username` пишется `from.username ?? from.first_name` (только как служебное поле, не как автор).
-- **Админка /telegram-admin:** `display_name` и `username` берутся готовыми из таблицы `telegram_broadcast_recipients`; заполняет её внешняя MTProto Edge Function, её кода в проекте нет.
+## 1. Стек
+- Frontend: React 19, TanStack Start 1.168 (TanStack Router, SSR), Vite 7, Tailwind v4 (`src/styles.css`), shadcn/Radix.
+- Backend: server functions TanStack Start (`createServerFn`, файлы `*.functions.ts` / `*.server.ts`) и server routes в `src/routes/api/**`, исполняются на Cloudflare Workers (workerd, не Node).
+- БД: внешний Supabase-проект `aabaapmktkfwmvgcirxb`. Браузерный клиент: `src/lib/db.ts` (publishable key, сессия в localStorage). Серверный клиент: `src/lib/db.server.ts` (service role из `GVG_SUPABASE_*`). Встроенный Cloud-проект (`src/integrations/supabase/*`) по правилу проекта не используется.
 
-## 2. Member tag обычных участников
-Не поддерживается. Нигде в коде нет чтения тега участника (поля `tag` и аналогов). У обычного участника бот видит только `status: "member"` — имя такой человек не получает.
+## 2. Доступ к сайту
+- Входа для членов альянса нет: Supabase Auth нигде не вызывается (кроме автосгенерированного `src/integrations/supabase/*`), общего пароля, PIN и `beforeLoad`-редиректов в `src/routes` нет. Все страницы (`towers`, `archive`, `defenses`, `videos`, `battle-power`, `mobs`, ...) открыты всем.
+- Единственный закрытый раздел — `/telegram-admin` (`src/routes/telegram-admin.tsx`). Его защищают `src/lib/telegram-admin.server.ts` и `src/lib/telegram-admin.functions.ts`: на сервере проверяется секрет `TELEGRAM_ADMIN_PASSWORD`, затем выдаётся HMAC-подписанная сессия на 30 минут. Ключ подписи — `TELEGRAM_ADMIN_SESSION_SECRET`, а если его нет, ключ получается из пароля (`session:<password>`).
+- localStorage используется только для темы (`src/lib/theme.ts`) и для сессии Supabase-клиента, которая сейчас пустая.
 
-## 3. Custom title администраторов
-Поддерживается — это единственный источник ника (`status` = `administrator` или `creator` + непустой `custom_title`).
+## 3. Аккаунты и роли
+- На сайте нет личных аккаунтов, таблиц `profiles` или `user_roles` и роли администратора. Роль «админ» — это только один общий пароль на `/telegram-admin`.
+- В Telegram личность участника — это Telegram user ID плюс `custom_title` или `tag` из `getChatMember` (`src/lib/tower-form.ts`: `resolveMemberNickname`, `resolveTowerNickname`). Действия только для админов (пробито, удаление) проверяют статус administrator/creator в группе. На сайте этих проверок нет.
 
-## 4. Какие поля Telegram API реально читаются
-- `getChatMember` → `result.status`, `result.custom_title` (одинаково для всех; у обычного участника `custom_title` в Bot API отсутствует).
-- Из update: `from.id`, `from.username`, `from.first_name` (видео-вебхук), `message.chat.id/username`, `message_thread_id`, `message_id`, `callback_query.from.id`, `callback_query.message.*`.
-- `last_name` объявлен в типе `resolveUploader`, но не используется.
+## 4. Server routes и Edge Functions
+- `src/routes/api/public/telegram/gvg-video-webhook.ts` — публичный webhook Telegram. Он проверяет secret-заголовок (без него отвечает 401) и передаёт обработку модулям `src/lib/gvg-*.server.ts` и `awakening-telegram.server.ts`.
+- `src/routes/api/telegram/gvg-video-setup.ts` (GET/POST), `gvg-pin-towers.ts`, `gvg-pin-bp.ts`, `gvg-tower-keyboard.ts` — служебные эндпоинты не под `/api/public` (снаружи отвечали 403).
+- Server functions: `awakening.functions.ts`, `heroes.functions.ts`, `mob-recognition.functions.ts`, `tower-notify.functions.ts`, `telegram-admin.functions.ts`.
+- Edge Function: `supabase/functions/awakening-report` (`index.ts` и `handler.mjs`, Deno). Через service role вызывает RPC `/rest/v1/rpc/<name>` с таймаутом 10 с. Ещё есть внешняя `telegram-mtproto-send`, её кода в репозитории нет.
 
-## 5. Что доступно обычному участнику
-- **Admin-only:** «➕ Додати» (вежа), «Додати код» (thread 4), «💥 Пробито», «🗑 Видалити запис» — отказ «доступне лише адміністраторам».
-- **Доступно всем:** «🏰 Всі вежі» (`tower:list`) — проверки прав нет, только проверка нужного чата; ссылка «Вежі — Дзеркала»; загрузка видео индексируется у всех (автор будет «Невідомий автор»).
+## 5. Storage buckets
+- `defense-screenshots` (private) — скриншоты и все JSON-состояния бота (`STATE_BUCKET` в `gvg-tower-form`, `gvg-pinned-*`, `tower-origin`, `gvg-tower-requests`, `gvg-bot-messages`, `gvg-pending-defense-form`), а также `awakening.server.ts`, `screenshot-upload.ts`, `routes/defenses.tsx`.
+- `hero-icons` (private) — иконки героев.
+- Под бинарники ничего нет. Для них нужен отдельный приватный bucket, например `wor-releases`.
 
-## 6. Где это определено
-- `src/lib/tower-form.ts` — `resolveAdminNickname()`: проверка `administrator`/`creator`, затем `custom_title`; тексты `NOT_ADMIN_TEXT`, `NO_TITLE_TEXT`.
-- `src/lib/gvg-tower-form.server.ts` — `startTowerForm()` (getChatMember + resolveAdminNickname); обработчики breach/delete callbacks (проверка `status` в `["administrator","creator"]`); ветка `CB_TOWER_LIST` без проверки прав.
-- `src/lib/gvg-pending-defense-form.server.ts` — `startPendingDefenseForm()` (то же через resolveAdminNickname).
-- `src/lib/gvg-video-bot.server.ts` — `resolveUploader()` (custom_title или «Невідомий автор»).
-- `src/routes/api/public/telegram/gvg-video-webhook.ts` — запись `telegram_username` и `telegram_uploader_custom_title`.
-- `src/lib/telegram-admin.server.ts` — только читает `display_name`/`username` из таблицы.
+## 6. Где встраивать `/wor/activate` и API лицензий
+- Страница: новый маршрут `src/routes/wor.activate.tsx` (URL `/wor/activate`). Защищённые данные он получает только через server function.
+- API для самой программы: `src/routes/api/public/wor/activate.ts`, `.../validate.ts`, `.../download.ts`. Префикс `/api/public` обязателен, потому что программа вызывает их без входа на сайт. Поэтому проверку нужно делать в каждом обработчике: Zod-валидация, ключ лицензии и привязка к устройству, ответ с подписью (Ed25519/HMAC), ограничение частоты запросов.
+- Данные: новые таблицы `licenses` и `license_activations` во внешней БД (через psql по правилу проекта). Включить RLS без анонимного доступа, работать только через `db.server.ts`.
+- Если активацию должны делать только члены альянса, нужна настоящая идентификация. Общий пароль или Telegram ID (например, Telegram Login или одноразовый код от бота) не годятся для отзыва доступа у отдельного человека.
+- Не трогать для этого `gvg-video-webhook.ts` и `/telegram-admin`: сессия `/telegram-admin` построена на общем пароле.
 
-## Bot API и MTProto
-- Весь бот (вежі, коды, видео) работает через **Bot API** (`getChatMember`).
-- **MTProto** используется только внешней Edge Function `telegram-mtproto-send` (синхронизация участников, рассылка). Её кода в проекте нет, поэтому как она собирает `display_name` (и читает ли теги/титулы), отсюда проверить нельзя. Telethon в проекте не используется.
+## 7. Production URL
+- https://unlimited-tests.lovable.app (стабильный: `project--33e3ef01-cf16-4bfd-9d4e-cc28e96d83d2.lovable.app`). Webhook Telegram сейчас указывает на dev/preview URL, а не на production.
+
+## 8. Ограничения хостинга для бинарников
+- Workers не подходят для отдачи больших файлов через себя: есть лимиты на размер ответа, CPU и память, и нет файловой системы. Класть `.exe` в `public/` нельзя, он станет публично доступен.
+- Безопасная схема: бинарник лежит в приватном bucket Storage. Endpoint `/api/public/wor/download` проверяет лицензию и возвращает короткоживущий signed URL (`createSignedUrl`, 60–300 с), а не сам файл.
+- Секреты подписи лицензий хранить в project secrets и читать только внутри обработчиков. Изменения кода начинают работать в production только после Publish, изменения БД — сразу.
+
+## Открытые вопросы перед реализацией
+- Кто выдаёт лицензии: админ вручную, или любой член альянса через Telegram?
+- Сколько устройств разрешено на один ключ, есть ли срок действия и нужна ли офлайн-проверка?
