@@ -173,9 +173,30 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
   async function newRequest(req, kind, b) {
     secret(b.poll_hash);
     const request_id = randomSecret();
-    return store.transaction((s) => {
+    return store.transaction(async (s) => {
       if (!s.settings.bot_username || !s.settings.license_public_key || !s.settings.owner_id)
         fail("server_error", 503);
+      let registrationCode, registrationHash, registrationCommand;
+      if (kind === "activation") {
+        registrationCommand = s.settings.activation_command ?? "reg";
+        if (
+          !/^[a-z][a-z0-9_]{0,31}$/.test(registrationCommand) ||
+          ["start", "devices", "revoke", "ban", "unban", "limit"].includes(registrationCommand)
+        )
+          fail("server_error", 503);
+        const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+        for (let attempt = 0; attempt < 8; attempt++) {
+          const chars = Array.from(
+            crypto.getRandomValues(new Uint8Array(8)),
+            (x) => alphabet[x & 31],
+          );
+          registrationCode = chars.slice(0, 4).join("") + "-" + chars.slice(4).join("");
+          registrationHash = await sha256(registrationCode);
+          if (!s.requests.some((x) => x.reg_hash === registrationHash)) break;
+          registrationHash = undefined;
+        }
+        if (!registrationHash) fail("server_error", 503);
+      }
       s.requests.push({
         id: request_id,
         kind,
@@ -183,6 +204,7 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
         expires: clock() + 600000,
         poll_hash: b.poll_hash,
         shown_to: [],
+        ...(registrationHash ? { reg_hash: registrationHash } : {}),
         ...(kind === "activation" ? { machine: b.machine_code, version: b.app_version } : {}),
       });
       return json({
@@ -191,6 +213,16 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
         activate_url: "https://t.me/" + s.settings.bot_username + "?start=" + request_id,
         expires_in: 600,
         interval: 3,
+        ...(registrationCode
+          ? {
+              command: "/" + registrationCommand + " " + registrationCode,
+              chat_url:
+                "https://t.me/c/" +
+                s.settings.clan_chat_id.replace(/^-100/, "") +
+                "/" +
+                s.settings.confirmation_thread_id,
+            }
+          : {}),
       });
     });
   }
@@ -209,7 +241,7 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
       kind === "activation"
     )
       await membership(prior.owner, before.settings);
-    return store.transaction(async (s) => {
+    const result = await store.transaction(async (s) => {
       const r = s.requests.find((x) => x.id === b.request_id && x.kind === kind);
       if (!r || !safeEqual(r.poll_hash, digest)) return faultResponse("denied");
       if (r.status === "consumed") return faultResponse("denied");
@@ -262,6 +294,32 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
       audit(s, m.id, "activate", d.id);
       return json({ status: "ok", license, refresh_secret: refresh, valid_days: 7 });
     });
+    if (kind === "activation" && result.status === 200 && prior) {
+      const notify = async () => {
+        try {
+          const { data: current } = await store.read();
+          const issued = current.devices.find(
+            (x) => x.machine === prior.machine && x.status === "active",
+          );
+          const member = current.members.find((x) => x.id === issued?.owner);
+          await telegram("sendMessage", {
+            chat_id: current.settings.clan_chat_id,
+            message_thread_id: current.settings.confirmation_thread_id,
+            text:
+              "✅ Активировано: " +
+              (member?.name ?? "Участник") +
+              ", компьютер …" +
+              prior.machine.slice(-4),
+          });
+        } catch {
+          console.error("WOR_ACTIVATION_NOTICE_FAILED");
+        }
+      };
+      const context = req.runtime?.cloudflare?.context;
+      if (typeof context?.waitUntil === "function") context.waitUntil(notify());
+      else await notify();
+    }
+    return result;
   }
   async function http(req) {
     const url = new URL(req.url),
@@ -543,7 +601,8 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
   function manage(s, actor, action, target, value) {
     if (!s.settings.owner_id || actor !== s.settings.owner_id) fail("denied");
     if (action === "revoke") {
-      const d = s.devices.find((x) => x.id === target) ??
+      const d =
+        s.devices.find((x) => x.id === target) ??
         s.devices.find((x) => x.machine === target && x.status === "active");
       if (!d) fail("denied");
       d.status = "revoked";
@@ -566,23 +625,52 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
     const cb = update.callback_query,
       msg = update.message;
     const isCallback = typeof cb?.data === "string" && cb.data.startsWith("wor:");
+    const registration =
+      /^\/([a-z][a-z0-9_]{0,31})(?:@([A-Za-z0-9_]+))?\s+([A-Z2-9]{4}-[A-Z2-9]{4})$/i.exec(
+        msg?.text?.trim() ?? "",
+      );
     const isCommand =
       typeof msg?.text === "string" &&
       /^\/(start(?:@[A-Za-z0-9_]+)?\s+[A-Za-z0-9_-]{43}|devices(?:@[A-Za-z0-9_]+)?(?:\s.*)?|revoke(?:@[A-Za-z0-9_]+)?(?:\s.*)?|ban(?:@[A-Za-z0-9_]+)?(?:\s.*)?|unban(?:@[A-Za-z0-9_]+)?(?:\s.*)?|limit(?:@[A-Za-z0-9_]+)?(?:\s.*)?)$/.test(
         msg.text.trim(),
       );
-    if (!isCallback && !isCommand) return false;
+    if (!isCallback && !isCommand && !registration) return false;
     const sender = isCallback ? cb.from : msg.from,
       chat = isCallback ? cb.message?.chat : msg.chat;
     if (!Number.isSafeInteger(sender?.id) || sender.is_bot) return true;
     // Commands are accepted only in private chat. Other topics and legacy
     // group commands are left entirely to the existing bot handlers.
-    if (!isCallback && (chat?.type !== "private" || String(chat.id) !== String(sender.id)))
+    if (
+      !isCallback &&
+      !registration &&
+      (chat?.type !== "private" || String(chat.id) !== String(sender.id))
+    )
       return false;
     const id = String(sender.id);
+    let registrationDestination;
     try {
-      await limit(null, "telegram", 30, 60, id);
       const { data: s } = await store.read();
+      const isRegistration =
+        registration && registration[1].toLowerCase() === (s.settings.activation_command ?? "reg");
+      if (registration && !isCommand && !isRegistration) return false;
+      if (isRegistration) {
+        if (
+          registration[2] &&
+          registration[2].toLowerCase() !== s.settings.bot_username.toLowerCase()
+        )
+          return false;
+        if (
+          String(chat?.id) !== s.settings.clan_chat_id ||
+          msg.message_thread_id !== s.settings.confirmation_thread_id
+        )
+          return false;
+        registrationDestination = {
+          chat_id: s.settings.clan_chat_id,
+          message_thread_id: s.settings.confirmation_thread_id,
+        };
+        await limit(null, "registration", 6, 600, id);
+      }
+      await limit(null, "telegram", 30, 60, id);
       if (isCallback) {
         if (
           String(chat?.id) !== s.settings.clan_chat_id ||
@@ -646,8 +734,16 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
       }
       const [raw, ...args] = msg.text.trim().split(/\s+/),
         command = raw.split("@")[0];
-      if (command === "/start") {
-        const r = s.requests.find((x) => x.id === args[0]);
+      if (command === "/start" || isRegistration) {
+        const registrationHash = isRegistration
+          ? await sha256(registration[3].toUpperCase())
+          : null;
+        const r = s.requests.find((x) =>
+          isRegistration
+            ? x.kind === "activation" && safeEqual(x.reg_hash, registrationHash)
+            : x.id === args[0],
+        );
+        if (!r && isRegistration) fail("denied");
         if (!r) return false;
         if (r.expires < clock()) fail("expired");
         if (r.status !== "pending") fail("denied");
@@ -730,7 +826,10 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
         } catch {}
       } else {
         try {
-          await telegram("sendMessage", { chat_id: id, text: messages[code] });
+          await telegram("sendMessage", {
+            ...(registrationDestination ?? { chat_id: id }),
+            text: messages[code],
+          });
         } catch {}
       }
       if (code === "server_error") throw Error("WOR_BOT_RETRY");

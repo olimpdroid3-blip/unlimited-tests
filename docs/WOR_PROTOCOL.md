@@ -24,14 +24,23 @@ Owner: `302364492`. Clan supergroup: `-1003978316922`. Confirmation topic: `6`,
    base64url to obtain `poll_secret`. `poll_hash` is unpadded base64url of SHA-256
    over the **UTF-8 text of poll_secret**, not its decoded random bytes.
 2. `start` creates a random 32-byte request ID, valid for 600 seconds.
-3. The program opens `activate_url` (`https://t.me/<existing_bot>?start=<id>`).
+3. Preferred activation: the program displays the server-provided `command`,
+   such as `/reg K7M2-9Q4X`, and a Copy button. The member pastes it into clan
+   topic 6. No bot mention is required while this bot remains a clan admin.
+   The program must not hardcode `/reg`: read the complete `command` field.
+   The short code is random (40 bits), expires with the request in 10 minutes,
+   is stored only as a SHA-256 hash, and can be claimed only once by a member.
+   The program can alternatively open `activate_url` (`https://t.me/<existing_bot>?start=<id>`).
    Telegram delivers `/start <id>` to the bot in private chat. The bot checks
    membership and records the initiating Telegram ID. It sends the confirmation
    **only to the clan topic 6**, with the computer code and member display name.
 4. Only the initiating user may press its button. The webhook validates its
    secret header; the handler validates chat ID, topic ID, user ID, request TTL,
    pending state, membership and local ban. A button press approves/denies once.
-5. The Windows program polls every 3 seconds. The secret is returned only in
+5. The Windows program polls every 3 seconds. After successful license issuance
+   the bot reports `✅ Активировано: <имя>, компьютер …<последние 4 символа>` in
+   topic 6. Approval alone does not falsely report that a device was activated.
+   The secret is returned only in
    the first successful response. A lost successful response is deliberately
    unrecoverable: ask the owner to revoke that slot and start again.
 
@@ -67,11 +76,26 @@ Exactly these fields; extra fields, including game data, are rejected:
 ```
 
 ```json
-{"status":"ok","request_id":"<random base64url>","activate_url":"https://t.me/<bot>?start=<request_id>","expires_in":600,"interval":3}
+{"status":"ok","request_id":"<random base64url>","activate_url":"https://t.me/<bot>?start=<request_id>","expires_in":600,"interval":3,"command":"/reg K7M2-9Q4X","chat_url":"https://t.me/c/3978316922/6"}
 ```
 
 Machine codes match `[A-Z2-7]{4}(-[A-Z2-7]{4}){3}`. Versions use numeric
 `major.minor.patch` with no leading zeroes or prerelease suffix, maximum 40 chars.
+
+`command` and `chat_url` are additive fields; poll/renew/license formats remain
+unchanged. `activate_url` is retained for existing clients and web administration.
+Registration is accepted only from the configured clan and topic. Another user
+cannot take over a claimed request or press its confirmation button. Wrong
+codes are limited to six attempts per user per ten minutes, in addition to the
+general bot limit. The code alphabet excludes 0/1/I/O; the example is illustrative,
+not a fixed or reusable code. `/reg@<our_bot> <code>` is supported as a fallback;
+mentions of another bot and unrelated commands remain on their old routing.
+
+The server operator can change `settings.activation_command` in the closed
+WOR state to another unused lowercase command word **without a leading slash**;
+the next start response and bot parser use it immediately. Existing owner
+command words are reserved. Check source handlers and Telegram command menus
+before assigning a new word. No client update or setMyCommands change is needed.
 
 ### POST /api/wor/poll
 

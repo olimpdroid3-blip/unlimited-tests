@@ -249,6 +249,78 @@ test("strict license payload UTF-8, order and independent Ed25519 verification",
   assert.throws(() => licensePayload("AAAA-BBBB-CCCC-1111", "Тест", "2030-01-01"));
   assert.throws(() => licensePayload("AAAA-BBBB-CCCC-DDDD", "Тест", "2030-02-30"));
 });
+
+test("short registration command is server-provided, hashed, topic-bound and single-use", async () => {
+  const f = await fixture(),
+    r = await f.start();
+  assert.match(r.command, /^\/reg [A-Z2-9]{4}-[A-Z2-9]{4}$/);
+  assert.ok(!r.command.includes("@"));
+  assert.equal(r.expires_in, 600);
+  const short = r.command.split(" ")[1];
+  assert.equal(f.state.requests[0].reg_hash, await sha256(short));
+  assert.ok(!JSON.stringify(f.state).includes(short));
+  const message = (id = 100, thread = 6, chat = -1003978316922, text = r.command) => ({
+    message: {
+      message_id: 3,
+      from: { id },
+      chat: { id: chat, type: "supergroup" },
+      message_thread_id: thread,
+      text,
+    },
+  });
+  assert.equal(await f.service.bot(message(100, 8)), false);
+  assert.equal(await f.service.bot(message(100, 6, -10012345)), false);
+  assert.equal(
+    await f.service.bot(
+      message(100, 6, -1003978316922, r.command.replace("/reg", "/reg@Other_bot")),
+    ),
+    false,
+  );
+  assert.equal(f.calls.filter((x) => x.method === "sendMessage").length, 0);
+  assert.equal(await f.service.bot(message()), true);
+  assert.equal(f.state.requests[0].requester, "100");
+  assert.equal(f.state.requests[0].status, "pending");
+  const prompt = f.calls.find((x) => x.method === "sendMessage");
+  assert.equal(prompt.params.message_thread_id, 6);
+  assert.equal(prompt.params.chat_id, "-1003978316922");
+  await f.service.bot(message(101));
+  assert.equal(f.state.requests[0].requester, "100");
+  await f.confirm(r, 101);
+  assert.equal(f.state.requests[0].status, "pending");
+  await f.confirm(r);
+  assert.equal((await f.poll(r)).status, 200);
+  const notices = () =>
+    f.calls.filter(
+      (x) => x.method === "sendMessage" && x.params.text.startsWith("✅ Активировано:"),
+    );
+  assert.equal(notices().length, 1);
+  assert.equal(notices()[0].params.text, "✅ Активировано: Тест, компьютер …DDDD");
+  assert.equal((await f.poll(r)).status, 403);
+  await f.service.bot(message());
+  assert.equal(notices().length, 1);
+});
+
+test("registration expiry, custom server command and unrelated group commands", async () => {
+  const f = await fixture();
+  f.state.settings.activation_command = "activate";
+  const r = await f.start();
+  assert.match(r.command, /^\/activate /);
+  const msg = (text) => ({
+    message: {
+      message_id: 3,
+      from: { id: 100 },
+      chat: { id: -1003978316922, type: "supergroup" },
+      message_thread_id: 6,
+      text,
+    },
+  });
+  assert.equal(await f.service.bot(msg(r.command.replace("/activate", "/reg"))), false);
+  f.advance(600001);
+  await f.service.bot(msg(r.command));
+  assert.equal(f.state.requests[0].requester, undefined);
+  assert.ok(f.calls.some((x) => x.method === "sendMessage" && x.params.text.includes("истёк")));
+  assert.equal(await f.service.bot(msg("/other K7M2-9Q4X")), false);
+});
 test("poll pending, proof validation, topic-only confirmation and one-time concurrent issue", async () => {
   const f = await fixture(),
     r = await f.start();

@@ -9,8 +9,9 @@ $pollHash = To-Base64Url ([Security.Cryptography.SHA256]::HashData([Text.Encodin
 $startBody = @{machine_code='AAAA-BBBB-CCCC-DDDD'; app_version='1.0.0'; poll_hash=$pollHash} | ConvertTo-Json -Compress
 $start = $startBody | curl.exe --silent --show-error --fail-with-body "$base/api/wor/start" -H 'Content-Type: application/json' --data-binary '@-' | ConvertFrom-Json
 if ($start.status -ne 'ok') { throw 'Start failed' }
-Write-Host "Откройте бота: $($start.activate_url)"
-Write-Host 'Подтвердите запрос в теме «Важлива інформація онлі», затем продолжите.'
+Write-Host "Команда из ответа сервера: $($start.command)"
+Write-Host "Вставьте её в тему клана: $($start.chat_url)"
+Write-Host 'Затем нажмите кнопку подтверждения в этой же теме.'
 Read-Host 'Нажмите Enter после подтверждения' | Out-Null
 $pollBody = @{request_id=$start.request_id; poll_secret=$pollSecret} | ConvertTo-Json -Compress
 $poll = $pollBody | curl.exe --silent --show-error --fail-with-body "$base/api/wor/poll" -H 'Content-Type: application/json' --data-binary '@-' | ConvertFrom-Json

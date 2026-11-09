@@ -19,6 +19,35 @@ async function telegram(method, params) {
   return b.result;
 }
 const service = createWorService({ store, telegram });
+let botInspection;
+async function inspectBot(settings) {
+  if (botInspection?.chat === settings.clan_chat_id && botInspection.until > Date.now())
+    return botInspection.value;
+  const value = (async () => {
+    const me = await telegram("getMe", {});
+    const [member, ...menus] = await Promise.all([
+      telegram("getChatMember", { chat_id: settings.clan_chat_id, user_id: me.id }),
+      telegram("getMyCommands", { scope: { type: "default" } }),
+      telegram("getMyCommands", { scope: { type: "all_group_chats" } }),
+      telegram("getMyCommands", { scope: { type: "chat", chat_id: settings.clan_chat_id } }),
+    ]);
+    return {
+      username: me.username,
+      status: member.status,
+      receives_bare_commands:
+        ["administrator", "creator"].includes(member.status) ||
+        me.can_read_all_group_messages === true,
+      registered_commands: [...new Set(menus.flat().map((x) => x.command))].sort(),
+    };
+  })();
+  botInspection = { chat: settings.clan_chat_id, until: Date.now() + 300000, value };
+  try {
+    return await value;
+  } catch (error) {
+    botInspection = undefined;
+    throw error;
+  }
+}
 
 // Runtime environment overrides the private server configuration. An unset
 // flag still defaults to off; only a service-role operator can enable in DB.
@@ -38,6 +67,13 @@ function isWorCandidate(update) {
   )
     return true;
   const message = update.message;
+  if (
+    typeof message?.text === "string" &&
+    /^\/[a-z][a-z0-9_]{0,31}(?:@[A-Za-z0-9_]+)?\s+[A-Z2-9]{4}-[A-Z2-9]{4}$/i.test(
+      message.text.trim(),
+    )
+  )
+    return true;
   return (
     message?.chat?.type === "private" &&
     typeof message.text === "string" &&
@@ -51,7 +87,13 @@ export async function handleWor(request) {
   if (new URL(request.url).pathname === "/api/wor/health" && request.method === "GET") {
     try {
       const state = await store.read();
-      return json({ status: "ok", enabled: state.data.settings.enabled === true });
+      return json({
+        status: "ok",
+        enabled: state.data.settings.enabled === true,
+        ...(new URL(request.url).searchParams.get("telegram") === "1"
+          ? { telegram: await inspectBot(state.data.settings) }
+          : {}),
+      });
     } catch {
       return faultResponse("server_error", 503);
     }
