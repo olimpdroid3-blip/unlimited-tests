@@ -21,6 +21,7 @@ export type Database = {
           power3_crowned: boolean;
           power4_crowned: boolean;
           power5_crowned: boolean;
+          squad: 1 | 2 | null;
           updated_at: string;
         };
         Insert: {
@@ -37,6 +38,7 @@ export type Database = {
           power3_crowned?: boolean;
           power4_crowned?: boolean;
           power5_crowned?: boolean;
+          squad?: 1 | 2 | null;
           updated_at?: string;
         };
         Update: {
@@ -53,6 +55,7 @@ export type Database = {
           power3_crowned?: boolean;
           power4_crowned?: boolean;
           power5_crowned?: boolean;
+          squad?: 1 | 2 | null;
           updated_at?: string;
         };
         Relationships: [];

@@ -1,6 +1,9 @@
+export type BattlePowerSquad = 1 | 2;
+
 export type BattlePowerRow = {
   id: string;
   nickname: string;
+  squad: BattlePowerSquad | null;
   power1: number | null;
   power2: number | null;
   power3: number | null;
@@ -16,9 +19,17 @@ export type BattlePowerRow = {
 export type BattlePowerInput = Omit<BattlePowerRow, "id">;
 
 export type BattlePowerSortKey =
-  "nickname" | "power1" | "power2" | "power3" | "power4" | "power5" | "average";
+  "nickname" | "power1" | "power2" | "power3" | "power4" | "power5" | "average" | "squad";
 
 export type BattlePowerSortDirection = "asc" | "desc";
+
+export type BattlePowerFilters = {
+  squad: BattlePowerSquad | null | "all";
+  power1Min: string;
+  power1Max: string;
+  averageMin: string;
+  averageMax: string;
+};
 
 export interface BattlePowerRemoteSource {
   getAll(): Promise<BattlePowerRow[]>;
@@ -82,6 +93,36 @@ export function calculateAverageBattlePower(row: BattlePowerRow): number | null 
   return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
+export function filterBattlePowerRows(
+  rows: readonly BattlePowerRow[],
+  filters: BattlePowerFilters,
+): BattlePowerRow[] {
+  const power1Min = parsePowerThreshold(filters.power1Min);
+  const power1Max = parsePowerThreshold(filters.power1Max);
+  const averageMin = parsePowerThreshold(filters.averageMin);
+  const averageMax = parsePowerThreshold(filters.averageMax);
+
+  return rows.filter((row) => {
+    if (filters.squad !== "all" && row.squad !== filters.squad) return false;
+    if (!matchesPowerRange(row.power1, power1Min, power1Max)) return false;
+    return matchesPowerRange(calculateAverageBattlePower(row), averageMin, averageMax);
+  });
+}
+
+function parsePowerThreshold(input: string): number | null {
+  if (!input.trim()) return null;
+  const value = Number(input.replace(",", "."));
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function matchesPowerRange(value: number | null, min: number | null, max: number | null): boolean {
+  if (min === null && max === null) return true;
+  if (value === null) return false;
+
+  const displayedValue = Number(value.toFixed(1));
+  return (min === null || displayedValue >= min) && (max === null || displayedValue <= max);
+}
+
 export function sortBattlePowerRows(
   rows: readonly BattlePowerRow[],
   sortKey: BattlePowerSortKey,
@@ -136,6 +177,7 @@ function normalizeRow(row: BattlePowerRow): BattlePowerRow {
   return {
     id: row.id,
     nickname: row.nickname,
+    squad: row.squad ?? null,
     power1: row.power1,
     power2: row.power2,
     power3: row.power3,

@@ -16,7 +16,7 @@ import {
   type ResolvedDefenseMob,
 } from "@/lib/defenses";
 import { syncHeroes } from "@/lib/heroes.functions";
-import type { Mob, PlayerMobLevel } from "@/lib/mob-levels";
+import type { Mob, PlayerMobLevel, PlayerOption } from "@/lib/mob-levels";
 import { RESOURCE_BACK_LINKS } from "@/lib/resource-navigation";
 
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
@@ -108,12 +108,10 @@ function DefensesPage() {
 
   const { data: players = [] } = useQuery({
     queryKey: ["defense-players"],
-    queryFn: async (): Promise<BattlePowerRow[]> => {
+    queryFn: async (): Promise<PlayerOption[]> => {
       const { data, error } = await supabase
         .from("battle_power")
-        .select(
-          "id,nickname,power1,power2,power3,power4,power5,power1_crowned,power2_crowned,power3_crowned,power4_crowned,power5_crowned",
-        )
+        .select("id,nickname")
         .order("nickname");
       if (error) throw error;
       return data ?? [];
@@ -231,7 +229,7 @@ function AddTab({
   onPendingSaved,
 }: {
   heroes: HeroOption[];
-  players: BattlePowerRow[];
+  players: PlayerOption[];
   mobs: Mob[];
   initialPending?: PendingDraft | null;
   onPendingSaved?: () => void;
@@ -374,7 +372,10 @@ type DefenseRow = {
   comment: string | null;
   player_id: string | null;
   created_at: string;
-  player: BattlePowerRow | null;
+  player: Pick<
+    BattlePowerRow,
+    "id" | "nickname" | "power1" | "power2" | "power3" | "power4" | "power5"
+  > | null;
   defense_mobs: ResolvedDefenseMob[];
   defense_heroes: Array<{
     position: number | null;

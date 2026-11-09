@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/db";
-import type { BattlePowerRow } from "@/lib/battle-power";
+import type { PlayerOption } from "@/lib/mob-levels";
 
 export type PendingDefenseRow = {
   id: string;
@@ -45,7 +45,7 @@ export function PendingDefensesTab({
   players,
   onOpen,
 }: {
-  players: BattlePowerRow[];
+  players: PlayerOption[];
   onOpen: (row: PendingDefenseRow, matchedPlayerId?: string) => void;
 }) {
   const { data: rows = [], isLoading } = useQuery({
