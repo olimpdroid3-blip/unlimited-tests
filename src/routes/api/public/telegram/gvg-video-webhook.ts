@@ -120,6 +120,15 @@ export const Route = createFileRoute("/api/public/telegram/gvg-video-webhook")({
               message?: { message_id?: number; chat?: { id?: number }; message_thread_id?: number };
             }
           | undefined;
+        // The isolated licensing handler owns only its request deep links,
+        // wor:* callbacks in topic 6, and owner commands in private chat.
+        // All other updates continue through the unchanged legacy routing.
+        if (process.env["WOR_ENABLED"] === "true") {
+          const { handleWorUpdate } = await import("@/lib/wor.server.mjs");
+          if (await handleWorUpdate(update)) {
+            return Response.json({ ok: true, handled: "wor" });
+          }
+        }
         if (callback?.id) {
           const kind = (callback.data ?? "").split(":").slice(0, 2).join(":");
           const done = (handled: string) => {

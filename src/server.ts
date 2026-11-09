@@ -47,6 +47,12 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const path = new URL(request.url).pathname;
+      if (path.startsWith("/api/wor/") || path.startsWith("/downloads/") || path === "/wor/admin") {
+        const { handleWor } = await import("./lib/wor.server.mjs");
+        const response = await handleWor(request);
+        if (response) return response;
+      }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
