@@ -105,6 +105,15 @@ async function bootstrap(req) {
   });
 }
 export async function handleWor(request) {
+  if (new URL(request.url).pathname === "/api/wor/health" && request.method === "GET") {
+    try {
+      const state = await store.read();
+      return json({status:"ok",enabled:state.data.settings.enabled===true});
+    } catch (error) {
+      const reason = /^WOR_(CONFIG|STATE|STORAGE_\d+)$/.test(error?.message ?? "") ? error.message : "WOR_NETWORK";
+      return json({status:"error",code:"server_error",message:"Сервис временно недоступен.",reason},503);
+    }
+  }
   if (!(await worEnabled())) return faultResponse("server_error", 503);
   const p = new URL(request.url).pathname;
   if (new URL(request.url).protocol !== "https:") return faultResponse("denied", 400);

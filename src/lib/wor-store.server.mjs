@@ -3,7 +3,7 @@ export function createWorStore() {
     const url = process.env.GVG_SUPABASE_URL,
       key = process.env.GVG_SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) throw Error("WOR_CONFIG");
-    const r = await fetch(url + path, {
+    const r = await fetch(url.replace(/\/$/, "") + path, {
       ...init,
       redirect: "error",
       headers: { apikey: key, Authorization: "Bearer " + key, ...init.headers },
