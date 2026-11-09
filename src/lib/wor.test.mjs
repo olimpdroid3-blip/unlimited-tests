@@ -522,7 +522,7 @@ test("tables and manifest bytes are delivered unchanged; unauthorized downloads 
       "X-CSRF-Token": csrf,
     };
   const raw = Buffer.from(
-    '{\n "version": "1", "tables": [], "signature": "' + base64url(new Uint8Array(64)) + '"\n}\n',
+    '{\n "version": 1, "dist": {}, "signature": "' + base64url(new Uint8Array(64)) + '"\n}\n',
   );
   const upload = await f.service.http(
     new Request("https://example.test/api/wor/admin/tables", { method: "PUT", headers, body: raw }),
@@ -569,6 +569,183 @@ test("admin page has parseable script and no dynamic HTML insertion", async () =
   assert.ok(!script.includes("innerHTML"));
   assert.ok(page.headers.get("Content-Security-Policy").includes("frame-ancestors 'none'"));
 });
+
+test("artifact uploads validate only required structure and never verify signatures", () => {
+  const tables = Buffer.from('{"signature":"opaque","custom":42,"dist":{},"version":1}\n');
+  assert.equal(parseTables(tables).version, "1");
+  for (const bad of [
+    { version: "1", dist: {}, signature: "x" },
+    { version: 1.5, dist: {}, signature: "x" },
+    { version: 1, dist: [], signature: "x" },
+    { version: 1, dist: {}, signature: 7 },
+  ])
+    assert.throws(() => parseTables(Buffer.from(JSON.stringify(bad))));
+  const m = {
+    signature: "not-a-cryptographic-check",
+    version: "1.2.3",
+    url: "/downloads/Test.exe",
+    sha256: "AB".repeat(32),
+    additional: { keep: true },
+  };
+  assert.deepEqual(parseManifest(Buffer.from(JSON.stringify(m))), m);
+  assert.throws(() =>
+    parseManifest(
+      Buffer.from(
+        JSON.stringify({ ...m, url: "https://another-domain.example/downloads/Test.exe" }),
+      ),
+    ),
+  );
+});
+
+test("artifact API accepts expired certificates, preserves BOM bytes and returns compact 404", async () => {
+  const f = await fixture(),
+    a = await f.activate();
+  f.state.devices[0].expiry = "2000-01-01";
+  const deviceHeaders = {
+    Authorization: "Bearer " + a.refresh_secret,
+    "X-Machine-Code": "AAAA-BBBB-CCCC-DDDD",
+  };
+  for (const path of ["/api/wor/tables", "/api/wor/update", "/downloads/Absent.exe"]) {
+    const r = await f.service.http(
+      new Request("https://example.test" + path, { headers: deviceHeaders }),
+    );
+    assert.equal(r.status, 404);
+    const b = await r.json();
+    assert.deepEqual(Object.keys(b).sort(), ["code", "message"]);
+    assert.equal(b.code, "not_found");
+  }
+  const login = await f.start(undefined, "admin");
+  await f.begin(login);
+  await f.confirm(login);
+  const p = await f.service.http(
+    f.req(
+      "/api/wor/admin/poll",
+      { request_id: login.request_id, poll_secret: login.poll_secret },
+      { Origin: "https://example.test" },
+    ),
+  );
+  const { csrf } = await p.json(),
+    adminHeaders = {
+      Cookie: p.headers.get("Set-Cookie").split(";")[0],
+      Origin: "https://example.test",
+      "X-CSRF-Token": csrf,
+    };
+  const raw = Buffer.from(
+    '\uFEFF{\n "signature":"opaque signature", "version":1, "dist":{"x":[3,2,1]}, "extra":true\n}\n',
+  );
+  assert.equal(
+    (
+      await f.service.http(
+        new Request("https://example.test/api/wor/admin/tables", {
+          method: "PUT",
+          headers: adminHeaders,
+          body: raw,
+        }),
+      )
+    ).status,
+    200,
+  );
+  const table = await f.service.http(
+    new Request("https://example.test/api/wor/tables", { headers: deviceHeaders }),
+  );
+  assert.equal(table.status, 200);
+  assert.deepEqual(Buffer.from(await table.arrayBuffer()), raw);
+  f.state.devices[0].status = "revoked";
+  const denied = await f.service.http(
+    new Request("https://example.test/api/wor/tables", { headers: deviceHeaders }),
+  );
+  assert.equal(denied.status, 403);
+  assert.deepEqual(Object.keys(await denied.json()).sort(), ["code", "message"]);
+});
+
+test("minimal release checks EXE filename and hash, serves only current file, and revokes", async () => {
+  const f = await fixture(),
+    a = await f.activate();
+  f.state.devices[0].expiry = "2000-01-01";
+  const login = await f.start(undefined, "admin");
+  await f.begin(login);
+  await f.confirm(login);
+  const p = await f.service.http(
+    f.req(
+      "/api/wor/admin/poll",
+      { request_id: login.request_id, poll_secret: login.poll_secret },
+      { Origin: "https://example.test" },
+    ),
+  );
+  const { csrf } = await p.json(),
+    headers = {
+      Cookie: p.headers.get("Set-Cookie").split(";")[0],
+      Origin: "https://example.test",
+      "X-CSRF-Token": csrf,
+    };
+  const exe = Buffer.from("MZ-byte-fixture"),
+    sha = createHash("sha256").update(exe).digest("hex");
+  const raw = Buffer.from(
+    '{\n "custom":[3,2,1],"signature":"opaque","version":"1.2.3","url":"https://example.test/downloads/WoR-Collector-1.2.3.exe","sha256":"' +
+      sha.toUpperCase() +
+      '"\n}\n',
+  );
+  const m = await f.service.http(
+    new Request("https://example.test/api/wor/admin/manifest", {
+      method: "PUT",
+      headers,
+      body: raw,
+    }),
+  );
+  assert.equal(m.status, 200);
+  const { release_id } = await m.json();
+  const upload = (name, body) =>
+    f.service.http(
+      new Request("https://example.test/api/wor/admin/exe/" + release_id, {
+        method: "PUT",
+        headers: { ...headers, "X-File-Name": name },
+        body,
+      }),
+    );
+  assert.equal((await upload("Other.exe", exe)).status, 400);
+  assert.equal((await upload("WoR-Collector-1.2.3.exe", Buffer.from("bad hash"))).status, 400);
+  assert.equal((await upload("WoR-Collector-1.2.3.exe", exe)).status, 200);
+  assert.equal(
+    (await f.service.http(f.req("/api/wor/admin/publish", { release_id }, headers))).status,
+    200,
+  );
+  const auth = {
+    Authorization: "Bearer " + a.refresh_secret,
+    "X-Machine-Code": "AAAA-BBBB-CCCC-DDDD",
+  };
+  const manifest = await f.service.http(
+    new Request("https://example.test/api/wor/update", { headers: auth }),
+  );
+  assert.equal(manifest.status, 200);
+  assert.deepEqual(Buffer.from(await manifest.arrayBuffer()), raw);
+  const binary = await f.service.http(
+    new Request("https://example.test/downloads/WoR-Collector-1.2.3.exe", { headers: auth }),
+  );
+  assert.equal(binary.headers.get("Content-Type"), "application/octet-stream");
+  assert.equal(binary.headers.get("Content-Length"), String(exe.length));
+  assert.equal(binary.headers.has("Location"), false);
+  assert.deepEqual(Buffer.from(await binary.arrayBuffer()), exe);
+  f.state.releases.push({
+    id: "old",
+    ready: true,
+    manifest: { url: "/downloads/Old.exe" },
+    exe_object: "old",
+  });
+  assert.equal(
+    (await f.service.http(new Request("https://example.test/downloads/Old.exe", { headers: auth })))
+      .status,
+    404,
+  );
+  assert.equal(
+    (await f.service.http(f.req("/api/wor/admin/revoke-release", { release_id }, headers))).status,
+    200,
+  );
+  assert.equal(
+    (await f.service.http(new Request("https://example.test/api/wor/update", { headers: auth })))
+      .status,
+    404,
+  );
+});
 test("owner commands revoke and ban immediately; nonowners cannot manage devices", async () => {
   const f = await fixture(),
     a = await f.activate("AAAA-BBBB-CCCC-DDDD", 101);
@@ -598,7 +775,7 @@ test("owner commands revoke and ban immediately; nonowners cannot manage devices
   assert.equal(f.state.members.find((x) => x.id === "101").banned, false);
   assert.equal(f.state.devices[1].status, "revoked");
 });
-test("signed release bytes, hash check, publish, minimum version and immutable paths", async () => {
+test("release bytes, hash, current-only paths, no app version requirement and revoke", async () => {
   const f = await fixture(),
     a = await f.activate();
   const request = await f.start(undefined, "admin");
@@ -638,7 +815,7 @@ test("signed release bytes, hash check, publish, minimum version and immutable p
   const upload = await f.service.http(
     new Request("https://example.test/api/wor/admin/exe/" + release_id, {
       method: "PUT",
-      headers,
+      headers: { ...headers, "X-File-Name": "Test.exe" },
       body: exe,
     }),
   );
@@ -668,7 +845,10 @@ test("signed release bytes, hash check, publish, minimum version and immutable p
       headers: { ...deviceHeaders, "X-App-Version": "1.0.0" },
     }),
   );
-  assert.equal((await old.json()).code, "version_too_old");
+  assert.equal(old.status, 200);
+  assert.deepEqual(Buffer.from(await old.arrayBuffer()), raw);
+  assert.equal(binary.headers.get("Content-Length"), String(exe.length));
+  assert.equal(binary.headers.get("Content-Type"), "application/octet-stream");
   assert.equal(
     (await f.service.http(f.req("/api/wor/admin/delete-release", { release_id }, headers))).status,
     403,
@@ -683,6 +863,17 @@ test("signed release bytes, hash check, publish, minimum version and immutable p
         }),
       )
     ).status,
-    403,
+    200,
   );
+  const revoked = await f.service.http(
+    f.req("/api/wor/admin/revoke-release", { release_id }, headers),
+  );
+  assert.equal(revoked.status, 200);
+  for (const path of ["/api/wor/update", "/downloads/Test.exe"]) {
+    const missing = await f.service.http(
+      new Request("https://example.test" + path, { headers: deviceHeaders }),
+    );
+    assert.equal(missing.status, 404);
+    assert.deepEqual(Object.keys(await missing.json()).sort(), ["code", "message"]);
+  }
 });

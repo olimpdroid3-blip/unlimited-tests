@@ -127,50 +127,49 @@ provided the device and membership are still active.
 
 ### GET /api/wor/update
 
-Headers: `Authorization: Bearer <refresh_secret>`, `X-Machine-Code: <code>`,
-`X-App-Version: <version>`.
+Headers: `Authorization: Bearer <refresh_secret>`, `X-Machine-Code: <code>`.
+X-App-Version is not required or checked. Device authentication is the same as
+renew: matching refresh hash, active/non-revoked registration, active member and
+clan membership. Certificate expiration does not prevent these downloads.
 
-Returns the uploaded `manifest.json` **byte for byte**, including whitespace and
-UTF-8 encoding. Requires active device, unexpired certificate and clan membership.
-The manifest fields remain exactly the agreed contract:
-
-```json
-{"version":"1.2.0","min_version":"1.1.0","url":"/downloads/WoR-Collector-1.2.0.exe","sha256":"<64 lowercase hex>","notes":"...","signature":"<base64url>"}
-```
-
-The server validates structure, allowed relative filename, version ordering and
-EXE SHA-256. It **does not sign** the file or invent/change the owner's signature
-format. The Windows program must verify the offline signature using a separately
-pinned update public key before trusting any manifest, hash, version or file.
-The license public key must not be accepted as the update signing key.
-
-`version_too_old` is returned if X-App-Version is below the current release's
-min_version, as in the original error contract. Therefore the owner must plan
-manual recovery for clients below min_version: this protocol intentionally does
-not grant those clients an unauthenticated download exception.
+Returns the current uploaded manifest.json byte for byte. No current release
+or missing file: HTTP 404. Required upload fields are version, url, sha256 and
+signature; min_version/notes are optional and extra fields are preserved.
+The URL must point to /downloads/<safe filename>.exe on this same HTTPS domain
+(relative or absolute). The server does not verify signatures, sign files,
+reorder fields, change values or rewrite JSON. The client's separate pinned
+offline public key verifies the owner's signature.
 
 ### GET /downloads/<filename>
 
-Same headers and checks as update; only registered, uploaded release files are
-served. The EXE stream is never redirected to Storage. No traversal paths or
-arbitrary upstream URLs are accepted. Current upload limit: **50 MiB per EXE**.
-This is an explicit Supabase/hosting bound; larger files need a tested private
-object storage setup with a higher limit. The upload and download are streamed,
-not buffered into the Cloudflare Worker's 128 MiB memory.
+Same two headers/authentication. Only the filename in the **current** manifest
+is served. Previous, absent and revoked releases return 404. Response type is
+application/octet-stream, Content-Length is the verified file byte count, and
+there are no redirects to Storage or other domains. Cloudflare FixedLengthStream
+preserves a fixed byte count while streaming. EXE upload limit: 50 MiB.
+
+Before release upload, the admin checks required manifest fields, exact EXE
+filename against the URL, and SHA-256 of the selected file. The server repeats
+filename/SHA-256 checks and publishes only a complete upload. The actual bytes
+of the signed manifest and EXE remain unchanged. The owner may replace a release
+with the same version or filename; immutable private object paths retain history,
+while the current release pointer changes atomically. Old paths stop being served.
 
 ### GET /api/wor/tables
 
-Headers: `Authorization: Bearer <refresh_secret>`, `X-Machine-Code: <code>`.
-`X-App-Version` is optional and not used by this endpoint.
+Same two headers/authentication. Returns the current tables.json byte for byte,
+including its original formatting/BOM when present. Missing file: HTTP 404.
+Upload requires a JSON object with integer version, object dist and string
+signature. Other fields are accepted and preserved. No signature verification
+or reserialization occurs on the server. Upload limit: 1 MiB.
 
-Returns uploaded `tables.json` **byte for byte**. Same device validity and clan
-membership checks. Upload limit: **1 MiB**. No signed-table schema was specified:
-the server accepts the owner's JSON object as an opaque artifact and does not
-invent a signature field or signed-byte definition. The admin displays `version`,
-`v`, or `payload.version` when present, otherwise «не указана». The server does
-not sign or reserialize it. The Windows client verifies the owner's offline
-signature. An actual signed fixture has not yet been supplied: client
-compatibility must be checked with the owner's real file before user release.
+### File endpoint errors
+
+These three endpoints use exactly `{"code":"...","message":"..."}`.
+Missing/unpublished file: 404 not_found; bad device credentials: 403 revoked;
+removed/banned member: 403 member_removed; malformed input: 400 denied;
+rate limiting: 429 rate_limited; upstream failure: 503 server_error.
+The activation endpoints below keep their original error format.
 
 ### Errors
 
@@ -233,15 +232,16 @@ request requires both exact same-origin Origin and a session CSRF token.
 The admin shows members/IDs, devices, issue/renewal dates, versions, statuses,
 limits, ban/revoke controls, immutable release uploads, current tables and audit.
 
-Release upload: choose the owner's manifest.json and EXE → upload → verify ready
-state → Publish. A version/filename cannot be reused. Publishing a lower/equal
-version is rejected. Current release cannot be deleted; older releases can.
+Release section: choose the owner's manifest.json and EXE → upload → Publish.
+Current version and upload/publication date are displayed. Revoke release
+unpublishes it immediately without deleting its private backup objects; subsequent
+manifest/EXE requests return 404. The current release must be revoked before deletion.
 Failed uploads leave a draft: delete the draft before retrying. The server is a
 file distributor: upload authentication is independent of the client's required
 cryptographic signature verification. Do not upload unsigned production files.
 
 Tables: choose the owner's signed tables.json → Upload. The new object becomes
-current atomically. Its displayed version, size and SHA-256 help inspect the
+current atomically. Its displayed version, date, size and SHA-256 help inspect the
 upload; View opens the original bytes. Previous objects are retained for backup.
 
 ## Backups and moving hosts

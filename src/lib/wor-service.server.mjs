@@ -8,9 +8,9 @@ import {
   safeEqual,
   signLicense,
   expiry,
-  versionCompare,
   exactStrings,
   parseManifest,
+  manifestPath,
   parseTables,
 } from "./wor-crypto.mjs";
 
@@ -24,6 +24,7 @@ const messages = {
   rate_limited: "Слишком много попыток. Повторите позже.",
   version_too_old: "Установите актуальную версию программы.",
   server_error: "Сервис временно недоступен. Повторите позже.",
+  not_found: "Файл не найден.",
 };
 export class WorFault extends Error {
   constructor(code, status = 403) {
@@ -359,39 +360,61 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
         req.method === "GET"
       ) {
         const code = req.headers.get("X-Machine-Code"),
-          v = req.headers.get("X-App-Version"),
           auth = req.headers.get("Authorization") ?? "";
         machine(code);
         if (!auth.startsWith("Bearer ")) fail("revoked");
         const token = auth.slice(7);
         secret(token);
-        if (p !== "/api/wor/tables") version(v);
         const digest = await sha256(token),
           { data: s } = await store.read(),
-          { d } = device(s, code, digest);
+          { d } = device(s, code, digest, false);
         await membership(d.owner, s.settings);
         let object,
           type = "application/json; charset=utf-8",
-          filename;
+          filename,
+          length;
         if (p === "/api/wor/tables") {
           const table = s.tables.find((x) => x.id === s.settings.current_tables);
-          if (!table) fail("server_error", 503);
+          if (!table) fail("not_found", 404);
           object = table.object;
+          length = table.bytes;
         } else {
           const current = s.releases.find((x) => x.id === s.settings.current_release && x.ready);
-          if (!current) fail("server_error", 503);
-          if (versionCompare(v, current.manifest.min_version) < 0) fail("version_too_old");
-          if (p === "/api/wor/update") object = current.manifest_object;
-          else {
-            const release = s.releases.find((x) => x.ready && x.manifest.url === p);
-            if (!release) fail("denied", 404);
-            object = release.exe_object;
+          if (!current) fail("not_found", 404);
+          if (p === "/api/wor/update") {
+            object = current.manifest_object;
+            length = current.manifest_bytes;
+          } else {
+            if ((current.download_path ?? manifestPath(current.manifest, url.origin)) !== p)
+              fail("not_found", 404);
+            object = current.exe_object;
             type = "application/octet-stream";
             filename = p.slice(11);
+            length = current.bytes;
           }
         }
-        const upstream = await store.get(object);
-        return new Response(upstream.body, {
+        let upstream;
+        try {
+          upstream = await store.get(object);
+        } catch (error) {
+          if (error?.message === "WOR_STORAGE_404") fail("not_found", 404);
+          throw error;
+        }
+        if (!Number.isSafeInteger(length) || length < 0) {
+          const header = upstream.headers.get("content-length");
+          length = header !== null && /^\d+$/.test(header) ? Number(header) : undefined;
+        }
+        if (filename && (!Number.isSafeInteger(length) || length <= 0)) fail("server_error", 503);
+        let stream = upstream.body;
+        if (filename && typeof FixedLengthStream !== "undefined") {
+          const fixed = new FixedLengthStream(length);
+          const transfer = stream
+            .pipeTo(fixed.writable)
+            .catch(() => console.error("WOR_DOWNLOAD_STREAM_FAILED"));
+          req.runtime?.cloudflare?.context?.waitUntil?.(transfer);
+          stream = fixed.readable;
+        }
+        return new Response(stream, {
           headers: {
             "Content-Type": type,
             "Cache-Control": "no-store",
@@ -399,9 +422,7 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
             ...(filename
               ? { "Content-Disposition": 'attachment; filename="' + filename + '"' }
               : {}),
-            ...(upstream.headers.get("content-length")
-              ? { "Content-Length": upstream.headers.get("content-length") }
-              : {}),
+            ...(Number.isSafeInteger(length) ? { "Content-Length": String(length) } : {}),
           },
         });
       }
@@ -463,31 +484,24 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
           id = crypto.randomUUID();
         let manifest;
         try {
-          manifest = parseManifest(raw);
+          manifest = parseManifest(raw, url.origin);
         } catch {
           fail("denied", 400);
         }
-        if (
-          s.releases.some(
-            (x) => x.manifest.version === manifest.version || x.manifest.url === manifest.url,
-          )
-        )
-          fail("denied");
+        const download_path = manifestPath(manifest, url.origin),
+          download_name = download_path.slice(11);
         const manifest_object = "releases/" + id + "/manifest.json",
-          exe_object = "releases/" + id + "/" + manifest.url.slice(11);
+          exe_object = "releases/" + id + "/" + download_name;
         await store.put(manifest_object, raw, "application/json");
         return await store.transaction(async (state) => {
           await admin(req, state);
-          if (
-            state.releases.some(
-              (x) => x.manifest.version === manifest.version || x.manifest.url === manifest.url,
-            )
-          )
-            fail("denied");
           state.releases.push({
             id,
             manifest,
             manifest_object,
+            manifest_bytes: raw.length,
+            download_path,
+            download_name,
             exe_object,
             ready: false,
             created_at: new Date().toISOString(),
@@ -500,20 +514,34 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
         const id = p.split("/").pop(),
           release = s.releases.find((x) => x.id === id && !x.ready);
         if (!release || !req.body) fail("denied");
+        if (
+          req.headers.get("X-File-Name") !==
+          (release.download_name ?? manifestPath(release.manifest, url.origin).slice(11))
+        )
+          fail("denied", 400);
         const digest = createHash("sha256");
         let size = 0;
-        const stream = req.body.pipeThrough(
-          new TransformStream({
-            transform(chunk, controller) {
-              size += chunk.length;
-              if (size > 50 * 1024 * 1024) throw Error("WOR_SIZE");
-              digest.update(chunk);
-              controller.enqueue(chunk);
-            },
-          }),
-        );
+        const reader = req.body.getReader();
+        const stream = new ReadableStream({
+          async pull(controller) {
+            const { done, value } = await reader.read();
+            if (done) {
+              controller.close();
+              return;
+            }
+            size += value.byteLength;
+            if (size > 50 * 1024 * 1024) {
+              await reader.cancel();
+              controller.error(Error("WOR_SIZE"));
+              return;
+            }
+            digest.update(value);
+            controller.enqueue(value);
+          },
+          cancel: (reason) => reader.cancel(reason),
+        });
         await store.put(release.exe_object, stream);
-        if (size === 0 || digest.digest("hex") !== release.manifest.sha256) {
+        if (size === 0 || digest.digest("hex") !== release.manifest.sha256.toLowerCase()) {
           await store.remove([release.exe_object]);
           fail("denied", 400);
         }
@@ -569,12 +597,21 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
         const b = await body(req, ["release_id"]);
         return store.transaction(async (state) => {
           await admin(req, state);
-          const r = state.releases.find((x) => x.id === b.release_id && x.ready),
-            old = state.releases.find((x) => x.id === state.settings.current_release);
-          if (!r || (old && versionCompare(r.manifest.version, old.manifest.version) <= 0))
-            fail("denied");
+          const r = state.releases.find((x) => x.id === b.release_id && x.ready);
+          if (!r) fail("denied");
           state.settings.current_release = r.id;
+          r.published_at = new Date().toISOString();
           audit(state, state.settings.owner_id, "release_publish", r.id);
+          return json({ status: "ok" });
+        });
+      }
+      if (p === "/api/wor/admin/revoke-release" && req.method === "POST") {
+        const b = await body(req, ["release_id"]);
+        return store.transaction(async (state) => {
+          await admin(req, state);
+          if (state.settings.current_release !== b.release_id) fail("denied", 404);
+          delete state.settings.current_release;
+          audit(state, state.settings.owner_id, "release_revoke", b.release_id);
           return json({ status: "ok" });
         });
       }
@@ -840,13 +877,25 @@ export function createWorService({ store, telegram, clock = () => Date.now() }) 
   }
   return {
     http: async (req) => {
+      let result;
       try {
-        return await http(req);
+        result = await http(req);
       } catch (e) {
-        if (e instanceof WorFault) return faultResponse(e.code, e.status);
-        console.error("WOR_SERVER_ERROR");
-        return faultResponse("server_error", 503);
+        if (e instanceof WorFault) result = faultResponse(e.code, e.status);
+        else {
+          console.error("WOR_SERVER_ERROR");
+          result = faultResponse("server_error", 503);
+        }
       }
+      const path = new URL(req.url).pathname;
+      if (
+        result?.status >= 400 &&
+        (["/api/wor/tables", "/api/wor/update"].includes(path) || path.startsWith("/downloads/"))
+      ) {
+        const error = await result.json();
+        return json({ code: error.code, message: error.message }, result.status);
+      }
+      return result;
     },
     bot,
   };

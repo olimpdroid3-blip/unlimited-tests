@@ -59,30 +59,48 @@ export function exactStrings(value, keys) {
     throw Error("fields");
   return value;
 }
-export function parseManifest(bytes) {
-  const m = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
-  exactStrings(m, ["version", "min_version", "url", "sha256", "notes", "signature"]);
+export function manifestPath(manifest, origin = "https://unlimited-tests.lovable.app") {
+  const url = new URL(manifest.url, origin);
   if (
-    !VERSION.test(m.version) ||
-    !VERSION.test(m.min_version) ||
-    m.version.length > 40 ||
-    m.min_version.length > 40 ||
-    versionCompare(m.min_version, m.version) > 0 ||
-    !/^\/downloads\/[A-Za-z0-9][A-Za-z0-9._-]{0,119}\.exe$/.test(m.url) ||
-    !/^[a-f0-9]{64}$/.test(m.sha256) ||
-    decode(m.signature).length !== 64 ||
-    m.notes.length > 10000
+    url.origin !== origin ||
+    url.protocol !== "https:" ||
+    url.search ||
+    url.hash ||
+    !/^\/downloads\/[A-Za-z0-9][A-Za-z0-9._-]{0,119}\.exe$/.test(url.pathname)
+  )
+    throw Error("manifest URL");
+  return url.pathname;
+}
+export function parseManifest(bytes, origin = "https://unlimited-tests.lovable.app") {
+  const m = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+  if (
+    !m ||
+    Array.isArray(m) ||
+    typeof m !== "object" ||
+    !["string", "number"].includes(typeof m.version) ||
+    !String(m.version).trim() ||
+    String(m.version).length > 80 ||
+    typeof m.url !== "string" ||
+    typeof m.sha256 !== "string" ||
+    !/^[a-f0-9]{64}$/i.test(m.sha256) ||
+    typeof m.signature !== "string"
   )
     throw Error("manifest");
+  manifestPath(m, origin);
   return m;
 }
 export function parseTables(bytes) {
   const t = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
-  // No signed-table schema was specified. Accept the owner's JSON object as an
-  // opaque artifact, without inventing a signature location or serialization.
-  if (!t || Array.isArray(t) || typeof t !== "object") throw Error("tables");
-  const v = t.version ?? t.v ?? t.payload?.version;
-  return {
-    version: ["string", "number"].includes(typeof v) ? String(v).slice(0, 80) : "не указана",
-  };
+  if (
+    !t ||
+    Array.isArray(t) ||
+    typeof t !== "object" ||
+    !Number.isInteger(t.version) ||
+    !t.dist ||
+    Array.isArray(t.dist) ||
+    typeof t.dist !== "object" ||
+    typeof t.signature !== "string"
+  )
+    throw Error("tables");
+  return { version: String(t.version) };
 }

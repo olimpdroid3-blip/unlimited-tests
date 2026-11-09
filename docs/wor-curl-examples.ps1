@@ -27,4 +27,4 @@ $headers = "Authorization: Bearer $refreshSecret`nX-Machine-Code: AAAA-BBBB-CCCC
 $headers | curl.exe --silent --show-error --fail-with-body "$base/api/wor/update" --header '@-' --output manifest.json
 $headers | curl.exe --silent --show-error --fail-with-body "$base/api/wor/tables" --header '@-' --output tables.json
 # Verify both downloaded files with the separate owner update public key.
-# The server returns 503 if the owner has not uploaded a corresponding file yet.
+# File endpoints return 404 if the owner has not uploaded/published that file yet.

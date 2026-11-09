@@ -1,5 +1,28 @@
 # WoR Collector — production status, 2026-11-09
 
+## Current artifact update
+
+File endpoints now require only refresh_secret and X-Machine-Code, with the same
+active-device/member checks as renew. Certificate expiry and app version are not
+checked for these downloads. Missing files, non-current EXE names and revoked
+releases return 404; errors are exactly code/message, without status. Bot,
+registration, start, poll and renew implementation blocks were compared equal
+to the previous commit (UTF-8 source comparison); their protocols are unchanged.
+
+The supplied to-upload/tables.json passed integer version / object dist / string
+signature checks and was uploaded immediately. Version 1, 1408 bytes, SHA-256
+2a9e903dbfd9bff9af1cfc6df56d2976f38eae9fd9dd249acc06abeff4ba8ca2.
+An authenticated admin read-back was byte-for-byte identical. The temporary
+operator upload session was revoked and its local credential deleted. Manifest
+and EXE have not been read from the user's folder or uploaded; await explicit
+owner instruction. No update/table private signing key exists on the server.
+
+The owner admin now has Tables and Release sections with version/date/upload,
+and Revoke release. Uploads keep raw bytes and all extra JSON fields; only the
+required structure, same-domain filename and EXE SHA-256 are checked. Signatures
+are not verified or regenerated. EXE streams use a verified fixed content length.
+See WOR_ARTIFACTS.md for masked curl/PowerShell and management instructions.
+
 Production: https://unlimited-tests.lovable.app
 Repository: https://github.com/olimpdroid3-blip/unlimited-tests (main).
 Lovable project: 33e3ef01-cf16-4bfd-9d4e-cc28e96d83d2 (Tower Keeper).

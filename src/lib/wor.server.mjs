@@ -98,8 +98,15 @@ export async function handleWor(request) {
       return faultResponse("server_error", 503);
     }
   }
-  if (!(await worEnabled())) return faultResponse("server_error", 503);
   const p = new URL(request.url).pathname;
+  if (!(await worEnabled())) {
+    if (["/api/wor/tables", "/api/wor/update"].includes(p) || p.startsWith("/downloads/"))
+      return json(
+        { code: "server_error", message: "Сервис временно недоступен. Повторите позже." },
+        503,
+      );
+    return faultResponse("server_error", 503);
+  }
   if (new URL(request.url).protocol !== "https:") return faultResponse("denied", 400);
   if (p === "/wor/admin") return worAdminPage();
   if (p === "/api/wor/bootstrap") return faultResponse("denied", 404);
