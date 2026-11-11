@@ -5,6 +5,7 @@ import {
   calculateAwakenedBattlePower,
   calculateAverageBattlePower,
   createBattlePowerRepository,
+  filterBattlePowerRows,
   findBattlePowerRowByNickname,
   getBattlePowerFormPresentation,
   getBattlePowerValueTone,
@@ -18,6 +19,7 @@ function createRow(overrides: Partial<BattlePowerRow> = {}): BattlePowerRow {
   return {
     id: "test-player-01",
     nickname: "Alex",
+    squad: null,
     power1: 1,
     power2: 2,
     power3: 3,
@@ -166,11 +168,72 @@ test("returns no battle-power rows when the remote source is empty", async () =>
   assert.deepEqual(await repository.getAll(), []);
 });
 
+test("sorts by squad in either direction and keeps unassigned players last", () => {
+  const rows = [
+    createRow({ nickname: "Adam" }),
+    createRow({ nickname: "Skye", squad: 1 }),
+    createRow({ nickname: "Vex", squad: 2 }),
+    createRow({ nickname: "Alex", squad: 1 }),
+  ];
+
+  assert.deepEqual(
+    sortBattlePowerRows(rows, "squad", "asc").map((row) => row.nickname),
+    ["Alex", "Skye", "Vex", "Adam"],
+  );
+  assert.deepEqual(
+    sortBattlePowerRows(rows, "squad", "desc").map((row) => row.nickname),
+    ["Vex", "Alex", "Skye", "Adam"],
+  );
+});
+
+test("combines squad and inclusive power ranges without treating blank powers as zero", () => {
+  const matching = createRow({
+    squad: 1,
+    power1: 150.5,
+    power2: 140.46,
+    power3: null,
+    power4: null,
+    power5: null,
+  });
+  const rows = [
+    matching,
+    { ...matching, squad: 2 as const },
+    { ...matching, squad: null },
+    { ...matching, power1: 149 },
+    { ...matching, power1: 151 },
+    { ...matching, power2: 130 },
+    { ...matching, power2: 145 },
+    { ...matching, power1: null, power2: null },
+  ];
+
+  assert.deepEqual(
+    filterBattlePowerRows(rows, {
+      squad: 1,
+      power1Min: "150,5",
+      power1Max: "150.5",
+      averageMin: "145.5",
+      averageMax: "145.5",
+    }),
+    [matching],
+  );
+  assert.deepEqual(
+    filterBattlePowerRows(rows, {
+      squad: null,
+      power1Min: "",
+      power1Max: "",
+      averageMin: "",
+      averageMax: "",
+    }),
+    [rows[2]],
+  );
+});
+
 test("delegates every mutation to the remote source, including legacy test-player ids", async () => {
   const remote = createRemoteSource([]);
   const repository = createBattlePowerRepository(remote);
   const input: BattlePowerInput = {
     nickname: "Remote Player",
+    squad: 1,
     power1: 10,
     power2: null,
     power3: null,
@@ -187,11 +250,14 @@ test("delegates every mutation to the remote source, including legacy test-playe
   const updated = await repository.update("test-player-01", {
     ...input,
     nickname: "Updated Remote",
+    squad: 2,
   });
 
   assert.equal(created.nickname, "Remote Player");
+  assert.equal(created.squad, 1);
   assert.equal(updated.id, "test-player-01");
   assert.equal(updated.nickname, "Updated Remote");
+  assert.equal(updated.squad, 2);
 
   await repository.remove(created.id);
   assert.deepEqual(await remote.getAll(), []);

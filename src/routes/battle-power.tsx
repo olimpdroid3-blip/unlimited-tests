@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { toast } from "sonner";
-import { Calculator, Crown } from "lucide-react";
+import { Calculator, Crown, ListFilter } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import {
   DropdownMenu,
@@ -25,13 +25,16 @@ import { Toaster } from "@/components/ui/sonner";
 import {
   calculateAwakenedBattlePower,
   calculateAverageBattlePower,
+  filterBattlePowerRows,
   findBattlePowerRowByNickname,
   getBattlePowerFormPresentation,
   getBattlePowerValueTone,
   sortBattlePowerRows,
+  type BattlePowerFilters,
   type BattlePowerRow,
   type BattlePowerSortDirection,
   type BattlePowerSortKey,
+  type BattlePowerSquad,
   type AwakeningLevel,
 } from "@/lib/battle-power";
 import { battlePowerRepository } from "@/lib/battle-power-ui";
@@ -90,7 +93,35 @@ const sortOptions: { value: BattlePowerSortKey; label: string }[] = [
   { value: "power4", label: "БС #4" },
   { value: "power5", label: "БС #5" },
   { value: "average", label: "Середній БС" },
+  { value: "squad", label: "Склад" },
 ];
+
+const squadOptions = [
+  { value: 1, label: "1-й склад" },
+  { value: 2, label: "2-й склад" },
+] as const;
+
+const emptyFilters: BattlePowerFilters = {
+  squad: "all",
+  power1Min: "",
+  power1Max: "",
+  averageMin: "",
+  averageMax: "",
+};
+
+const thresholdFields: { key: Exclude<keyof BattlePowerFilters, "squad">; label: string }[] = [
+  { key: "power1Min", label: "Мін. БС #1" },
+  { key: "power1Max", label: "Макс. БС #1" },
+  { key: "averageMin", label: "Мін. середній БС" },
+  { key: "averageMax", label: "Макс. середній БС" },
+];
+
+const fieldClass =
+  "w-full min-w-0 rounded-lg border border-border bg-input px-3 py-2.5 text-sm outline-none focus:border-primary";
+
+function parseSquad(value: string): BattlePowerSquad | null {
+  return squadOptions.find((option) => String(option.value) === value)?.value ?? null;
+}
 
 const awakeningLevels: AwakeningLevel[] = ["A0", "A1", "A2", "A3", "A4", "A5"];
 const emptyCrowns = () => [false, false, false, false, false];
@@ -100,6 +131,7 @@ function BattlePowerPage() {
   const [open, setOpen] = useState(false);
   const [nick, setNick] = useState("");
   const [savedNickname, setSavedNickname] = useState("");
+  const [squad, setSquad] = useState<BattlePowerSquad | null>(null);
   const [powers, setPowers] = useState<string[]>(["", "", "", "", ""]);
   const [crowns, setCrowns] = useState<boolean[]>(emptyCrowns);
   const [calculatorIndex, setCalculatorIndex] = useState<number | null>(null);
@@ -110,6 +142,8 @@ function BattlePowerPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<BattlePowerSortKey>("nickname");
   const [sortDirection, setSortDirection] = useState<BattlePowerSortDirection>("asc");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState(emptyFilters);
 
   useEffect(() => {
     const cookieNickname = getNickCookie();
@@ -123,10 +157,13 @@ function BattlePowerPage() {
   });
   const formPresentation = getBattlePowerFormPresentation(open, editingId);
   const savedBattlePowerRow = findBattlePowerRowByNickname(data, savedNickname);
-  const sortedData = useMemo(
-    () => sortBattlePowerRows(data, sortKey, sortDirection),
-    [data, sortDirection, sortKey],
+  const visibleRows = useMemo(
+    () => sortBattlePowerRows(filterBattlePowerRows(data, filters), sortKey, sortDirection),
+    [data, filters, sortDirection, sortKey],
   );
+  const hiddenCount = data.length - visibleRows.length;
+  const splitIndex = Math.ceil(visibleRows.length / 2);
+  const emptyMessage = data.length ? "За цими фільтрами гравців не знайдено" : "Записів поки немає";
   const calculatorResult = calculateAwakenedBattlePower(
     calculatorBase.trim() === "" ? null : Number(calculatorBase),
     awakeningLevel,
@@ -134,6 +171,7 @@ function BattlePowerPage() {
 
   const openEdit = (r: BattlePowerRow) => {
     setNick(r.nickname);
+    setSquad(r.squad);
     setPowers([
       r.power1?.toString() ?? "",
       r.power2?.toString() ?? "",
@@ -163,6 +201,7 @@ function BattlePowerPage() {
     }
 
     setNick(cookieNickname);
+    setSquad(null);
     setPowers(["", "", "", "", ""]);
     setCrowns(emptyCrowns());
     setEditingId(null);
@@ -216,6 +255,7 @@ function BattlePowerPage() {
     setSaving(true);
     const payload = {
       nickname: n,
+      squad,
       power1: num(powers[0]),
       power2: num(powers[1]),
       power3: num(powers[2]),
@@ -275,7 +315,7 @@ function BattlePowerPage() {
       onChange={(e) => setNick(e.target.value)}
       placeholder="Нік"
       aria-label="Нік"
-      className="w-full min-w-0 rounded-lg border border-border bg-input px-3 py-2.5 text-sm outline-none focus:border-primary"
+      className={fieldClass}
     />
   );
   const powerInputs = powers.map((power, index) => (
@@ -336,11 +376,11 @@ function BattlePowerPage() {
         </p>
 
         {!open && (
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
             <button
               onClick={openOwnForm}
               disabled={isLoading}
-              className="w-full cursor-pointer rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 active:scale-[0.99] disabled:cursor-wait disabled:opacity-60"
+              className="col-span-2 w-full cursor-pointer rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 active:scale-[0.99] disabled:cursor-wait disabled:opacity-60 sm:col-span-1"
             >
               {isLoading
                 ? "Завантаження…"
@@ -378,7 +418,77 @@ function BattlePowerPage() {
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <button
+              type="button"
+              aria-expanded={filtersOpen}
+              aria-controls="battle-power-filters"
+              onClick={() => setFiltersOpen(!filtersOpen)}
+              className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary px-4 py-3 text-sm font-semibold text-secondary-foreground transition hover:bg-accent active:scale-[0.99]"
+            >
+              <ListFilter className="size-4" aria-hidden="true" />
+              Фільтри{hiddenCount > 0 && ` · ${visibleRows.length}/${data.length}`}
+            </button>
           </div>
+        )}
+
+        {!open && filtersOpen && (
+          <section
+            id="battle-power-filters"
+            aria-label="Фільтри гравців"
+            className="mt-2 rounded-xl border border-border bg-card/60 p-3"
+          >
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <label className="col-span-2 grid gap-1 text-xs font-medium sm:col-span-1">
+                Склад
+                <select
+                  value={filters.squad ?? "unassigned"}
+                  onChange={({ target: { value } }) =>
+                    setFilters((current) => ({
+                      ...current,
+                      squad: value === "all" ? "all" : parseSquad(value),
+                    }))
+                  }
+                  className={fieldClass}
+                >
+                  <option value="all">Усі гравці</option>
+                  {squadOptions.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                  <option value="unassigned">Без складу</option>
+                </select>
+              </label>
+              {thresholdFields.map(({ key, label }) => (
+                <label key={key} className="grid gap-1 text-xs font-medium">
+                  {label}
+                  <input
+                    value={filters[key]}
+                    inputMode="decimal"
+                    onChange={({ target: { value } }) => {
+                      if (/^\d*(?:[.,]\d*)?$/.test(value)) {
+                        setFilters((current) => ({ ...current, [key]: value }));
+                      }
+                    }}
+                    className={fieldClass}
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-2 text-xs">
+              <span className="text-muted-foreground">
+                Показано {visibleRows.length} з {data.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => setFilters(emptyFilters)}
+                className="cursor-pointer rounded-lg border border-border bg-secondary px-3 py-1.5 transition hover:bg-accent"
+              >
+                Скинути фільтри
+              </button>
+            </div>
+          </section>
         )}
 
         {formPresentation === "inline" && (
@@ -407,32 +517,26 @@ function BattlePowerPage() {
           </div>
         )}
 
-        <div className="mt-4 grid min-[1920px]:grid-cols-2 gap-4">
+        <div className="mt-4 grid gap-4 min-[1920px]:grid-cols-2">
           <BattlePowerTable
-            rows={sortedData.slice(0, Math.ceil(sortedData.length / 2))}
+            rows={visibleRows}
             isLoading={isLoading}
-            isEmpty={data.length === 0}
+            emptyMessage={emptyMessage}
             onEdit={openEdit}
             onDelete={setDeleteId}
-            className="min-[1920px]:hidden"
-            hiddenRows={sortedData.slice(Math.ceil(sortedData.length / 2))}
+            className={visibleRows.length > 1 ? "min-[1920px]:hidden" : "min-[1920px]:col-span-2"}
           />
-          <BattlePowerTable
-            rows={sortedData.slice(0, Math.ceil(sortedData.length / 2))}
-            isLoading={isLoading}
-            isEmpty={false}
-            onEdit={openEdit}
-            onDelete={setDeleteId}
-            className="hidden min-[1920px]:block"
-          />
-          <BattlePowerTable
-            rows={sortedData.slice(Math.ceil(sortedData.length / 2))}
-            isLoading={false}
-            isEmpty={false}
-            onEdit={openEdit}
-            onDelete={setDeleteId}
-            className="hidden min-[1920px]:block"
-          />
+          {visibleRows.length > 1 &&
+            [visibleRows.slice(0, splitIndex), visibleRows.slice(splitIndex)].map((rows, index) => (
+              <BattlePowerTable
+                key={index}
+                rows={rows}
+                isLoading={false}
+                onEdit={openEdit}
+                onDelete={setDeleteId}
+                className="hidden min-[1920px]:block"
+              />
+            ))}
         </div>
 
         <div className="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1.5 rounded-xl border border-border bg-card/60 px-3 py-3 text-[10px] sm:text-[11px]">
@@ -466,11 +570,26 @@ function BattlePowerPage() {
             </Dialog.Close>
             <Dialog.Title className="text-base font-semibold">✏️ Редагування запису</Dialog.Title>
             <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-              Оновіть нік або значення бойової сили.
+              Оновіть нік, бойову силу або склад.
             </Dialog.Description>
             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
               <div className="col-span-2 sm:col-span-3">{nicknameInput}</div>
               {powerInputs}
+              <label className="grid gap-1 text-xs font-medium">
+                Склад
+                <select
+                  value={squad ?? "unassigned"}
+                  onChange={(event) => setSquad(parseSquad(event.target.value))}
+                  className={fieldClass}
+                >
+                  <option value="unassigned">Без складу</option>
+                  {squadOptions.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-2">
               <button
@@ -610,31 +729,28 @@ function BattlePowerPage() {
 
 function BattlePowerTable({
   rows,
-  hiddenRows,
   isLoading,
-  isEmpty,
+  emptyMessage,
   onEdit,
   onDelete,
   className,
 }: {
   rows: BattlePowerRow[];
-  hiddenRows?: BattlePowerRow[];
   isLoading: boolean;
-  isEmpty: boolean;
+  emptyMessage?: string;
   onEdit: (r: BattlePowerRow) => void;
   onDelete: (id: string) => void;
   className?: string;
 }) {
-  const allRows = hiddenRows ? [...rows, ...hiddenRows] : rows;
-
   return (
-    <div className={`overflow-hidden rounded-xl border border-border bg-card/60 ${className ?? ""}`}>
+    <div
+      className={`overflow-hidden rounded-xl border border-border bg-card/60 ${className ?? ""}`}
+    >
       <table className="w-full table-fixed border-collapse text-[10px] min-[360px]:text-[11px] sm:text-base">
         <colgroup>
-          <col style={{ width: "30%" }} />
-          {[1, 2, 3, 4, 5, 6].map((column) => (
-            <col key={column} style={{ width: "11.6667%" }} />
-          ))}
+          <col className="w-[30%]" />
+          <col span={5} />
+          <col className="w-[11.6667%] sm:w-24" />
         </colgroup>
         <thead>
           <tr className="border-b border-border text-muted-foreground">
@@ -658,14 +774,14 @@ function BattlePowerTable({
               </td>
             </tr>
           )}
-          {!isLoading && isEmpty && (
+          {!isLoading && rows.length === 0 && emptyMessage && (
             <tr>
               <td colSpan={7} className="p-4 text-center text-xs text-muted-foreground">
-                Записів поки немає
+                {emptyMessage}
               </td>
             </tr>
           )}
-          {allRows.map((r) => {
+          {rows.map((r) => {
             const averagePower = calculateAverageBattlePower(r);
             const displayedPowers = [
               r.power1,
